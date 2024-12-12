@@ -1,0 +1,70 @@
+28.11.2024
+--stock_list sayfası yapıldı.
+--purchase_invoices sayfası yapıldı.
+--purchaseinvoice fatura girişi eklendi.
+--purchaseinvoice faturaya ürün girişi eklendi.
+--purchaseinvoice ürünlerin mağazaya aktarımı eklendi.
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+29.11.2024
+--stock_list sayfası ürünleri aktife al eklendi.
+--stock_list sayfası ürünler detay kısmına aktarım detayları eklendi.
+--stock_list sayfası stok miktarına göre sıralama eklendi
+--Depo mağazası oluşturuldu tüm ürünler kayıt edilirken ve fatura girişi yapılırken buraya aktarılacak.
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+30.11.2024
+-- Manuel stok eklerken mağaza veya depo seçimi eklendi.
+-- Stok hareketlerinde artık depolar da gözükecek.
+-- Eğer manuel ürün girişi yapılmış ise ürün fiyatı en sonuncudan miras alınacak.
+-- Ürün stokları için ayrı bir modal eklendi. (hangi mağazada kaç tane var?)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+01.12.2024
+-- Detayları göster modalında  Departman, kategori, alt kategori düzgün gelmeme sorunu düzeltildi.
+-- Stok detay modalının arkasında ürün düzenle modalı gelme hatası giderildi.
+-- Checkbox işaretlendiğinde ürün düzenle modalı gelme hatası giderildi.
+-- Bozulan ürün düzenle modalı kalıcı olarak düzeltildi. -getproductdetails.php
+-- Bozulan Stok Hareketleri düzeltildi.
+-- Dashboard sayfasına ayarlar modalı ve modal içine manuel ürün eklerken stoğu hangi mağazaya/depoya eklensin özelliği eklendi.
+-- Ürünleri silerken ilişkisi var ise silinmeme hatası düzeltildi ve artık tüm ilişkiler ile beraber siliniyor.
+-- Sayfada artık toplam ürün sayısı yazılıyor. + artık dinamik olarak çalışıyor.
+-- Stock list sayfasına istek süresi hesaplama eklendi.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+02.12.2024
+-- Stok miktarındaki hata düzeltildi.
+-- Detayları göster modalında  Departman, kategori, alt kategori düzgün gelmeme sorunu tekrar yaşandı ve kalıcı olarak düzeltildi. /get_table_data.php
+-- Pasif ürünler artık tablonun en sonunda gösteriliyor.
+-- Mağazalar arası stok transferi eklendi. 
+-- Fiyat geçmişi iconu eklendi, fiyat değişikliği yapıldığında tabloya yazılacak.
+-- Tabloya ürün alış fiyatı eklendi.
+-- Artık ürün eklerken alış fiyatı ve satış fiyatına göre kar marjı gösterilecek.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+03.12.2024
+-- Alış fiyatı, satış fiyatı ve indirimli fiyat güncellendiğinde fiyat hareketlerine eklenecek.
+-- Veritabanında değişiklikler yapıldı.
+-- Ana, alt grup, birim ve departman tablosu eklendi. 
+-- Ürün stok tablosu ile ilişkilendirildi.
+-- Artık manuel ürün eklerken yeni birim opsiyonu eklenebiliyor.
+-- Artık manuel ürün eklerken yeni departman opsiyonu eklenebiliyor.
+-- Artık manuel ürün eklerken yeni ana/alt grup opsiyonu eklenebiliyor.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+04.12.2024
+Main.js dosyası parçalanmaya çalışıldı fakat vazgeçildi.
+--Tablo parçalandı artık bazı sütunlar farklı tablodan gelecek.
+-- Ürün ekle tablosundaki ve tablodaki hata  giderildi.
+-- Ürün ekle düzenlendi.
+-- Stock list sayfasına girince ürün düzenle modalı açılıyor !? -Düzeltildi.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+07.12.2024
+-- Departman, birim, ana, alt grup artık ismi ile gözükecek.
+-- Departman'a filtre iconu ve fonksiyonu eklenecek.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+11.12.2024
+-- Departmana filtre iconu eklendi fonksiyonu hatalı çalışıyor.
+-- Tablolarda artık KDV eklenebilecek.
+-- bir filtre seçildiğinde tablo yenilenmiyor.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+12.12.2024
+-- Tüm "Yeni .. Ekle" kaldırıldı. (dashboarda eklenip oradan yönetilecek.)
+-- Departmana filtre iconu eklendi ve artık ürünler departmana göre filtreleniyor. fonksiyonu hatalı çalışıyor. ++Düzeltildi.
+-- bir filtre seçildiğinde tablo yenilenmiyor. ++ Düzeltildi
+-- Ana grup'a filtre iconu eklendi ve artık ürünler ana grup'a göre filtreleniyor.
+-- Eylem butonları tabloda değişiklik yapılmadığı sürece çalışmıyor.

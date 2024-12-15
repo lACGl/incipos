@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connection.php';
+require_once '../db_connection.php';
 
 // Yetki kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
@@ -10,7 +10,6 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
 // POST verilerini al
 $data = json_decode(file_get_contents('php://input'), true);
 $ids = $data['ids'] ?? [];
-$status = $data['status'] ?? 'pasif'; // varsayılan olarak pasife alma
 
 if (empty($ids)) {
     die(json_encode(['error' => 'İşlem yapılacak ürün seçilmedi']));
@@ -18,7 +17,7 @@ if (empty($ids)) {
 
 try {
     $placeholders = str_repeat('?,', count($ids) - 1) . '?';
-    $params = array_merge([$status], $ids);
+    $params = array_merge(['aktif'], $ids);
     
     // Ürünlerin durumunu güncelle
     $sql = "UPDATE urun_stok SET durum = ? WHERE id IN ($placeholders)";
@@ -27,7 +26,7 @@ try {
     
     echo json_encode([
         'success' => true,
-        'message' => count($ids) . ' ürün ' . $status . ' duruma alındı'
+        'message' => count($ids) . ' ürün aktif duruma alındı'
     ]);
 
 } catch (Exception $e) {

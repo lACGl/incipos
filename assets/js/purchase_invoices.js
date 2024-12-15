@@ -1,3 +1,4 @@
+const BASE_URL = '/';
 const API_ENDPOINTS = {
     GET_INVOICE_PRODUCTS: BASE_URL + 'api/get_invoice_products.php',
     GET_MAGAZALAR: BASE_URL + 'api/get_magazalar.php',
@@ -11,6 +12,9 @@ const API_ENDPOINTS = {
     ADD_TEDARIKCI: BASE_URL + 'api/tedarikci.php',
     SAVE_INVOICE_PRODUCTS: BASE_URL + 'api/save_invoice_products.php'
 };
+
+
+
 function openModal(modalId) {
     document.getElementById(modalId).classList.remove('hidden');
 }

@@ -357,138 +357,6 @@ $table_html = createTable($conn, $selected_columns, $items_per_page, $offset, $s
         <a href="?page=<?php echo $total_pages; ?>&search_term=<?php echo $search_term; ?>" class="page-last">Last</a>
     <?php endif; ?>
 </div>
-
-
-<!-- Update Popup -->
-<div id="updatePopup" class="popup fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="modal-content bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold">Ürün Düzenle</h2>
-            <span class="close-btn cursor-pointer text-gray-500 hover:text-gray-700 text-2xl" onclick="closePopup()">×</span>
-        </div>
-        <form method="POST" action="update_product.php" class="space-y-4">
-            <input type="hidden" id="productId" name="product_id">
-            <div class="grid grid-cols-2 gap-4">
-            <?php 
-            // Sıralama ve görünen isimler için özel dizi
-            $column_order = [
-                'kod' => 'Kod*',
-                'barkod' => 'Barkod*',
-                'ad' => 'Ürün Adı*',
-                'web_id' => 'Web ID',
-                'yil' => 'Yıl',
-                'kdv_orani' => 'KDV Oranı (%)*',
-                'alis_fiyati' => 'Alış Fiyatı*',
-                'satis_fiyati' => 'Satış Fiyatı*',
-                'stok_miktari' => 'Miktar',
-                'indirimli_fiyat' => 'İndirimli Fiyat',
-                'departman_id' => 'Departman',
-                'birim_id' => 'Birim',
-                'ana_grup_id' => 'Ana Grup',
-                'alt_grup_id' => 'Alt Grup',
-                'resim_yolu' => 'Resim',
-                'durum' => 'Durum',
-                'indirim_baslangic_tarihi' => 'İndirim Başlangıç',
-                'indirim_bitis_tarihi' => 'İndirim Bitiş'
-            ];
-
-            foreach ($column_order as $column => $label): 
-                if ($column !== 'id' && $column !== 'kayit_tarihi'): 
-                    $input_type = "text";
-                    $is_select = false;
-
-                    if (in_array($column, ['departman_id', 'birim_id', 'ana_grup_id', 'alt_grup_id', 'durum', 'kdv_orani'])) {
-                        $is_select = true;
-                    }
-                    elseif (strpos($column, 'tarih') !== false) {
-                        $input_type = "date";
-                    } elseif (in_array($column, ['stok_miktari'])) {
-                        $input_type = "number";
-                    } elseif (in_array($column, ['satis_fiyati', 'indirimli_fiyat', 'alis_fiyati'])) { 
-                        $input_type = "number";
-                        $step = "0.01";
-                    } elseif ($column === 'resim_yolu') {
-                        $input_type = "file";
-                    } elseif ($column === 'yil') {
-                        $input_type = "number";
-                        $value = date('Y');
-                    }
-            ?>
-            <div class="form-group">
-                <label for="<?php echo $column; ?>" class="block text-sm font-medium text-gray-700 mb-1">
-                    <?php echo $label; ?>
-                </label>
-                <?php if ($is_select): ?>
-                    <select 
-                        id="<?php echo $column; ?>"
-                        name="<?php echo $column; ?>"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                        <?php echo in_array($column, ['kdv_orani']) ? 'required' : ''; ?>
-                    >
-                        <?php if ($column === 'kdv_orani'): ?>
-                            <option value="">Seçiniz</option>
-                            <option value="0">0%</option>
-                            <option value="1">1%</option>
-                            <option value="8">8%</option>
-                            <option value="18">18%</option>
-                            <option value="20">20%</option>
-                        <?php elseif ($column === 'durum'): ?>
-                            <option value="aktif">Aktif</option>
-                            <option value="pasif">Pasif</option>
-                        <?php else: ?>
-                            <option value="">Seçiniz</option>
-                            <option value="add_new" class="font-semibold text-blue-600">+ Yeni Ekle</option>
-                        <?php endif; ?>
-                    </select>
-                <?php elseif ($column === 'resim_yolu'): ?>
-                    <div class="flex items-center space-x-2">
-                        <button type="button" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Dosya Seç</button>
-                        <span class="text-sm text-gray-500">Dosya seçilmedi</span>
-                    </div>
-                <?php else: ?>
-                    <input 
-                        type="<?php echo $input_type; ?>"
-                        id="<?php echo $column; ?>"
-                        name="<?php echo $column; ?>"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                        <?php if ($input_type === "number" && isset($step)): ?>
-                            step="<?php echo $step; ?>"
-                        <?php endif; ?>
-                        <?php if (isset($value)): ?>
-                            value="<?php echo $value; ?>"
-                        <?php endif; ?>
-                        <?php echo in_array($column, ['barkod', 'ad', 'kod']) ? 'required' : ''; ?>
-                        <?php if ($column === 'alis_fiyati' || $column === 'satis_fiyati'): ?>
-                            onchange="validatePrices(); updateKarMarji();"
-                        <?php endif; ?>
-                        <?php if ($input_type === "date"): ?>
-                            placeholder="gg.aa.yyyy"
-                        <?php endif; ?>
-                    >
-                    <?php if ($column === 'satis_fiyati'): ?>
-                        <div class="kar-marji-note mt-1 text-sm text-green-600"></div>
-                    <?php endif; ?>
-                <?php endif; ?>
-            </div>
-            <?php 
-                endif;
-            endforeach; 
-            ?>
-            </div>
-            <div class="flex justify-end space-x-3 pt-4 mt-4 border-t">
-                <button type="button" onclick="closePopup()" 
-                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                    İptal
-                </button>
-                <button type="submit" 
-                        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                    Güncelle
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
     </div>
 <!-- Footer -->
 <footer class="mt-8 text-center text-gray-600 text-sm">
@@ -497,10 +365,17 @@ $table_html = createTable($conn, $selected_columns, $items_per_page, $offset, $s
 
 <!-- Ana JavaScript dosyaları -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="/assets/js/main.js"></script>
-<script src="/assets/js/stock_list.js"></script>
-<script src="/assets/js/utils.js"></script>
-<script src="/assets/js/purchase_invoices.js"></script>
+
+<!-- Önce utility ve helper fonksiyonları -->
+<script type="module" src="/assets/js/utils.js"></script>
+
+<!-- Sonra ana tablo mantığı -->
+<script type="module" src="/assets/js/stock_list.js"></script>
+<script type="module" src="/assets/js/stock_list_process.js"></script>
+<script type="module" src="/assets/js/stock_list_actions.js"></script>
+
+<script type="module" src="/assets/js/main.js"></script>
+<!-- <script src="/assets/js/purchase_invoices.js"></script>-->
 
 <!-- Bu script bloğuna ihtiyacınız yok, kaldırabilirsiniz -->
 <!--

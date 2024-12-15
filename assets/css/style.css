@@ -1017,3 +1017,66 @@ input[type="checkbox"] {
 #updatePopup {
     display: none;
 }
+
+.form-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.form-group {
+    flex: 1 1 calc(50% - 20px); /* Yan yana iki sütun */
+    display: flex;
+    flex-direction: column;
+    min-width: 250px;
+}
+
+.form-label {
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.form-input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .form-group {
+        flex: 1 1 100%; /* Küçük ekranlarda tek sütun */
+    }
+}
+
+.swal2-popup {
+    overflow: visible !important;
+}
+
+.swal2-popup .swal2-input {
+    overflow: hidden;
+    max-height: 250px; /* Select öğesi için maksimum yükseklik belirleyelim */
+}
+
+/* SweetAlert2 modal içindeki select açılır listesini sınırlama */
+.swal2-popup {
+    overflow: visible !important;
+}
+
+.swal2-popup .swal2-select {
+    max-height: 150px; /* Açılır liste için maksimum yükseklik */
+    overflow-y: auto;  /* Taşan içerik için dikey kaydırma */
+}
+
+/* Select öğesi için genişliği sınırla */
+.swal2-popup select {
+    width: 100%;
+}
+
+.new-entry-option {
+    color: #1e90ff; /* Mavi renk */
+    font-weight: bold; /* Hafif kalın */
+}

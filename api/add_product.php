@@ -1,23 +1,29 @@
 <?php
 session_start();
-require_once 'db_connection.php';
+require_once '../db_connection.php';
 
 header('Content-Type: application/json');
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
+// Yetki kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     die(json_encode(['success' => false, 'message' => 'Yetkisiz erişim']));
 }
 
 try {
-    // Debug için gelen verileri logla
-    error_log('POST data: ' . print_r($_POST, true));
+    // JSON verisini al
+    $data = json_decode(file_get_contents('php://input'), true);
 
-    // Zorunlu alanları kontrol et
+    // Debug için gelen veriyi logla
+    error_log('POST data: ' . print_r($data, true));
+
+    // Zorunlu alanlar
     $required_fields = ['kod', 'barkod', 'ad', 'kdv_orani', 'alis_fiyati', 'satis_fiyati'];
     $missing_fields = [];
 
     foreach ($required_fields as $field) {
-        if (!isset($_POST[$field]) || trim($_POST[$field]) === '') {
+        if (!isset($data[$field]) || trim($data[$field]) === '') {
             $missing_fields[] = $field;
         }
     }
@@ -28,29 +34,24 @@ try {
     }
 
     // Form verilerini al
-    $kod = trim($_POST['kod']);
-    $barkod = trim($_POST['barkod']);
-    $ad = trim($_POST['ad']);
-    $kdv_orani = floatval($_POST['kdv_orani']);
-    $alis_fiyati = floatval($_POST['alis_fiyati']);
-    $satis_fiyati = floatval($_POST['satis_fiyati']);
-    
+    $kod = trim($data['kod']);
+    $barkod = trim($data['barkod']);
+    $ad = trim($data['ad']);
+    $kdv_orani = floatval($data['kdv_orani']);
+    $alis_fiyati = floatval($data['alis_fiyati']);
+    $satis_fiyati = floatval($data['satis_fiyati']);
+
     // Opsiyonel alanlar
-    $web_id = isset($_POST['web_id']) ? trim($_POST['web_id']) : null;
-    $yil = isset($_POST['yil']) ? intval($_POST['yil']) : null;
-    $stok_miktari = isset($_POST['stok_miktari']) ? floatval($_POST['stok_miktari']) : 0;
-    $indirimli_fiyat = isset($_POST['indirimli_fiyat']) && $_POST['indirimli_fiyat'] !== '' ? 
-        floatval($_POST['indirimli_fiyat']) : null;
-    
+    $web_id = isset($data['web_id']) ? trim($data['web_id']) : null;
+    $yil = isset($data['yil']) ? intval($data['yil']) : null;
+    $stok_miktari = isset($data['stok_miktari']) ? floatval($data['stok_miktari']) : 0;
+    $indirimli_fiyat = isset($data['indirimli_fiyat']) && $data['indirimli_fiyat'] !== '' ? floatval($data['indirimli_fiyat']) : null;
+
     // Departman ve gruplar
-    $departman_id = isset($_POST['departman']) && $_POST['departman'] !== '' ? 
-        intval($_POST['departman']) : null;
-    $birim_id = isset($_POST['birim']) && $_POST['birim'] !== '' ? 
-        intval($_POST['birim']) : null;
-    $ana_grup_id = isset($_POST['ana_grup']) && $_POST['ana_grup'] !== '' ? 
-        intval($_POST['ana_grup']) : null;
-    $alt_grup_id = isset($_POST['alt_grup']) && $_POST['alt_grup'] !== '' ? 
-        intval($_POST['alt_grup']) : null;
+    $departman_id = isset($data['departman']) && $data['departman'] !== '' ? intval($data['departman']) : null;
+    $birim_id = isset($data['birim']) && $data['birim'] !== '' ? intval($data['birim']) : null;
+    $ana_grup_id = isset($data['ana_grup']) && $data['ana_grup'] !== '' ? intval($data['ana_grup']) : null;
+    $alt_grup_id = isset($data['alt_grup']) && $data['alt_grup'] !== '' ? intval($data['alt_grup']) : null;
 
     // Benzersizlik kontrolü
     $stmt = $conn->prepare("SELECT COUNT(*) FROM urun_stok WHERE barkod = ? OR kod = ?");

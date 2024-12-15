@@ -68,3 +68,18 @@ Main.js dosyası parçalanmaya çalışıldı fakat vazgeçildi.
 -- bir filtre seçildiğinde tablo yenilenmiyor. ++ Düzeltildi
 -- Ana grup'a filtre iconu eklendi ve artık ürünler ana grup'a göre filtreleniyor.
 -- Eylem butonları tabloda değişiklik yapılmadığı sürece çalışmıyor.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+13.12.2024
+-- Js dosyası modüler bir şekilde parçalandı ve hatalar giderilmeye çalışılıyor.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+14.12.2024
+-- Dosyalar modüler hale geldi. 
+-- Yeni ürün ekle modalı düzenleniyor.
+-- Departman, birim, ana, alt grup ekle eklendi.
+-- Ürün ekleme modalı tamamen düzenlendi. 
+-- Ürün kaydı başarılı çalışıyor.
+-- Ürünleri aktife/pasife al düzeltildi.
+-- Toplu ürün sil düzeltildi.
+-- classes yapısı oluşturuldu.
+-- Tablodaki grilik hatası düzeltildi.
+-- Filtreler artık açılıyor ve çalışıyor.

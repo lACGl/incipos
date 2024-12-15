@@ -79,68 +79,74 @@ $execution_time = round($end_time - $start_time, 3);
 
         <!-- Settings Modal -->
         <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-medium">Sistem Ayarları</h3>
-                    <button onclick="closeSettings()" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-
-                <form id="settingsForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Varsayılan Stok Lokasyonu
-                        </label>
-                        <div class="relative">
-                            <select name="varsayilan_stok_lokasyonu" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">
-                                <optgroup label="İşlemler">
-                                    <option value="add_store" class="font-semibold text-blue-600">+ Yeni Mağaza Ekle</option>
-                                    <option value="add_warehouse" class="font-semibold text-blue-600">+ Yeni Depo Ekle</option>
-                                </optgroup>
-                                <optgroup label="Depolar">
-                                    <?php
-                                    // Depoları getir
-                                    $stmt = $conn->query("SELECT id, ad FROM depolar WHERE durum = 'aktif' ORDER BY ad");
-                                    while ($depo = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                        echo sprintf(
-                                            '<option value="depo_%d">%s</option>',
-                                            $depo['id'],
-                                            htmlspecialchars($depo['ad'])
-                                        );
-                                    }
-                                    ?>
-                                </optgroup>
-                                <optgroup label="Mağazalar">
-                                    <?php
-                                    // Mağazaları getir
-                                    $stmt = $conn->query("SELECT id, ad FROM magazalar ORDER BY ad");
-                                    while ($magaza = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                        echo sprintf(
-                                            '<option value="magaza_%d">%s</option>',
-                                            $magaza['id'],
-                                            htmlspecialchars($magaza['ad'])
-                                        );
-                                    }
-                                    ?>
-                                </optgroup>
-                            </select>
-                        </div>
-                        <p class="mt-2 text-sm text-gray-500">
-                            Ürün girişlerinde varsayılan olarak hangi lokasyona stok eklenecek?
-                        </p>
-                    </div>
-
-                    <div class="flex justify-end pt-4">
-                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                            Kaydet
-                        </button>
-                    </div>
-                </form>
-            </div>
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium">Sistem Ayarları</h3>
+            <button onclick="closeSettings()" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
         </div>
+
+        <form id="settingsForm" class="space-y-4">
+            <!-- Önce butonları ekleyelim -->
+            <div class="flex gap-2 mb-4">
+                <button type="button" onclick="addNewStore()" class="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600">
+                    + Yeni Mağaza
+                </button>
+                <button type="button" onclick="addNewWarehouse()" class="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600">
+                    + Yeni Depo
+                </button>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Varsayılan Stok Lokasyonu
+                </label>
+                <div class="relative">
+                    <select name="varsayilan_stok_lokasyonu" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                        <optgroup label="Depolar">
+                            <?php
+                            // Depoları getir
+                            $stmt = $conn->query("SELECT id, ad FROM depolar WHERE durum = 'aktif' ORDER BY ad");
+                            while ($depo = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo sprintf(
+                                    '<option value="depo_%d">%s</option>',
+                                    $depo['id'],
+                                    htmlspecialchars($depo['ad'])
+                                );
+                            }
+                            ?>
+                        </optgroup>
+                        <optgroup label="Mağazalar">
+                            <?php
+                            // Mağazaları getir
+                            $stmt = $conn->query("SELECT id, ad FROM magazalar ORDER BY ad");
+                            while ($magaza = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo sprintf(
+                                    '<option value="magaza_%d">%s</option>',
+                                    $magaza['id'],
+                                    htmlspecialchars($magaza['ad'])
+                                );
+                            }
+                            ?>
+                        </optgroup>
+                    </select>
+                </div>
+                <p class="mt-2 text-sm text-gray-500">
+                    Ürün girişlerinde varsayılan olarak hangi lokasyona stok eklenecek?
+                </p>
+            </div>
+
+            <div class="flex justify-end pt-4">
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Kaydet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
         <!-- Footer -->
         <footer class="mt-8 text-center text-gray-600 text-sm">

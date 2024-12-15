@@ -1,409 +1,540 @@
-function editProduct(id, event) {
-   if (event) {
-       event.stopPropagation();
-   }
-   
-   const row = document.querySelector(`tr[data-product*='"id":${id}']`);
-   if (row) {
-       const productData = JSON.parse(row.getAttribute('data-product'));
-       showEditModal(productData);
-   }
+// stock_list_actions.js
+
+import { showLoadingToast, closeLoadingToast, showErrorToast,  FormatUtils, LoadingUtils, APIUtils, DOMUtils, loadSelectOptions, initializeNewEntryModal  } from './utils.js';
+import { updateTableAjax, updateStock } from './stock_list.js';
+
+
+/**
+ * Ürün detaylarını API'den getirir.
+ */
+export async function getProductDetails(id) {
+    try {
+        const response = await fetch(`api/get_product_details.php?id=${id}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error('Ürün detayları alınamadı.');
+        }
+
+        return data.product;
+    } catch (error) {
+        console.error('Ürün detayları yüklenirken hata:', error);
+        return null;
+    }
 }
 
 
-
-function showEditModal(product) {
-    const existingModal = document.getElementById('updatePopup');
-    if (existingModal) {
-        existingModal.style.display = 'none';
-    }
-    
-    const form = popup.querySelector('form');
-    if (!form) return;
-    
-    // Ürün ID'sini gizli alana koy
-    document.getElementById('productId').value = product.id;
-    
-    // API'den ürün detaylarını al
-    fetch(`get_product_details.php?id=${product.id}`)
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                throw new Error(data.message || 'Bilinmeyen hata');
-            }
-            
-            const productData = data.product;
-            
-            // Form alanlarını doldur
-            form.querySelectorAll('input, select').forEach(input => {
-                const fieldName = input.name;
-                if (!fieldName) return; // Name attribute'u yoksa atla
-                
-                if (input.tagName === 'SELECT') {
-                    // Select elementleri için options oluştur
-                    if (fieldName === 'departman_id' && data.departmanlar) {
-                        fillSelectOptions(input, data.departmanlar, productData[fieldName]);
-                    } else if (fieldName === 'birim_id' && data.birimler) {
-                        fillSelectOptions(input, data.birimler, productData[fieldName]);
-                    } else if (fieldName === 'ana_grup_id' && data.ana_gruplar) {
-                        fillSelectOptions(input, data.ana_gruplar, productData[fieldName]);
-                    } else if (fieldName === 'alt_grup_id' && data.alt_gruplar) {
-                        const filteredAltGruplar = data.alt_gruplar.filter(alg => 
-                            alg.ana_grup_id == productData.ana_grup_id
-                        );
-                        fillSelectOptions(input, filteredAltGruplar, productData[fieldName]);
-                    }
-                } else if (productData[fieldName] !== undefined) {
-                    input.value = productData[fieldName] || '';
-                }
-            });
-            
-            // Kar marjı notunu ekle
-            const alisFiyatiInput = form.querySelector('input[name="alis_fiyati"]');
-            const satisFiyatiInput = form.querySelector('input[name="satis_fiyati"]');
-            
-            if (alisFiyatiInput && satisFiyatiInput) {
-                // Kar marjı notu için div ekle (eğer yoksa)
-                let karMarjiNote = form.querySelector('.kar-marji-note');
-                if (!karMarjiNote) {
-                    karMarjiNote = document.createElement('div');
-                    karMarjiNote.className = 'kar-marji-note text-sm text-green-600 mt-1';
-                    satisFiyatiInput.parentNode.insertBefore(karMarjiNote, satisFiyatiInput.nextSibling);
-                }
-                
-                // Kar marjı hesaplama fonksiyonu
-                const updateKarMarji = () => {
-                    const alisFiyati = parseFloat(alisFiyatiInput.value) || 0;
-                    const satisFiyati = parseFloat(satisFiyatiInput.value) || 0;
-                    
-                    if (alisFiyati > 0 && satisFiyati > 0) {
-                        const karMarji = ((satisFiyati - alisFiyati) / alisFiyati) * 100;
-                        const karTutari = satisFiyati - alisFiyati;
-                        karMarjiNote.textContent = `Kar Marjı: %${karMarji.toFixed(2)} (${karTutari.toFixed(2)}₺)`;
-                    } else {
-                        karMarjiNote.textContent = '';
-                    }
-                };
-
-                // Event listener'ları ekle
-                alisFiyatiInput.addEventListener('input', updateKarMarji);
-                satisFiyatiInput.addEventListener('input', updateKarMarji);
-                
-                // İlk yüklemede kar marjını hesapla
-                updateKarMarji();
-            }
-
-            // Ana grup değiştiğinde alt grupları güncelle
-            const anaGrupSelect = form.querySelector('select[name="ana_grup_id"]');
-            const altGrupSelect = form.querySelector('select[name="alt_grup_id"]');
-            
-            if (anaGrupSelect && altGrupSelect) {
-                anaGrupSelect.addEventListener('change', function() {
-                    const selectedAnaGrupId = this.value;
-                    if (selectedAnaGrupId === 'add_new') {
-                        // Yeni ana grup ekleme modalını aç
-                        return;
-                    }
-                    const filteredAltGruplar = data.alt_gruplar.filter(alg => 
-                        alg.ana_grup_id == selectedAnaGrupId
-                    );
-                    fillSelectOptions(altGrupSelect, filteredAltGruplar);
-                });
-            }
-            
-            // Popup'ı göster
-            popup.style.display = 'flex';
-        })
-        .catch(error => {
-            console.error('Hata:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Hata!',
-                text: 'Ürün detayları alınırken bir hata oluştu: ' + error.message
-            });
-        });
+/**
+ * Genel yardımcı fonksiyon: Veri içeren bir satırı döner
+ */
+function getRowData(id) {
+    const row = document.querySelector(`tr[data-product*='"id":${id}']`);
+    return row ? JSON.parse(row.getAttribute('data-product') || '{}') : null;
 }
 
+/**
+ * Genel yardımcı fonksiyon: Ürün detaylarını API'den alır
+ */
+function fetchProductDetails(id) {
+    return fetch(`get_product_details.php?id=${id}`).then(response => response.json());
+}
 
-// Buton tıklamalarında event propagation'ı durdur
-window.editProduct = function(id, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
+/**
+ * Genel yardımcı fonksiyon: Popup'ı başlatır
+ */
+function initializePopup(id, callback) {
+    const popup = document.getElementById(id);
+    if (popup) {
+        const form = popup.querySelector('form');
+        if (form) callback(form, popup);
     }
-    
+}
+
+/**
+ * Genel yardımcı fonksiyon: Hata mesajı gösterir
+ */
+function showError(message) {
+    console.error('Hata:', message);
+    showErrorToast('Bir hata oluştu: ' + message);
+}
+
+/**
+ * Ürün düzenleme modali gösteren fonksiyon
+ */
+export function editProduct(id, event) {
+    event?.stopPropagation();
     const row = document.querySelector(`tr[data-product*='"id":${id}']`);
     if (row) {
-        try {
-            const productData = JSON.parse(row.getAttribute('data-product') || '{}');
-            if (productData.id) {
-                showEditModal(productData);
-            }
-        } catch (error) {
-            console.error('Error parsing product data:', error);
-        }
+        const productData = JSON.parse(row.dataset.product);
+        showEditModal(productData);
     }
 }
 
-
-    // Düzenleme modalını gösterme fonksiyonu
-    window.showEditModal = function(product) {
-        const popup = document.getElementById('updatePopup');
-        if (!popup) return;
+/**
+ * Düzenleme modali gösterme fonksiyonu
+ */
+export async function showEditModal(productId) {
+    const id = typeof productId === 'object' ? productId.id : productId;
+    
+    try {
+        const response = await fetch(`api/get_product_details.php?id=${id}`);
+        const data = await response.json();
         
-        const form = popup.querySelector('form');
-        if (!form) return;
+        if (!data.success) {
+            throw new Error(data.message || 'Ürün detayları alınamadı');
+        }
+
+        const product = data.product;
         
-        // Ürün ID'sini gizli alana koy
-        document.getElementById('productId').value = product.id;
+        if (!product) {
+            throw new Error('Ürün detayları bulunamadı');
+        }
+
+        // Modal oluştur
+        const result = await Swal.fire({
+            title: 'Ürün Düzenle',
+            width: '50%',
+            html: `
+<div class="form-container">
+    <div class="form-group">
+        <label for="kod" class="form-label">Kod*</label>
+        <input type="text" id="kod" name="kod" class="form-input" value="${product.kod || ''}" placeholder="Ürün Kodu">
+    </div>
+    <div class="form-group">
+        <label for="barkod" class="form-label">Barkod*</label>
+        <input type="text" id="barkod" name="barkod" class="form-input" value="${product.barkod || ''}" placeholder="Barkod">
+    </div>
+    <div class="form-group">
+        <label for="ad" class="form-label">Ürün Adı*</label>
+        <input type="text" id="ad" name="ad" class="form-input" value="${product.ad || ''}" placeholder="Ürün Adı">
+    </div>
+    <div class="form-group">
+        <label for="web_id" class="form-label">Web ID</label>
+        <input type="number" id="web_id" name="web_id" class="form-input" value="${product.web_id || ''}" placeholder="Web ID">
+    </div>
+    <div class="form-group">
+        <label for="alis_fiyati" class="form-label">Alış Fiyatı*</label>
+        <input type="number" step="0.01" id="alis_fiyati" name="alis_fiyati" class="form-input" value="${product.alis_fiyati || ''}" placeholder="0.00">
+    </div>
+    <div class="form-group">
+        <label for="satis_fiyati" class="form-label">Satış Fiyatı*</label>
+        <input type="number" step="0.01" id="satis_fiyati" name="satis_fiyati" class="form-input" value="${product.satis_fiyati || ''}" placeholder="0.00">
+        <div class="kar-marji-note text-sm text-green-600 mt-1"></div>
+    </div>
+    <div class="form-group">
+        <label for="stok_miktari" class="form-label">Miktar</label>
+        <input type="number" id="stok_miktari" name="stok_miktari" class="form-input" value="${product.stok_miktari || ''}" placeholder="0">
+    </div>
+    <div class="form-group">
+        <label for="kdv_orani" class="form-label">KDV Oranı (%)*</label>
+        <select id="kdv_orani" name="kdv_orani" class="form-input">
+            <option value="" ${product.kdv_orani === null ? 'selected' : ''}>Seçiniz</option>
+            ${[0, 1, 8, 10, 18, 20].map(oran => 
+                `<option value="${oran}" ${Number(product.kdv_orani) === oran ? 'selected' : ''}>${oran}%</option>`
+            ).join('')}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="departman" class="form-label">Departman</label>
+        <select id="departman" name="departman" class="form-input">
+            <option value="">Seçiniz</option>
+            <option value="add_new">+ Yeni Ekle</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="birim" class="form-label">Birim</label>
+        <select id="birim" name="birim" class="form-input">
+            <option value="">Seçiniz</option>
+            <option value="add_new">+ Yeni Ekle</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="ana_grup" class="form-label">Ana Grup</label>
+        <select id="ana_grup" name="ana_grup" class="form-input">
+            <option value="">Seçiniz</option>
+            <option value="add_new">+ Yeni Ekle</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="alt_grup" class="form-label">Alt Grup</label>
+        <select id="alt_grup" name="alt_grup" class="form-input">
+            <option value="">Seçiniz</option>
+            <option value="add_new">+ Yeni Ekle</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="yil" class="form-label">Yıl</label>
+        <input type="number" id="yil" name="yil" class="form-input" value="${product.yil || new Date().getFullYear()}">
+    </div>
+    <div class="form-group">
+        <label for="durum" class="form-label">Durum</label>
+        <select id="durum" name="durum" class="form-input">
+            <option value="aktif" ${product.durum === 'aktif' ? 'selected' : ''}>Aktif</option>
+            <option value="pasif" ${product.durum === 'pasif' ? 'selected' : ''}>Pasif</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="resim" class="form-label">Resim Yükle</label>
+        <input type="file" id="resim" name="resim" class="form-input">
+    </div>
+</div>
+        `,
+            showCancelButton: true,
+            confirmButtonText: 'Güncelle',
+            cancelButtonText: 'İptal',
+            // Modal açıldığında
+            didOpen: async () => {
+                // Seçenekleri yükle
+                await loadSelectOptions('departman', 'api/get_departmanlar.php');
+                await loadSelectOptions('birim', 'api/get_birimler.php');
+                await loadSelectOptions('ana_grup', 'api/get_ana_gruplar.php');
+                await loadSelectOptions('alt_grup', 'api/get_alt_gruplar.php');
+
+                // Yeni öğe ekleme modallarını başlat
+                initializeNewEntryModal('departman', 'api/add_departman.php');
+                initializeNewEntryModal('birim', 'api/add_birim.php');
+                initializeNewEntryModal('ana_grup', 'api/add_ana_grup.php');
+                initializeNewEntryModal('alt_grup', 'api/add_alt_grup.php');
+
+                // Select öğelerini doldur ve değerleri ata
+                await fillSelectAndSetValue('departman', product.departman);
+                await fillSelectAndSetValue('birim', product.birim);
+                await fillSelectAndSetValue('ana_grup', product.ana_grup);
+                await fillSelectAndSetValue('alt_grup', product.alt_grup);
+            },
+            // Güncelle butonuna basıldığında
+preConfirm: async () => {
+    try {
+        const formData = new FormData();
+        formData.append('product_id', id);
         
-        // API'den ürün detaylarını al
-        fetch(`get_product_details.php?id=${product.id}`)
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.message || 'Bilinmeyen hata');
-                }
-                
-                const productData = data.product;
-                
-                // Form alanlarını doldur
-                form.querySelectorAll('input, select').forEach(input => {
-                    const fieldName = input.name;
-                    if (!fieldName) return;
-                    
-                    if (input.tagName === 'SELECT') {
-                        if (fieldName === 'departman_id' && data.departmanlar) {
-                            fillSelectOptions(input, data.departmanlar, productData[fieldName]);
-                        } else if (fieldName === 'birim_id' && data.birimler) {
-                            fillSelectOptions(input, data.birimler, productData[fieldName]);
-                        } else if (fieldName === 'ana_grup_id' && data.ana_gruplar) {
-                            fillSelectOptions(input, data.ana_gruplar, productData[fieldName]);
-                        } else if (fieldName === 'alt_grup_id' && data.alt_gruplar) {
-                            const filteredAltGruplar = data.alt_gruplar.filter(alg => 
-                                alg.ana_grup_id == productData.ana_grup_id
-                            );
-                            fillSelectOptions(input, filteredAltGruplar, productData[fieldName]);
-                        }
-                    } else if (productData[fieldName] !== undefined) {
-                        input.value = productData[fieldName] || '';
-                    }
-                });
-                
-                // Kar marjı notunu ekle
-                const alisFiyatiInput = form.querySelector('input[name="alis_fiyati"]');
-                const satisFiyatiInput = form.querySelector('input[name="satis_fiyati"]');
-                
-                if (alisFiyatiInput && satisFiyatiInput) {
-                    let karMarjiNote = form.querySelector('.kar-marji-note');
-                    if (!karMarjiNote) {
-                        karMarjiNote = document.createElement('div');
-                        karMarjiNote.className = 'kar-marji-note text-sm text-green-600 mt-1';
-                        satisFiyatiInput.parentNode.insertBefore(karMarjiNote, satisFiyatiInput.nextSibling);
-                    }
-                    
-                    const updateKarMarji = () => {
-                        const alisFiyati = parseFloat(alisFiyatiInput.value) || 0;
-                        const satisFiyati = parseFloat(satisFiyatiInput.value) || 0;
-                        
-                        if (alisFiyati > 0 && satisFiyati > 0) {
-                            const karMarji = ((satisFiyati - alisFiyati) / alisFiyati) * 100;
-                            const karTutari = satisFiyati - alisFiyati;
-                            karMarjiNote.textContent = `Kar Marjı: %${karMarji.toFixed(2)} (${karTutari.toFixed(2)}₺)`;
-                        } else {
-                            karMarjiNote.textContent = '';
-                        }
-                    };
+        // Form alanlarını doğru sütun isimleriyle eşleştir
+        const fieldMappings = {
+            'kod': 'kod',
+            'barkod': 'barkod',
+            'ad': 'ad',
+            'web_id': 'web_id',
+            'alis_fiyati': 'alis_fiyati',
+            'satis_fiyati': 'satis_fiyati',
+            'stok_miktari': 'stok_miktari',
+            'kdv_orani': 'kdv_orani',
+            'departman': 'departman_id',
+            'birim': 'birim_id',
+            'ana_grup': 'ana_grup_id',
+            'alt_grup': 'alt_grup_id',
+            'yil': 'yil',
+            'durum': 'durum'
+        };
 
-                    // Event listener'ları ekle
-                    alisFiyatiInput.addEventListener('input', updateKarMarji);
-                    satisFiyatiInput.addEventListener('input', updateKarMarji);
-                    
-                    // İlk yüklemede kar marjını hesapla
-                    updateKarMarji();
+        // Form verilerini doğru sütun isimleriyle topla
+        Object.entries(fieldMappings).forEach(([formField, dbField]) => {
+            const element = document.getElementById(formField);
+            if (element) {
+                formData.append(dbField, element.value);
+            }
+        });
 
-                    // Fiyat validasyonu
-                    const validatePrices = () => {
-                        const alisFiyati = parseFloat(alisFiyatiInput.value) || 0;
-                        const satisFiyati = parseFloat(satisFiyatiInput.value) || 0;
-                        if (alisFiyati >= satisFiyati && satisFiyati > 0) {
-                            satisFiyatiInput.setCustomValidity('Alış fiyatı satış fiyatından büyük olamaz');
-                            return false;
-                        } else {
-                            satisFiyatiInput.setCustomValidity('');
-                            return true;
-                        }
-                    };
+        // Resim dosyası varsa ekle
+        const resimInput = document.getElementById('resim');
+        if (resimInput && resimInput.files[0]) {
+            formData.append('resim', resimInput.files[0]);
+        }
 
-                    alisFiyatiInput.addEventListener('change', validatePrices);
-                    satisFiyatiInput.addEventListener('change', validatePrices);
-                }
+        // Güncelleme isteğini gönder
+        const response = await fetch('api/update_product.php', {
+            method: 'POST',
+            body: formData
+        });
 
-                // Ana grup değiştiğinde alt grupları güncelle
-                const anaGrupSelect = form.querySelector('select[name="ana_grup_id"]');
-                const altGrupSelect = form.querySelector('select[name="alt_grup_id"]');
-                
-                if (anaGrupSelect && altGrupSelect) {
-                    anaGrupSelect.addEventListener('change', function() {
-                        const selectedAnaGrupId = this.value;
-                        if (selectedAnaGrupId === 'add_new') {
-                            return;
-                        }
-                        const filteredAltGruplar = data.alt_gruplar.filter(alg => 
-                            alg.ana_grup_id == selectedAnaGrupId
-                        );
-                        fillSelectOptions(altGrupSelect, filteredAltGruplar);
-                    });
-                }
-                
-                // Popup'ı göster
-                popup.style.display = 'flex';
-            })
-            .catch(error => {
-                console.error('Hata:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Hata!',
-                    text: 'Ürün detayları alınırken bir hata oluştu: ' + error.message
-                });
-            });
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.message || 'Güncelleme sırasında bir hata oluştu');
+        }
+
+        return result;
+    } catch (error) {
+        Swal.showValidationMessage(error.message);
+        return false;
     }
+}
 });
 
-// addStock fonksiyonu
-window.addStock = function(id, event) {
-    if (event) {
-        event.stopPropagation();
-    }
-    
-    // Önceki popup'ları kapat
-    const existingPopup = document.getElementById('updatePopup');
-    if (existingPopup) {
-        existingPopup.style.display = 'none';
+// Modal sonucu işle
+if (result.isConfirmed) {
+    await Swal.fire({
+        icon: 'success',
+        title: 'Başarılı!',
+        text: 'Ürün başarıyla güncellendi',
+        showConfirmButton: false,
+        timer: 1500
+    });
+    // Tabloyu güncelle
+    updateTableAjax();
+}
+} catch (error) {
+    console.error('Ürün düzenleme hatası:', error);
+    Swal.fire({
+        icon: 'error',
+        title: 'Hata!',
+        text: error.message
+    });
+}
+}
+/**
+ * Düzenleme modali gösterme fonksiyonu
+ */
+const fillSelectAndSetValue = async (selectId, value) => {
+    const select = document.getElementById(selectId);
+
+    if (!select) {
+        console.error(`${selectId} için select öğesi bulunamadı.`);
+        return;
     }
 
-    // Mağazaları al
-    fetch('api/get_magazalar.php')
-        .then(response => response.json())
-        .then(magazalarData => {
-            let magazaOptions = `
-                <option value="">Lokasyon Seçin</option>
-                <option value="depo">Ana Depo</option>
-                ${magazalarData.magazalar.map(magaza => 
-                    `<option value="${magaza.id}">${magaza.ad}</option>`
-                ).join('')}
-            `;
 
-            Swal.fire({
-                title: 'Stok Güncelle',
-                html: `
-                    <div class="grid grid-cols-1 gap-4">
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Lokasyon</label>
-                            <select id="stockLocation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                                ${magazaOptions}
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Miktar</label>
-                            <input type="number" id="stockAmount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" min="0.01" step="0.01" required>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">İşlem</label>
-                            <select id="stockOperation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                                <option value="add">Ekle (+)</option>
-                                <option value="remove">Çıkar (-)</option>
-                            </select>
-                        </div>
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Güncelle',
-                cancelButtonText: 'İptal',
-                preConfirm: () => {
-                    const location = document.getElementById('stockLocation').value;
-                    if (!location) {
-                        Swal.showValidationMessage('Lütfen lokasyon seçin');
-                        return false;
-                    }
-                    const amount = document.getElementById('stockAmount').value;
-                    if (!amount || amount <= 0) {
-                        Swal.showValidationMessage('Lütfen geçerli bir miktar girin');
-                        return false;
-                    }
-                    return {
-                        location: location,
-                        amount: amount,
-                        operation: document.getElementById('stockOperation').value
-                    };
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const magazaId = result.value.location === 'depo' ? null : result.value.location;
-                    updateStock(
-                        id, 
-                        result.value.amount, 
-                        result.value.operation, 
-                        result.value.location === 'depo' ? 'depo' : 'magaza',
-                        magazaId
-                    );
-                }
-            });
-        })
-        .catch(error => {
-            console.error('Veri yükleme hatası:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Hata!',
-                text: 'Veriler yüklenirken bir hata oluştu.'
-            });
+    try {
+        const endpoints = {
+            departman: 'api/get_departmanlar.php',
+            birim: 'api/get_birimler.php',
+            ana_grup: 'api/get_ana_gruplar.php',
+            alt_grup: 'api/get_alt_gruplar.php'
+        };
+
+        const response = await fetch(endpoints[selectId]);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(`${selectId} için API isteği başarısız.`);
+        }
+
+
+        // Seçenekleri temizle ve yeniden oluştur
+        select.innerHTML = `
+            <option value="">Seçiniz</option>
+            <option value="add_new" class="font-semibold text-blue-600">+ Yeni Ekle</option>
+        `;
+
+        let matchedId = null;
+
+        data.data.forEach(item => {
+            select.add(new Option(item.ad, String(item.id)));
+
+            // `ad` ile eşleştirme yap
+            if (String(item.ad) === String(value)) {
+                matchedId = String(item.id);
+            }
         });
+
+        // Eşleşen değeri ata, eşleşme yoksa boş bırak
+        if (matchedId) {
+            select.value = matchedId;
+        } else {
+            select.value = '';
+            console.warn(`${selectId} için eşleşen değer bulunamadı, değer atanmadı.`);
+        }
+
+    } catch (error) {
+        console.error(`${selectId} yüklenirken hata oluştu:`, error);
+        select.innerHTML = `<option value="">Hata oluştu</option>`;
+    }
+};
+
+function createInput(id, label, value = '', type = 'text', placeholder = '') {
+    return `
+        <div class="form-group">
+            <label for="${id}" class="form-label">${label}</label>
+            <input type="${type}" id="${id}" class="form-input" value="${value}" placeholder="${placeholder}">
+        </div>
+    `;
+}
+
+function createSelect(id, label, options = [], selectedValue = '') {
+    const optionsHtml = options.length 
+        ? options.map(opt => `<option value="${opt}" ${opt == selectedValue ? 'selected' : ''}>${opt}%</option>`).join('')
+        : '<option value="">Seçiniz</option><option value="add_new">+ Yeni Ekle</option>';
+
+    return `
+        <div class="form-group">
+            <label for="${id}" class="form-label">${label}</label>
+            <select id="${id}" class="form-input">
+                ${optionsHtml}
+            </select>
+        </div>
+    `;
+}
+
+/**
+ * Formu ürün verisiyle dolduran yardımcı fonksiyon
+ */
+function fillFormWithProductData(form, data) {
+    const productData = data.product;
+    
+    form.querySelectorAll('input, select').forEach(input => {
+        const fieldName = input.name;
+        if (!fieldName) return;
+        
+        if (input.tagName === 'SELECT') {
+            fillSelectOptionsForField(input, fieldName, data, productData);
+        } else if (productData[fieldName] !== undefined) {
+            input.value = productData[fieldName] || '';
+        }
+    });
+    
+    initializeKarMarji(form);
+}
+
+/**
+ * Kar marjı hesaplama ve gösterme fonksiyonunu başlatır
+ */
+export function initializeKarMarji(form) {
+    const alisFiyatiInput = form.querySelector('#alis_fiyati');
+    const satisFiyatiInput = form.querySelector('#satis_fiyati');
+    const karMarjiNote = form.querySelector('.kar-marji-note');
+
+    if (!alisFiyatiInput || !satisFiyatiInput || !karMarjiNote) {
+        console.error("Kar marjı için gerekli inputlar veya not alanı bulunamadı.");
+        return;
+    }
+
+    const updateKarMarji = () => {
+        const alisFiyati = parseFloat(alisFiyatiInput.value) || 0;
+        const satisFiyati = parseFloat(satisFiyatiInput.value) || 0;
+
+        if (alisFiyati > 0 && satisFiyati > 0) {
+            const karMarji = ((satisFiyati - alisFiyati) / alisFiyati) * 100;
+            const karTutari = satisFiyati - alisFiyati;
+            karMarjiNote.textContent = `Kar Marjı: %${karMarji.toFixed(2)} (${karTutari.toFixed(2)}₺)`;
+        } else {
+            karMarjiNote.textContent = '';
+        }
+    };
+
+    alisFiyatiInput.addEventListener('input', updateKarMarji);
+    satisFiyatiInput.addEventListener('input', updateKarMarji);
+    updateKarMarji();
 }
 
 
-// Detay gösterme fonksiyonu
-function showDetailsModal(product) {
-    let detailsHtml = `
-        <div class="text-left">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="font-bold">Barkod:</div>
-                <div>${product.barkod || '-'}</div>
-                
-                <div class="font-bold">Ürün Adı:</div>
-                <div>${product.ad || '-'}</div>
-                
-                <div class="font-bold">Stok:</div>
-                <div>${product.stok_miktari || '0'}</div>
-                
-                <div class="font-bold">Satış Fiyatı:</div>
-                <div>₺${parseFloat(product.satis_fiyati || 0).toFixed(2)}</div>
-                
-                <div class="font-bold">KDV Oranı:</div>
-                <div>%${product.kdv_orani || '0'}</div>
-                
-                <div class="font-bold">Departman:</div>
-                <div>${product.departman || '-'}</div>
-                
-                <div class="font-bold">Kategori:</div>
-                <div>${product.ana_grup || '-'}</div>
-                
-                <div class="font-bold">Alt Kategori:</div>
-                <div>${product.alt_grup || '-'}</div>
-            </div>
-            ${product.indirimli_fiyat ? `
-                <div class="mt-4 p-2 bg-yellow-50 rounded">
-                    <div class="font-bold">İndirimli Fiyat:</div>
-                    <div>₺${parseFloat(product.indirimli_fiyat).toFixed(2)}</div>
-                    <div class="text-sm text-gray-600">
-                        İndirim Tarihleri: ${product.indirim_baslangic_tarihi || '-'} - ${product.indirim_bitis_tarihi || '-'}
-                    </div>
-                </div>
-            ` : ''}
+// addStock fonksiyonu
+window.addStock = async function(id, event) {
+    event?.stopPropagation();
+
+    // Önceki popup'ları kapat
+    document.getElementById('updatePopup') && (document.getElementById('updatePopup').style.display = 'none');
+
+    try {
+        // Mağazaları ve depoları al
+        const [magazalarResponse, depolarResponse] = await Promise.all([
+            fetch('api/get_magazalar.php'),
+            fetch('api/get_depolar.php')
+        ]);
+
+        const magazalarData = await magazalarResponse.json();
+        const depolarData = await depolarResponse.json();
+
+        if (!magazalarData.success || !depolarData.success) {
+            throw new Error('Lokasyon bilgileri alınamadı');
+        }
+
+        // Tüm lokasyonları birleştir
+        const lokasyonlar = [
+            // Önce depoları ekle
+            ...depolarData.depolar.map(depo => ({
+                id: `depo_${depo.id}`,
+                ad: `${depo.ad} (Depo)`
+            })),
+            // Sonra mağazaları ekle
+            ...magazalarData.magazalar.map(magaza => ({
+                id: `magaza_${magaza.id}`,
+                ad: magaza.ad
+            }))
+        ];
+
+        const result = await Swal.fire({
+            title: 'Stok Güncelle',
+html: `
+    <div class="grid grid-cols-1 gap-4">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700">Lokasyon</label>
+            <select id="stockLocation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <option value="">Lokasyon Seçin</option>
+                <optgroup label="Depolar" class="font-bold">
+                    ${depolarData.depolar.map(depo => 
+                        `<option value="depo_${depo.id}">${depo.ad}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="Mağazalar" class="font-bold">
+                    ${magazalarData.magazalar.map(magaza => 
+                        `<option value="magaza_${magaza.id}">${magaza.ad}</option>`
+                    ).join('')}
+                </optgroup>
+            </select>
         </div>
-    `;
-	
-    // Modal'ı göster
-    let modal = Swal.fire({
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700">Miktar</label>
+            <input type="number" id="stockAmount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" min="0.01" step="0.01" required>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700">İşlem</label>
+            <select id="stockOperation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <option value="add">Ekle (+)</option>
+                <option value="remove">Çıkar (-)</option>
+            </select>
+        </div>
+    </div>
+`,
+            showCancelButton: true,
+            confirmButtonText: 'Güncelle',
+            cancelButtonText: 'İptal',
+            preConfirm: () => {
+                const location = document.getElementById('stockLocation').value;
+                const amount = document.getElementById('stockAmount').value;
+
+                if (!location) {
+                    Swal.showValidationMessage('Lütfen lokasyon seçin');
+                    return false;
+                }
+                if (!amount || amount <= 0) {
+                    Swal.showValidationMessage('Lütfen geçerli bir miktar girin');
+                    return false;
+                }
+
+                return {
+                    location,
+                    amount,
+                    operation: document.getElementById('stockOperation').value
+                };
+            }
+        });
+
+        if (result.isConfirmed) {
+            const [locationType, locationId] = result.value.location.split('_');
+            updateStock(
+                id,
+                result.value.amount,
+                result.value.operation,
+                locationType,
+                locationType === 'depo' ? null : locationId
+            );
+        }
+
+    } catch (error) {
+        console.error('Veri yükleme hatası:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Hata!',
+            text: 'Lokasyon bilgileri yüklenirken bir hata oluştu.'
+        });
+    }
+};
+
+/**
+ * Detay modalını gösteren fonksiyon
+ */
+export function showDetailsModal(product) {
+    const detailsHtml = generateProductDetailsHtml(product);
+
+    Swal.fire({
         title: product.ad,
         html: detailsHtml,
         width: '900px',
@@ -411,441 +542,63 @@ function showDetailsModal(product) {
         showCloseButton: true
     });
 
-    // Ek bilgileri getir
-    fetch(`api/get_product_history.php?id=${product.id}`)
+    fetchProductHistory(product.id, detailsHtml);
+}
+
+/**
+ * Tekil detay satırı oluşturan yardımcı fonksiyon
+ */
+function generateDetailRow(label, value) {
+    return `
+        <div class="font-bold">${label}:</div>
+        <div>${value || '-'}</div>
+    `;
+}
+
+/**
+ * İndirimli fiyat bölümünü oluşturan yardımcı fonksiyon
+ */
+function generateDiscountSection(product) {
+    return `
+        <div class="mt-4 p-2 bg-yellow-50 rounded">
+            <div class="font-bold">İndirimli Fiyat:</div>
+            <div>₺${parseFloat(product.indirimli_fiyat).toFixed(2)}</div>
+            <div class="text-sm text-gray-600">
+                İndirim Tarihleri: ${product.indirim_baslangic_tarihi || '-'} - ${product.indirim_bitis_tarihi || '-'}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Ürün geçmişini getirip mevcut modal içeriğine ekleyen fonksiyon
+ */
+function fetchProductHistory(productId, initialHtml) {
+    fetch(`api/get_product_history.php?id=${productId}`)
         .then(response => response.json())
         .then(data => {
             if (!data.success) return;
 
             let extraHtml = '';
-
-            // Fiyat geçmişi varsa ekle
-            if (data.fiyat_gecmisi && data.fiyat_gecmisi.length > 0) {
-                extraHtml += `
-                    <div class="mt-4 border-t pt-4">
-                        <h3 class="font-bold mb-2">Fiyat Geçmişi</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full">
-                                <thead>
-                                    <tr class="bg-gray-50">
-                                        <th class="px-2 py-1 text-left text-xs">Tarih</th>
-                                        <th class="px-2 py-1 text-left text-xs">İşlem</th>
-                                        <th class="px-2 py-1 text-right text-xs">Eski Fiyat</th>
-                                        <th class="px-2 py-1 text-right text-xs">Yeni Fiyat</th>
-                                        <th class="px-2 py-1 text-left text-xs">Detay</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${data.fiyat_gecmisi.map(fiyat => `
-                                        <tr class="border-b">
-                                            <td class="px-2 py-1 text-xs">${new Date(fiyat.tarih).toLocaleString('tr-TR')}</td>
-                                            <td class="px-2 py-1 text-xs">${fiyat.islem_tipi === 'alis' ? 'Alış' : 'Güncelleme'}</td>
-                                            <td class="px-2 py-1 text-xs text-right">${fiyat.eski_fiyat ? '₺' + parseFloat(fiyat.eski_fiyat).toFixed(2) : '-'}</td>
-                                            <td class="px-2 py-1 text-xs text-right">₺${parseFloat(fiyat.yeni_fiyat).toFixed(2)}</td>
-                                            <td class="px-2 py-1 text-xs">
-                                                ${fiyat.fatura_seri ? `Fatura: ${fiyat.fatura_seri}${fiyat.fatura_no} (${fiyat.tedarikci_adi})` : ''}
-                                                ${fiyat.kullanici_adi ? `<br>Kullanıcı: ${fiyat.kullanici_adi}` : ''}
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
+            if (data.fiyat_gecmisi?.length) {
+                extraHtml += generatePriceHistoryHtml(data.fiyat_gecmisi);
+            }
+            if (data.stok_hareketleri?.length) {
+                extraHtml += generateStockHistoryHtml(data.stok_hareketleri);
             }
 
-            // Stok hareketleri varsa ekle
-if (data.stok_hareketleri && data.stok_hareketleri.length > 0) {
-    extraHtml += `
-        <div class="mt-4 border-t pt-4">
-            <h3 class="font-bold mb-2">Stok Hareketleri</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="bg-gray-50">
-                            <th class="px-2 py-1 text-left text-xs">Tarih</th>
-                            <th class="px-2 py-1 text-left text-xs">İşlem</th>
-                            <th class="px-2 py-1 text-right text-xs">Miktar</th>
-                            <th class="px-2 py-1 text-right text-xs">Alış Fiyatı</th>
-                            <th class="px-2 py-1 text-right text-xs">Satış Fiyatı</th>
-                            <th class="px-2 py-1 text-left text-xs">Mağaza</th>
-                            <th class="px-2 py-1 text-left text-xs">Açıklama</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.stok_hareketleri.map(hareket => `
-                            <tr class="border-b">
-                                <td class="px-2 py-1 text-xs">${new Date(hareket.tarih).toLocaleString('tr-TR')}</td>
-                                <td class="px-2 py-1 text-xs">
-                                    ${hareket.hareket_tipi === 'giris' ? 
-                                        '<span class="text-green-600">Giriş</span>' : 
-                                        '<span class="text-red-600">Çıkış</span>'}
-                                </td>
-                                <td class="px-2 py-1 text-xs text-right">${parseFloat(hareket.miktar).toFixed(2)}</td>
-                                <td class="px-2 py-1 text-xs text-right">${hareket.maliyet ? '₺' + parseFloat(hareket.maliyet).toFixed(2) : '-'}</td>
-                                <td class="px-2 py-1 text-xs text-right">${hareket.satis_fiyati ? '₺' + parseFloat(hareket.satis_fiyati).toFixed(2) : '-'}</td>
-                                <td class="px-2 py-1 text-xs">${hareket.magaza_adi}</td>
-                                <td class="px-2 py-1 text-xs">
-                                    ${hareket.aciklama}
-                                    ${hareket.kullanici_adi ? `<br>Kullanıcı: ${hareket.kullanici_adi}` : ''}
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
             if (extraHtml) {
-                // Mevcut modal içeriğine ek bilgileri ekle
-                Swal.update({
-                    html: detailsHtml + extraHtml
-                });
+                Swal.update({ html: initialHtml + extraHtml });
             }
         })
-        .catch(error => console.error('Tarihçe yüklenirken hata:', error));
+        .catch(error => {
+            console.error('Tarihçe yüklenirken hata:', error);
+        });
 }
 
-// Buton event handler'ları
-window.showDetails = function(id, event) {
-    if (event) {
-        event.stopPropagation();
-    }
-    const row = document.querySelector(`tr[data-product*='"id":${id}']`);
-    if (row) {
-        const productData = JSON.parse(row.getAttribute('data-product'));
-        showDetailsModal(productData);
-    }
-}
-
-// Detay modalı gösterme fonksiyonu
-async function showDetails(id) {
-    try {
-        const [detailsResponse, stockResponse] = await Promise.all([
-            fetch(`get_product_details.php?id=${id}`),
-            fetch(`get_product_stock_details.php?id=${id}`)
-        ]);
-
-        const details = await detailsResponse.json();
-        const stock = await stockResponse.json();
-        
-        // Debug için
-        console.log('Stok detayları:', stock);
-
-
-        if (!details.success) {
-            throw new Error('Ürün detayları alınamadı');
-        }
-
-        const product = details.product;
-
-        let html = `
-            <div class="text-left space-y-4">
-                <!-- Temel Bilgiler -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="font-medium">Barkod:</div>
-                    <div>${product.barkod || '-'}</div>
-                    
-                    <div class="font-medium">Ürün Adı:</div>
-                    <div>${product.ad || '-'}</div>
-                    
-                    <div class="font-medium">Stok:</div>
-                    <div>${product.stok_miktari || '0'}</div>
-                    
-                    <div class="font-medium">Alış Fiyatı:</div>
-                    <div>${parseFloat(product.alis_fiyati).toFixed(2)}₺</div>
-					
-                    <div class="font-medium">Satış Fiyatı:</div>
-                    <div>${parseFloat(product.satis_fiyati).toFixed(2)}₺</div>
-                    
-                    <div class="font-medium">KDV Oranı:</div>
-                    <div>%${product.kdv_orani}</div>
-                    
-                    <div class="font-medium">Departman:</div>
-                    <div>${product.departman || '-'}</div>
-                    
-                    <div class="font-medium">Ana Grup:</div>
-                    <div>${product.ana_grup || '-'}</div>
-                    
-                    <div class="font-medium">Alt Grup:</div>
-                    <div>${product.alt_grup || '-'}</div>
-                </div>
-
-                <!-- Stok Hareketleri -->
-                <div class="mt-6">
-                    <h3 class="text-lg font-medium mb-3">Stok Hareketleri</h3>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
-                                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">İşlem</th>
-                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Miktar</th>
-                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Alış Fiyatı</th>
-                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Satış Fiyatı</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lokasyon</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Açıklama</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                ${stock.hareketler?.map(hareket => `
-                                    <tr>
-                                        <td class="px-4 py-2 text-sm">${new Date(hareket.tarih).toLocaleString('tr-TR')}</td>
-                                        <td class="px-4 py-2 text-center">
-                                            <span class="px-2 py-1 text-xs rounded-full ${hareket.hareket_tipi === 'giris' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                                                ${hareket.hareket_tipi === 'giris' ? 'Giriş' : 'Çıkış'}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-2 text-right">${hareket.miktar}</td>
-                                        <td class="px-4 py-2 text-right">${hareket.maliyet ? parseFloat(hareket.maliyet).toFixed(2) + '₺' : '-'}</td>
-                                        <td class="px-4 py-2 text-right">${hareket.satis_fiyati ? parseFloat(hareket.satis_fiyati).toFixed(2) + '₺' : '-'}</td>
-                                        <td class="px-4 py-2">${hareket.magaza_adi || 'Ana Depo'}</td>
-                                        <td class="px-4 py-2">${hareket.aciklama || '-'}</td>
-                                    </tr>
-                                `).join('') || `<tr><td colspan="7" class="px-4 py-2 text-center text-gray-500">Stok hareketi bulunamadı</td></tr>`}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Depo ve Mağaza Stokları -->
-                <div class="mt-6">
-                    <h3 class="text-lg font-medium mb-3">Stok Dağılımı</h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-blue-50 p-4 rounded">
-                            <h4 class="font-medium mb-2">Depo Stok</h4>
-                            <p>${stock.depo_stok?.stok_miktari || 0}</p>
-                        </div>
-                        <div class="bg-green-50 p-4 rounded">
-                            <h4 class="font-medium mb-2">Mağaza Stokları</h4>
-                            ${stock.magaza_stoklari?.map(magaza => `
-                                <div class="flex justify-between">
-                                    <span>${magaza.magaza_adi}:</span>
-                                    <span>${magaza.stok_miktari || 0}</span>
-                                </div>
-                            `).join('') || 'Mağaza stoku bulunamadı'}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        Swal.fire({
-            title: product.ad,
-            html: html,
-            width: '1000px',
-            showCloseButton: true,
-            showConfirmButton: false
-        });
-
-    } catch (error) {
-        console.error('Detay görüntüleme hatası:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Hata!',
-            text: 'Ürün detayları yüklenirken bir hata oluştu.'
-        });
-    }
-}
-
-
-
-window.deleteProduct = function(id, event) {
-    if (event) {
-        event.stopPropagation();
-    }
-    Swal.fire({
-        title: 'Emin misiniz?',
-        text: "Bu işlem geri alınamaz!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Evet, sil!',
-        cancelButtonText: 'İptal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            deleteProductAction(id);
-        }
-    });
-}
-// Silme fonksiyonu
-function deleteProductAction(id) {
-    const row = document.querySelector(`tr[data-product*='"id":${id}']`);
-    if (row) {
-        row.style.opacity = '0.5';
-    }
-
-    fetch('delete_product.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            id: id
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Ürün başarıyla silindi',
-                showConfirmButton: false,
-                timer: 3000
-            });
-            updateTableAjax();
-        } else {
-            if (row) {
-                row.style.opacity = '1';
-            }
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'error',
-                title: data.message || 'Silme işlemi başarısız',
-                showConfirmButton: false,
-                timer: 3000
-            });
-        }
-    })
-    .catch(error => {
-        if (row) {
-            row.style.opacity = '1';
-        }
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'error',
-            title: 'Bir hata oluştu',
-            text: error.message,
-            showConfirmButton: false,
-            timer: 3000
-        });
-    });
-}
-
-
-window.showStockDetails = async function(id, event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-    
-    // Düzenleme modalını kapat
-    const updatePopup = document.getElementById('updatePopup');
-    if (updatePopup) {
-        updatePopup.style.display = 'none';
-    }
-
-    try {
-        const response = await fetch(`get_stock_details.php?id=${id}`);
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error(data.message || 'Stok detayları alınamadı');
-        }
-
-        // Mevcut tüm SweetAlert modallarını kapat
-        Swal.close();
-
-        // Yeni modalı göster
-        await Swal.fire({
-            title: 'Stok Detayları',
-            html: `
-                <div class="text-left space-y-6" onclick="event.stopPropagation()">
-                    <!-- Depo Stok -->
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h3 class="font-bold text-lg mb-2">Depo Stok</h3>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="font-semibold">Miktar:</div>
-                            <div>${data.depo_stok.stok_miktari || 0}</div>
-                            <div class="font-semibold">Son Güncelleme:</div>
-                            <div>${data.depo_stok.son_guncelleme ? new Date(data.depo_stok.son_guncelleme).toLocaleString('tr-TR') : '-'}</div>
-                        </div>
-                    </div>
-
-                    <!-- Mağaza Stokları -->
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h3 class="font-bold text-lg mb-2">Mağaza Stokları</h3>
-                        <table class="min-w-full">
-                            <thead>
-                                <tr>
-                                    <th class="text-left">Mağaza</th>
-                                    <th class="text-right">Stok</th>
-                                    <th class="text-right">Satış Fiyatı</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.magaza_stoklari.map(magaza => `
-                                    <tr>
-                                        <td>${magaza.magaza_adi || '-'}</td>
-                                        <td class="text-right">${magaza.stok_miktari || 0}</td>
-                                        <td class="text-right">₺${parseFloat(magaza.satis_fiyati || 0).toFixed(2)}</td>
-                                    </tr>
-                                `).join('') || '<tr><td colspan="3" class="text-center">Mağaza stoku bulunmuyor</td></tr>'}
-                            </tbody>
-                            <tfoot>
-                                <tr class="font-bold">
-                                    <td>Toplam</td>
-                                    <td class="text-right">${data.toplam_stok.magaza}</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-
-                    <!-- Genel Toplam -->
-                    <div class="bg-purple-50 p-4 rounded-lg">
-                        <h3 class="font-bold text-lg mb-2">Genel Toplam</h3>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="font-semibold">Toplam Stok:</div>
-                            <div>${data.toplam_stok.genel_toplam}</div>
-                        </div>
-                    </div>
-                </div>
-            `,
-            width: '800px',
-            showCloseButton: true,
-            showConfirmButton: false,
-            customClass: {
-                container: 'stock-details-modal'
-            },
-            stopKeydownPropagation: true,
-            didOpen: () => {
-                // Modal açıldığında event listener ekle
-                const modalContent = document.querySelector('.stock-details-modal');
-                if (modalContent) {
-                    modalContent.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                    });
-                }
-				    // Select elementlerine event listener ekle
-    ['departman', 'birim', 'ana_grup', 'alt_grup'].forEach(id => {
-        const select = document.getElementById(id);
-        if (select) {
-            select.addEventListener('change', handleOptionChange);
-        }
-    });
-            }
-        });
-        
-        return false;
-		
-    await loadOptions();
-
-    } catch (error) {
-        console.error('Stok detayları hatası:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Hata!',
-            text: 'Stok detayları alınırken bir hata oluştu.'
-        });
-    }
-};
-
-
-// Fiyat geçmişi HTML'ini oluşturan yardımcı fonksiyon
+/**
+ * Fiyat geçmişi HTML'ini oluşturan yardımcı fonksiyon
+ */
 function generatePriceHistoryHtml(priceHistory) {
     return `
         <div class="mt-4 border-t pt-4">
@@ -854,11 +607,7 @@ function generatePriceHistoryHtml(priceHistory) {
                 <table class="min-w-full">
                     <thead>
                         <tr class="bg-gray-50">
-                            <th class="px-2 py-1 text-left text-xs">Tarih</th>
-                            <th class="px-2 py-1 text-left text-xs">İşlem</th>
-                            <th class="px-2 py-1 text-right text-xs">Eski Fiyat</th>
-                            <th class="px-2 py-1 text-right text-xs">Yeni Fiyat</th>
-                            <th class="px-2 py-1 text-left text-xs">Detay</th>
+                            ${generateTableHeaders(['Tarih', 'İşlem', 'Eski Fiyat', 'Yeni Fiyat', 'Detay'])}
                         </tr>
                     </thead>
                     <tbody>
@@ -866,12 +615,9 @@ function generatePriceHistoryHtml(priceHistory) {
                             <tr class="border-b">
                                 <td class="px-2 py-1 text-xs">${new Date(fiyat.tarih).toLocaleString('tr-TR')}</td>
                                 <td class="px-2 py-1 text-xs">${fiyat.islem_tipi === 'alis' ? 'Alış' : 'Güncelleme'}</td>
-                                <td class="px-2 py-1 text-xs text-right">${fiyat.eski_fiyat ? '₺' + parseFloat(fiyat.eski_fiyat).toFixed(2) : '-'}</td>
+                                <td class="px-2 py-1 text-xs text-right">${fiyat.eski_fiyat ? `₺${parseFloat(fiyat.eski_fiyat).toFixed(2)}` : '-'}</td>
                                 <td class="px-2 py-1 text-xs text-right">₺${parseFloat(fiyat.yeni_fiyat).toFixed(2)}</td>
-                                <td class="px-2 py-1 text-xs">
-                                    ${fiyat.fatura_seri ? `Fatura: ${fiyat.fatura_seri}${fiyat.fatura_no} (${fiyat.tedarikci_adi})` : ''}
-                                    ${fiyat.kullanici_adi ? `<br>Kullanıcı: ${fiyat.kullanici_adi}` : ''}
-                                </td>
+                                <td class="px-2 py-1 text-xs">${generateDetailInfo(fiyat)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -881,8 +627,10 @@ function generatePriceHistoryHtml(priceHistory) {
     `;
 }
 
-// Stok hareketleri HTML'ini oluşturan yardımcı fonksiyon
-function generateStockMovementsHtml(stockMovements) {
+/**
+ * Stok hareketleri HTML'ini oluşturan yardımcı fonksiyon
+ */
+function generateStockHistoryHtml(stockMovements) {
     return `
         <div class="mt-4 border-t pt-4">
             <h3 class="font-bold mb-2">Stok Hareketleri</h3>
@@ -890,32 +638,19 @@ function generateStockMovementsHtml(stockMovements) {
                 <table class="min-w-full">
                     <thead>
                         <tr class="bg-gray-50">
-                            <th class="px-2 py-1 text-left text-xs">Tarih</th>
-                            <th class="px-2 py-1 text-left text-xs">İşlem</th>
-                            <th class="px-2 py-1 text-right text-xs">Miktar</th>
-                            <th class="px-2 py-1 text-right text-xs">Alış Fiyatı</th>
-                            <th class="px-2 py-1 text-right text-xs">Satış Fiyatı</th>
-                            <th class="px-2 py-1 text-left text-xs">Mağaza/Depo</th>
-                            <th class="px-2 py-1 text-left text-xs">Açıklama</th>
+                            ${generateTableHeaders(['Tarih', 'İşlem', 'Miktar', 'Alış Fiyatı', 'Satış Fiyatı', 'Mağaza', 'Açıklama'])}
                         </tr>
                     </thead>
                     <tbody>
                         ${stockMovements.map(hareket => `
                             <tr class="border-b">
                                 <td class="px-2 py-1 text-xs">${new Date(hareket.tarih).toLocaleString('tr-TR')}</td>
-                                <td class="px-2 py-1 text-xs">
-                                    ${hareket.hareket_tipi === 'giris' ? 
-                                        '<span class="text-green-600">Giriş</span>' : 
-                                        '<span class="text-red-600">Çıkış</span>'}
-                                </td>
+                                <td class="px-2 py-1 text-xs">${hareket.hareket_tipi === 'giris' ? '<span class="text-green-600">Giriş</span>' : '<span class="text-red-600">Çıkış</span>'}</td>
                                 <td class="px-2 py-1 text-xs text-right">${parseFloat(hareket.miktar).toFixed(2)}</td>
-                                <td class="px-2 py-1 text-xs text-right">${hareket.maliyet ? '₺' + parseFloat(hareket.maliyet).toFixed(2) : '-'}</td>
-                                <td class="px-2 py-1 text-xs text-right">${hareket.satis_fiyati ? '₺' + parseFloat(hareket.satis_fiyati).toFixed(2) : '-'}</td>
+                                <td class="px-2 py-1 text-xs text-right">${hareket.maliyet ? `₺${parseFloat(hareket.maliyet).toFixed(2)}` : '-'}</td>
+                                <td class="px-2 py-1 text-xs text-right">${hareket.satis_fiyati ? `₺${parseFloat(hareket.satis_fiyati).toFixed(2)}` : '-'}</td>
                                 <td class="px-2 py-1 text-xs">${hareket.magaza_adi}</td>
-                                <td class="px-2 py-1 text-xs">
-                                    ${hareket.aciklama}
-                                    ${hareket.kullanici_adi ? `<br>Kullanıcı: ${hareket.kullanici_adi}` : ''}
-                                </td>
+                                <td class="px-2 py-1 text-xs">${hareket.aciklama}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -925,129 +660,323 @@ function generateStockMovementsHtml(stockMovements) {
     `;
 }
 
-function generateDetailsHtml(product) {
-    console.log('Generating HTML for product:', product); // Debug için
+/**
+ * Detay bilgisi oluşturan yardımcı fonksiyon
+ */
+function generateDetailInfo(fiyat) {
+    return `
+        ${fiyat.fatura_seri ? `Fatura: ${fiyat.fatura_seri}${fiyat.fatura_no} (${fiyat.tedarikci_adi})` : ''}
+        ${fiyat.kullanici_adi ? `<br>Kullanıcı: ${fiyat.kullanici_adi}` : ''}
+    `;
+}
+/**
+ * Detay modalını gösteren fonksiyon
+ */
+async function showDetails(id) {
+    try {
+        const [details, stock] = await fetchProductAndStockDetails(id);
+
+        if (!details.success) {
+            throw new Error('Ürün detayları alınamadı');
+        }
+
+        const product = details.product;
+        const html = generateProductDetailsHtml(product, stock);
+
+        Swal.fire({
+            title: product.ad,
+            html: html,
+            width: '1000px',
+            showCloseButton: true,
+            showConfirmButton: false
+        });
+    } catch (error) {
+        handleFetchError(error, 'Ürün detayları yüklenirken bir hata oluştu.');
+    }
+}
+
+/**
+ * Ürün ve stok detaylarını getiren yardımcı fonksiyon
+ */
+async function fetchProductAndStockDetails(id) {
+    const [detailsResponse, stockResponse] = await Promise.all([
+        fetch(`get_product_details.php?id=${id}`),
+        fetch(`get_product_stock_details.php?id=${id}`)
+    ]);
+
+    return [await detailsResponse.json(), await stockResponse.json()];
+}
+
+
+/**
+ * Ürün detaylarını ve stok bilgilerini içeren HTML oluşturan fonksiyon
+ */
+export function generateProductDetailsHtml(product, stock) {
+	    stock = stock || { hareketler: [] };
 
     return `
-        <div class="text-left">
+        <div class="text-left space-y-4">
             <div class="grid grid-cols-2 gap-4">
-                <div class="font-bold">Barkod:</div>
-                <div>${product.barkod || '-'}</div>
-                
-                <div class="font-bold">Ürün Adı:</div>
-                <div>${product.ad || '-'}</div>
-                
-                <div class="font-bold">Stok:</div>
-                <div>${product.stok_miktari || '0'}</div>
-                
-                <div class="font-bold">Satış Fiyatı:</div>
-                <div>₺${parseFloat(product.satis_fiyati || 0).toFixed(2)}</div>
-                
-                <div class="font-bold">KDV Oranı:</div>
-                <div>%${product.kdv_orani || '0'}</div>
-                
-                <div class="font-bold">Departman:</div>
-                <div>${product.departman || '-'}</div>
-                
-                <div class="font-bold">Kategori:</div>
-                <div>${product.ana_grup || '-'}</div>
-                
-                <div class="font-bold">Alt Kategori:</div>
-                <div>${product.alt_grup || '-'}</div>
+                ${generateDetailRow('Barkod', product.barkod)}
+                ${generateDetailRow('Ürün Adı', product.ad)}
+                ${generateDetailRow('Stok', product.stok_miktari || '0')}
+                ${generateDetailRow('Alış Fiyatı', `${parseFloat(product.alis_fiyati).toFixed(2)}₺`)}
+                ${generateDetailRow('Satış Fiyatı', `${parseFloat(product.satis_fiyati).toFixed(2)}₺`)}
+                ${generateDetailRow('KDV Oranı', `%${product.kdv_orani}`)}
+                ${generateDetailRow('Departman', product.departman)}
+                ${generateDetailRow('Ana Grup', product.ana_grup)}
+                ${generateDetailRow('Alt Grup', product.alt_grup)}
             </div>
-            ${product.indirimli_fiyat ? `
-                <div class="mt-4 p-2 bg-yellow-50 rounded">
-                    <div class="font-bold">İndirimli Fiyat:</div>
-                    <div>₺${parseFloat(product.indirimli_fiyat).toFixed(2)}</div>
-                    <div class="text-sm text-gray-600">
-                        İndirim Tarihleri: ${product.indirim_baslangic_tarihi || '-'} - ${product.indirim_bitis_tarihi || '-'}
-                    </div>
-                </div>
-            ` : ''}
+<!-- ${generateStockMovementsHtml(stock.hareketler)}
+            ${generateStockDistributionHtml(stock)} -->
+        </div>
+    `;
+}
+
+/**
+ * Stok hareketlerini gösteren HTML oluşturan yardımcı fonksiyon
+ */
+export function generateStockMovementsHtml(hareketler) {
+	    hareketler = hareketler || [];
+
+    return `
+        <div class="mt-6">
+            <h3 class="text-lg font-medium mb-3">Stok Hareketleri</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        ${generateTableHeaders(['Tarih', 'İşlem', 'Miktar', 'Alış Fiyatı', 'Satış Fiyatı', 'Lokasyon', 'Açıklama'])}
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${hareketler?.map(hareket => `
+                            <tr>
+                                <td class="px-4 py-2 text-sm">${new Date(hareket.tarih).toLocaleString('tr-TR')}</td>
+                                <td class="px-4 py-2 text-center">
+                                    <span class="px-2 py-1 text-xs rounded-full ${hareket.hareket_tipi === 'giris' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                        ${hareket.hareket_tipi === 'giris' ? 'Giriş' : 'Çıkış'}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-right">${hareket.miktar}</td>
+                                <td class="px-4 py-2 text-right">${hareket.maliyet ? `${parseFloat(hareket.maliyet).toFixed(2)}₺` : '-'}</td>
+                                <td class="px-4 py-2 text-right">${hareket.satis_fiyati ? `${parseFloat(hareket.satis_fiyati).toFixed(2)}₺` : '-'}</td>
+                                <td class="px-4 py-2">${hareket.magaza_adi || 'Ana Depo'}</td>
+                                <td class="px-4 py-2">${hareket.aciklama || '-'}</td>
+                            </tr>
+                        `).join('') || `<tr><td colspan="7" class="px-4 py-2 text-center text-gray-500">Stok hareketi bulunamadı</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Stok dağılımını gösteren HTML oluşturan yardımcı fonksiyon
+ */
+function generateStockDistributionHtml(stock) {
+    return `
+        <div class="mt-6">
+            <h3 class="text-lg font-medium mb-3">Stok Dağılımı</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left">Lokasyon</th>
+                            <th class="px-4 py-2 text-right">Miktar</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${stock.distribution?.map(item => `
+                            <tr>
+                                <td class="px-4 py-2">${item.lokasyon || 'Ana Depo'}</td>
+                                <td class="px-4 py-2 text-right">${item.miktar || 0}</td>
+                            </tr>
+                        `).join('') || `<tr><td colspan="2" class="px-4 py-2 text-center text-gray-500">Stok dağılımı bulunamadı</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
         </div>
     `;
 }
 
 
-async function showPriceHistory(id, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
+/**
+ * Tablo başlıklarını oluşturan yardımcı fonksiyon
+ */
+function generateTableHeaders(headers) {
+    return headers.map(header => `<th class="px-4 py-2 text-xs font-medium text-gray-500 uppercase">${header}</th>`).join('');
+}
+
+/**
+ * Hata işleme fonksiyonu
+ */
+function handleFetchError(error, message) {
+    console.error(message, error);
+    Swal.fire({
+        icon: 'error',
+        title: 'Hata!',
+        text: message
+    });
+}
+/**
+ * Stok detaylarını gösteren fonksiyon
+ */
+window.showStockDetails = async function(id, event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    closeUpdatePopup();
 
     try {
-        const response = await fetch(`api/get_price_history.php?id=${id}`);
-        const data = await response.json();
+        const data = await fetchStockDetails(id);
 
         if (!data.success) {
-            throw new Error(data.message || 'Fiyat geçmişi alınamadı');
+            throw new Error(data.message || 'Stok detayları alınamadı');
         }
+
+        Swal.close();
+
+        await Swal.fire({
+            title: 'Stok Detayları',
+            html: generateStockDetailsHtml(data),
+            width: '800px',
+            showCloseButton: true,
+            showConfirmButton: false,
+            customClass: { container: 'stock-details-modal' },
+            stopKeydownPropagation: true,
+            didOpen: attachModalEventListeners
+        });
+
+        await loadOptions();
+    } catch (error) {
+        handleFetchError(error, 'Stok detayları alınırken bir hata oluştu.');
+    }
+};
+
+/**
+ * Stok detaylarını getiren yardımcı fonksiyon
+ */
+async function fetchStockDetails(id) {
+    const response = await fetch(`get_stock_details.php?id=${id}`);
+    return await response.json();
+}
+
+/**
+ * Modalı kapatan yardımcı fonksiyon
+ */
+function closeUpdatePopup() {
+    const updatePopup = document.getElementById('updatePopup');
+    if (updatePopup) {
+        updatePopup.style.display = 'none';
+    }
+}
+
+/**
+ * Stok detayları HTML'sini oluşturan yardımcı fonksiyon
+ */
+function generateStockDetailsHtml(data) {
+    return `
+        <div class="text-left space-y-6" onclick="event.stopPropagation()">
+            ${generateDepotStockHtml(data.depo_stok)}
+            ${generateStoreStocksHtml(data.magaza_stoklari, data.toplam_stok.magaza)}
+            ${generateTotalStockHtml(data.toplam_stok.genel_toplam)}
+        </div>
+    `;
+}
+
+/**
+ * Depo stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
+ */
+function generateDepotStockHtml(depoStok) {
+    return `
+        <div class="bg-blue-50 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Depo Stok</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="font-semibold">Miktar:</div>
+                <div>${depoStok.stok_miktari || 0}</div>
+                <div class="font-semibold">Son Güncelleme:</div>
+                <div>${depoStok.son_guncelleme ? new Date(depoStok.son_guncelleme).toLocaleString('tr-TR') : '-'}</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Mağaza stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
+ */
+function generateStoreStocksHtml(magazaStoklari, toplamMagazaStok) {
+    return `
+        <div class="bg-green-50 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Mağaza Stokları</h3>
+            <table class="min-w-full">
+                <thead>
+                    <tr>
+                        <th class="text-left">Mağaza</th>
+                        <th class="text-right">Stok</th>
+                        <th class="text-right">Satış Fiyatı</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${magazaStoklari.map(magaza => `
+                        <tr>
+                            <td>${magaza.magaza_adi || '-'}</td>
+                            <td class="text-right">${magaza.stok_miktari || 0}</td>
+                            <td class="text-right">₺${parseFloat(magaza.satis_fiyati || 0).toFixed(2)}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="3" class="text-center">Mağaza stoku bulunmuyor</td></tr>'}
+                </tbody>
+                <tfoot>
+                    <tr class="font-bold">
+                        <td>Toplam</td>
+                        <td class="text-right">${toplamMagazaStok}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * Genel toplam stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
+ */
+function generateTotalStockHtml(genelToplam) {
+    return `
+        <div class="bg-purple-50 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Genel Toplam</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="font-semibold">Toplam Stok:</div>
+                <div>${genelToplam}</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Modal event listener'larını ekleyen yardımcı fonksiyon
+ */
+function attachModalEventListeners() {
+    const modalContent = document.querySelector('.stock-details-modal');
+    modalContent?.addEventListener('click', (e) => e.stopPropagation());
+
+    ['departman', 'birim', 'ana_grup', 'alt_grup'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', handleOptionChange);
+    });
+}
+
+/**
+ * Fiyat geçmişi detaylarını gösteren fonksiyon
+ */
+export async function showPriceHistory(id, event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    try {
+        const data = await fetchData(`api/get_price_history.php?id=${id}`);
 
         Swal.fire({
             title: 'Fiyat Geçmişi',
-            html: `
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr class="bg-gray-50">
-                                <th class="px-4 py-2 text-left">Tarih</th>
-                                <th class="px-4 py-2 text-left">İşlem Tipi</th>
-                                <th class="px-4 py-2 text-right">Eski Fiyat</th>
-                                <th class="px-4 py-2 text-right">Yeni Fiyat</th>
-                                <th class="px-4 py-2 text-left">Açıklama</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${data.price_history.map(item => {
-                                // Fiyatları formatlayacak yardımcı fonksiyon
-                                const formatPrice = (price) => {
-                                    return price !== null ? `${parseFloat(price).toFixed(2)} ₺` : '-';
-                                };
-
-                                return `
-                                    <tr class="border-b hover:bg-gray-50">
-                                        <td class="px-4 py-2">
-                                            ${new Date(item.tarih).toLocaleString('tr-TR')}
-                                        </td>
-                                        <td class="px-4 py-2 text-blue-600">
-                                            ${item.islem_tipi || '-'}
-                                        </td>
-                                        <td class="px-4 py-2 text-right font-medium ${parseFloat(item.eski_fiyat) > parseFloat(item.yeni_fiyat) ? 'text-red-500' : ''}">
-                                            ${formatPrice(item.eski_fiyat)}
-                                        </td>
-                                        <td class="px-4 py-2 text-right font-medium ${parseFloat(item.yeni_fiyat) > parseFloat(item.eski_fiyat) ? 'text-green-500' : ''}">
-                                            ${formatPrice(item.yeni_fiyat)}
-                                        </td>
-                                        <td class="px-4 py-2">
-                                            ${item.aciklama || '-'}
-                                            ${item.fatura_seri ? 
-                                                `<br><span class="text-xs text-gray-500">
-                                                    Fatura: ${item.fatura_seri}${item.fatura_no} 
-                                                    ${item.tedarikci_adi ? `(${item.tedarikci_adi})` : ''}
-                                                </span>` 
-                                                : ''
-                                            }
-                                            ${item.kullanici_adi ? 
-                                                `<br><span class="text-xs text-gray-500">
-                                                    Kullanıcı: ${item.kullanici_adi}
-                                                </span>` 
-                                                : ''
-                                            }
-                                        </td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                            ${data.price_history.length === 0 ? `
-                                <tr>
-                                    <td colspan="5" class="px-4 py-2 text-center text-gray-500">
-                                        Fiyat geçmişi bulunamadı
-                                    </td>
-                                </tr>
-                            ` : ''}
-                        </tbody>
-                    </table>
-                </div>
-            `,
+            html: generatePriceHistoryTable(data.price_history),
             width: '900px',
             padding: '1.5rem',
             confirmButtonText: 'Kapat',
@@ -1057,210 +986,187 @@ async function showPriceHistory(id, event) {
                 popup: 'price-history-popup'
             }
         });
-
     } catch (error) {
-        console.error('Fiyat geçmişi hatası:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Hata!',
-            text: error.message
-        });
+        handleFetchError(error, 'Fiyat geçmişi alınırken bir hata oluştu.');
     }
 }
 
+/**
+ * Stok transfer modalını gösteren fonksiyon
+ */
+export async function transferProduct(id, event) {
+    event?.preventDefault();
+    event?.stopPropagation();
 
-// Aktarım modalını göster
-function showTransferModal(invoiceId, products) {
-    Swal.fire({
-        title: 'Mağazaya Aktar',
-        html: `
-            <form id="transferForm">
-                <input type="hidden" name="fatura_id" value="${invoiceId}">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700">Mağaza Seçin</label>
-                    <select name="magaza_id" class="mt-1 block w-full rounded-md border-gray-300" required>
-                        ${getMagazaOptions()}
-                    </select>
-                </div>
-                <div class="mt-4">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2">Ürün</th>
-                                <th class="px-4 py-2">Miktar</th>
-                                <th class="px-4 py-2">Birim Fiyat</th>
-                                <th class="px-4 py-2">Toplam</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${products.map(product => `
-                                <tr>
-                                    <td class="px-4 py-2">${product.ad}</td>
-                                    <td class="px-4 py-2">${product.miktar}</td>
-                                    <td class="px-4 py-2">${formatCurrency(product.birim_fiyat)}</td>
-                                    <td class="px-4 py-2">${formatCurrency(product.miktar * product.birim_fiyat)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </form>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Aktarımı Tamamla',
-        cancelButtonText: 'İptal',
-        width: '800px'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const form = document.getElementById('transferForm');
-            handleTransfer(new FormData(form));
-        }
-    });
-}
+    try {
+        const [magazalarData, depolarData] = await Promise.all([
+            fetchData('api/get_magazalar.php'),
+            fetchData('api/get_depolar.php')
+        ]);
 
-
-
-function transferProduct(id, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-
-    // Mağaza ve depoları getir
-    Promise.all([
-        fetch('api/get_magazalar.php').then(res => res.json()),
-        fetch('api/get_depolar.php').then(res => res.json())
-    ])
-    .then(([magazalarData, depolarData]) => {
-        if (!magazalarData.success || !depolarData.success) {
-            throw new Error('Veri yüklenemedi');
-        }
-
-        let sourceSelect, targetSelect; // Select elementlerini referans olarak tutacak değişkenler
-
-        Swal.fire({
+        await Swal.fire({
             title: 'Stok Transfer',
-            html: `
-                <form id="transferForm" class="space-y-4">
-                    <input type="hidden" name="urun_id" value="${id}">
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Kaynak</label>
-                        <select name="source_location" id="sourceLocation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                            <option value="">Kaynak Seçin</option>
-                            <optgroup label="Depolar">
-                                ${depolarData.depolar.map(depo => 
-                                    `<option value="depo_${depo.id}">${depo.ad}</option>`
-                                ).join('')}
-                            </optgroup>
-                            <optgroup label="Mağazalar">
-                                ${magazalarData.magazalar.map(magaza => 
-                                    `<option value="magaza_${magaza.id}">${magaza.ad}</option>`
-                                ).join('')}
-                            </optgroup>
-                        </select>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Hedef</label>
-                        <select name="target_location" id="targetLocation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                            <option value="">Hedef Seçin</option>
-                            <optgroup label="Depolar">
-                                ${depolarData.depolar.map(depo => 
-                                    `<option value="depo_${depo.id}">${depo.ad}</option>`
-                                ).join('')}
-                            </optgroup>
-                            <optgroup label="Mağazalar">
-                                ${magazalarData.magazalar.map(magaza => 
-                                    `<option value="magaza_${magaza.id}">${magaza.ad}</option>`
-                                ).join('')}
-                            </optgroup>
-                        </select>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Miktar</label>
-                        <input type="number" name="miktar" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" 
-                               min="0.01" step="0.01" required>
-                    </div>
-                </form>
-            `,
-            didOpen: () => {
-                // Select elementlerini al
-                sourceSelect = document.getElementById('sourceLocation');
-                targetSelect = document.getElementById('targetLocation');
-
-                // Select değişikliklerini dinle
-                sourceSelect.addEventListener('change', validateLocations);
-                targetSelect.addEventListener('change', validateLocations);
-
-                function validateLocations() {
-                    if (sourceSelect.value && targetSelect.value) {
-                        if (sourceSelect.value === targetSelect.value) {
-                            Swal.showValidationMessage('Kaynak ve hedef aynı olamaz');
-                        } else {
-                            Swal.resetValidationMessage();
-                        }
-                    }
-                }
-            },
+            html: generateTransferForm(id, magazalarData, depolarData),
+            didOpen: attachTransferFormEventListeners,
             showCancelButton: true,
             confirmButtonText: 'Transfer Et',
             cancelButtonText: 'İptal',
             showLoaderOnConfirm: true,
-            preConfirm: () => {
-                const form = document.getElementById('transferForm');
-                const formData = new FormData(form);
-
-                // Kaynak ve hedef kontrolü
-                if (formData.get('source_location') === formData.get('target_location')) {
-                    Swal.showValidationMessage('Kaynak ve hedef aynı olamaz');
-                    return false;
-                }
-
-                return fetch('api/transfer_stock.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message || 'Transfer sırasında bir hata oluştu');
-                    }
-                    return data;
-                });
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Başarı bildirimi
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Transfer Başarılı!',
-                    text: 'Stok transferi başarıyla tamamlandı',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true,
-                    didOpen: (toast) => {
-                        toast.addEventListener('mouseenter', Swal.stopTimer)
-                        toast.addEventListener('mouseleave', Swal.resumeTimer)
-                    }
-                });
-                
-                // Tabloyu güncelle
-                updateTableAjax();
-            }
-        }).catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Hata!',
-                text: error.message,
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000
-            });
+            preConfirm: () => handleTransferFormSubmission()
         });
+    } catch (error) {
+        handleFetchError(error, 'Stok transfer verileri alınırken bir hata oluştu.');
+    }
+}
+
+/**
+ * API'den veri getiren yardımcı fonksiyon
+ */
+async function fetchData(url) {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!data.success) {
+        throw new Error(data.message || 'Veri yüklenemedi');
+    }
+    return data;
+}
+
+/**
+ * Fiyat geçmişi tablosu oluşturan yardımcı fonksiyon
+ */
+function generatePriceHistoryTable(priceHistory) {
+    return `
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-4 py-2 text-left">Tarih</th>
+                        <th class="px-4 py-2 text-left">İşlem Tipi</th>
+                        <th class="px-4 py-2 text-right">Eski Fiyat</th>
+                        <th class="px-4 py-2 text-right">Yeni Fiyat</th>
+                        <th class="px-4 py-2 text-left">Açıklama</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${priceHistory.map(item => `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="px-4 py-2">${new Date(item.tarih).toLocaleString('tr-TR')}</td>
+                            <td class="px-4 py-2 text-blue-600">${item.islem_tipi || '-'}</td>
+                            <td class="px-4 py-2 text-right">${formatCurrency(item.eski_fiyat)}</td>
+                            <td class="px-4 py-2 text-right">${formatCurrency(item.yeni_fiyat)}</td>
+                            <td class="px-4 py-2">${item.aciklama || '-'}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="5" class="text-center text-gray-500">Fiyat geçmişi bulunamadı</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * Transfer formunu oluşturan yardımcı fonksiyon
+ */
+function generateTransferForm(id, magazalarData, depolarData) {
+    return `
+        <form id="transferForm" class="space-y-4">
+            <input type="hidden" name="urun_id" value="${id}">
+            ${generateLocationSelect('Kaynak', 'sourceLocation', magazalarData, depolarData)}
+            ${generateLocationSelect('Hedef', 'targetLocation', magazalarData, depolarData)}
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Miktar</label>
+                <input type="number" name="miktar" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" min="0.01" step="0.01" required>
+            </div>
+        </form>
+    `;
+}
+
+/**
+ * Lokasyon select elementini oluşturan yardımcı fonksiyon
+ */
+function generateLocationSelect(label, id, magazalarData, depolarData) {
+    return `
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700">${label}</label>
+            <select name="${id}" id="${id}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                <option value="">${label} Seçin</option>
+                <optgroup label="Depolar">
+                    ${depolarData.depolar.map(depo => `<option value="depo_${depo.id}">${depo.ad}</option>`).join('')}
+                </optgroup>
+                <optgroup label="Mağazalar">
+                    ${magazalarData.magazalar.map(magaza => `<option value="magaza_${magaza.id}">${magaza.ad}</option>`).join('')}
+                </optgroup>
+            </select>
+        </div>
+    `;
+}
+
+/**
+ * Transfer formu event listener'larını ekleyen yardımcı fonksiyon
+ */
+function attachTransferFormEventListeners() {
+    const sourceSelect = document.getElementById('sourceLocation');
+    const targetSelect = document.getElementById('targetLocation');
+
+    sourceSelect.addEventListener('change', validateLocations);
+    targetSelect.addEventListener('change', validateLocations);
+}
+
+/**
+ * Lokasyon seçimlerini doğrulayan yardımcı fonksiyon
+ */
+function validateLocations() {
+    const sourceSelect = document.getElementById('sourceLocation');
+    const targetSelect = document.getElementById('targetLocation');
+    if (sourceSelect.value && targetSelect.value && sourceSelect.value === targetSelect.value) {
+        Swal.showValidationMessage('Kaynak ve hedef aynı olamaz');
+    } else {
+        Swal.resetValidationMessage();
+    }
+}
+
+/**
+ * Transfer formunu gönderme işlemini yapan yardımcı fonksiyon
+ */
+function handleTransferFormSubmission() {
+    const form = document.getElementById('transferForm');
+    const formData = new FormData(form);
+
+    return fetch('api/transfer_stock.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Transfer sırasında bir hata oluştu');
+        }
+        return data;
     });
+}
+
+/**
+ * Fiyatı formatlayan yardımcı fonksiyon
+ */
+function formatCurrency(price) {
+    return price !== null ? `${parseFloat(price).toFixed(2)} ₺` : '-';
+}
+
+export function deleteProduct(id) {
+    console.log(`Deleting product with id: ${id}`);
+    if (confirm('Bu ürünü silmek istediğinize emin misiniz?')) {
+        fetch(`delete_product.php?id=${id}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Ürün başarıyla silindi');
+                    location.reload(); // Sayfayı yenileyerek güncellemeleri göster
+                } else {
+                    alert('Ürün silinirken bir hata oluştu');
+                }
+            })
+            .catch(error => {
+                console.error('Silme hatası:', error);
+                alert('Bir hata oluştu');
+            });
+    }
 }

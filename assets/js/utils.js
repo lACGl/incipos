@@ -196,6 +196,18 @@ export function openModal(modalId) {
     if (modal) modal.style.display = 'block';
 }
 
+// utils.js'e eklenecek
+export function showToast(type, message) {
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: type,
+        title: message,
+        showConfirmButton: false,
+        timer: 3000
+    });
+}
+
 export function showErrorToast(message) {
     Swal.fire({
         toast: true,
@@ -247,12 +259,12 @@ export function showLoadingToast(message = 'Yükleniyor...') {
     Swal.fire({
         title: message,
         allowOutsideClick: false,
-        didOpen: () => {
+        showConfirmButton: false,
+        willOpen: () => {
             Swal.showLoading();
         }
     });
 }
-
 /**
  * "Yeni Ekle" seçeneği için modal açar ve yeni giriş ekler
  * @param {string} selectId - Select öğesinin ID'si

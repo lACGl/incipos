@@ -358,19 +358,7 @@ h3 {
   margin-top: 15px;
 }
 
-/* Individual checkbox container */
-.checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-}
 
-.checkbox-wrapper:hover {
-  background: #f1f5f9;
-}
 
 /* Custom checkbox style */
 .checkbox-wrapper input[type="checkbox"] {
@@ -1079,4 +1067,76 @@ input[type="checkbox"] {
 .new-entry-option {
     color: #1e90ff; /* Mavi renk */
     font-weight: bold; /* Hafif kalın */
+}
+
+select[name="stock_status"] option[value="out"] { 
+    background-color: rgb(254, 226, 226); /* red-100 */
+}
+
+select[name="stock_status"] option[value="low"] { 
+    background-color: rgb(254, 243, 199); /* yellow-100 */
+}
+
+select[name="stock_status"] option[value="normal"] { 
+    background-color: rgb(219, 234, 254); /* blue-100 */
+}
+
+/* Option seçildiğinde de rengini korumak için */
+select[name="stock_status"] {
+    background-color: white;
+}
+
+select[name="stock_status"]:has(option[value="out"]:checked) {
+    background-color: rgb(254, 226, 226);
+}
+
+select[name="stock_status"]:has(option[value="low"]:checked) {
+    background-color: rgb(254, 243, 199);
+}
+
+select[name="stock_status"]:has(option[value="normal"]:checked) {
+    background-color: rgb(219, 234, 254);
+}
+
+.checkbox-wrapper {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+}
+
+.checkbox-wrapper:hover {
+    background-color: #f3f4f6;
+}
+
+.checkbox-wrapper label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.filters-title {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.grid-cols-6 {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: 100%;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.form-checkbox:checked {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.form-checkbox:focus {
+    outline: none;
+    ring: 2px;
+    ring-offset: 2px;
+    ring-color: #93c5fd;
 }

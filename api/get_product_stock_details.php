@@ -48,26 +48,42 @@ try {
     $stmt->execute([$id]);
     $depo_stok = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Mağaza stoklarını getir
-    $stmt = $conn->prepare("
-        SELECT 
-            ms.stok_miktari,
-            ms.satis_fiyati,
-            m.ad as magaza_adi
-        FROM urun_stok us
-        LEFT JOIN magaza_stok ms ON ms.barkod = us.barkod
-        LEFT JOIN magazalar m ON m.id = ms.magaza_id
-        WHERE us.id = ?
-    ");
-    $stmt->execute([$id]);
-    $magaza_stoklari = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Mağaza stoklarını getir
+$stmt = $conn->prepare("
+    SELECT 
+        ms.stok_miktari,
+        ms.satis_fiyati,
+        ms.son_guncelleme,
+        m.ad as magaza_adi
+    FROM urun_stok us
+    LEFT JOIN magaza_stok ms ON ms.barkod = us.barkod
+    LEFT JOIN magazalar m ON m.id = ms.magaza_id
+    WHERE us.id = ? 
+    AND ms.magaza_id IS NOT NULL  
+");
 
-    echo json_encode([
-        'success' => true,
-        'hareketler' => $hareketler,
-        'depo_stok' => $depo_stok,
-        'magaza_stoklari' => $magaza_stoklari
-    ]);
+// Debug için SQL sorgusunu ve ID'yi logla 
+error_log("SQL Query ID: " . $id);
+$stmt->execute([$id]);
+$magaza_stoklari = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Gelen ham veriyi logla
+error_log("Raw magaza_stoklari data: " . print_r($magaza_stoklari, true));
+
+// JSON'a çevrilmiş veriyi logla
+error_log("JSON encoded data: " . json_encode([
+    'success' => true,
+    'hareketler' => $hareketler,
+    'depo_stok' => $depo_stok,
+    'magaza_stoklari' => $magaza_stoklari
+]));
+
+echo json_encode([
+    'success' => true,
+    'hareketler' => $hareketler,
+    'depo_stok' => $depo_stok,
+    'magaza_stoklari' => $magaza_stoklari
+]);
 
 } catch (Exception $e) {
     error_log('Stok detayları hatası: ' . $e->getMessage());

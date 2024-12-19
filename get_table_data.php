@@ -10,119 +10,152 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
 }
 
 try {
-   // POST verilerini al
-   $selected_columns = isset($_POST['columns']) ? $_POST['columns'] : (isset($_SESSION['selected_columns']) ? $_SESSION['selected_columns'] : ['barkod', 'ad']);
+    // POST verilerini al
+    if (isset($_POST['columns'])) {
+        $_SESSION['selected_columns'] = $_POST['columns'];
+        $selected_columns = $_POST['columns'];
+    } else {
+        $selected_columns = isset($_SESSION['selected_columns']) ? $_SESSION['selected_columns'] : ['barkod', 'ad'];
+    }
 
-   $items_per_page = isset($_SESSION['items_per_page']) ? (int)$_SESSION['items_per_page'] : 50;
-   $sort_column = $_POST['sort_column'] ?? 'id';
-   $sort_order = $_POST['sort_order'] ?? 'DESC';
+    // ID ve durum sütunlarını ekle
+    if (!in_array('id', $selected_columns)) $selected_columns[] = 'id';
+    if (!in_array('durum', $selected_columns)) $selected_columns[] = 'durum';
 
-   if (isset($_POST['items_per_page'])) {
-       $items_per_page = (int)$_POST['items_per_page'];
-       $_SESSION['items_per_page'] = $items_per_page;
-   }
+    // Görünür sütunları filtrele
+    $visible_columns = array_filter($selected_columns, function($col) {
+        return $col !== 'id' && $col !== 'durum';
+    });
 
-   $page = max(1, (int)($_POST['page'] ?? 1));
-   $search_term = $_POST['search_term'] ?? '';
+    // Sayfalama ve sıralama ayarları
+    $items_per_page = isset($_SESSION['items_per_page']) ? (int)$_SESSION['items_per_page'] : 50;
+    $sort_column = $_POST['sort_column'] ?? 'id';
+    $sort_order = $_POST['sort_order'] ?? 'DESC';
+    $page = max(1, (int)($_POST['page'] ?? 1));
 
-   // ID ve durum sütunlarını ekle
-   if (!in_array('id', $selected_columns)) $selected_columns[] = 'id';
-   if (!in_array('durum', $selected_columns)) $selected_columns[] = 'durum';
+    if (isset($_POST['items_per_page'])) {
+        $items_per_page = (int)$_POST['items_per_page'];
+        $_SESSION['items_per_page'] = $items_per_page;
+    }
 
-   // Görünür sütunları filtrele
-   $visible_columns = array_filter($selected_columns, function($col) {
-       return $col !== 'id' && $col !== 'durum';
-   });
+    // Arama terimi
+    $search_term = isset($_POST['search_term']) ? trim($_POST['search_term']) : '';
 
-   // WHERE koşullarını oluştur
-   $where_conditions = array();
-   $params = array();
+// WHERE koşullarını oluştur
+$where_conditions = [];
+$params = [];
 
-   // Departman filtresi
-   if (isset($_POST['departman_id']) && !empty($_POST['departman_id'])) {
-       $where_conditions[] = "us.departman_id = :departman_id";
-       $params[':departman_id'] = $_POST['departman_id'];
-   }
-   
-   // Ana Grup filtresi
+// Arama filtresi
+if (!empty($search_term)) {
+    $where_conditions[] = "(us.barkod LIKE :search_term OR us.ad LIKE :search_term OR us.kod LIKE :search_term)";
+    $params[':search_term'] = '%' . $search_term . '%';
+}
+
+// Departman filtresi
+if (isset($_POST['departman_id']) && !empty($_POST['departman_id'])) {
+    $where_conditions[] = "us.departman_id = :departman_id";
+    $params[':departman_id'] = $_POST['departman_id'];
+}
+
+// Ana Grup filtresi
 if (isset($_POST['ana_grup_id']) && !empty($_POST['ana_grup_id'])) {
     $where_conditions[] = "us.ana_grup_id = :ana_grup_id";
     $params[':ana_grup_id'] = $_POST['ana_grup_id'];
 }
 
-   // Arama filtresi
-   if (!empty($search_term)) {
-       $where_conditions[] = "(us.barkod LIKE :search_term OR us.ad LIKE :search_term)";
-       $params[':search_term'] = '%' . $search_term . '%';
-   }
+// Stok durumu filtresi
+if (isset($_POST['stock_status']) && !empty($_POST['stock_status'])) {
+    switch ($_POST['stock_status']) {
+        case 'out':
+            $where_conditions[] = "us.stok_miktari = 0";
+            break;
+        case 'low':
+            $where_conditions[] = "us.stok_miktari > 0 AND us.stok_miktari <= 10";
+            break;
+        case 'normal':
+            $where_conditions[] = "us.stok_miktari > 10";
+            break;
+    }
+}
 
-   // WHERE clause'u birleştir
-   $where_clause = '';
-   if (!empty($where_conditions)) {
-       $where_clause = " WHERE " . implode(' AND ', $where_conditions);
-   }
+// Son hareket tarihi filtresi
+if (isset($_POST['last_movement_date']) && !empty($_POST['last_movement_date'])) {
+    $where_conditions[] = "us.id IN (
+        SELECT urun_id 
+        FROM stok_hareketleri 
+        WHERE DATE(tarih) >= :last_movement_date
+    )";
+    $params[':last_movement_date'] = $_POST['last_movement_date'];
+}
 
-   // Toplam kayıt sayısı
-   $count_query = "SELECT COUNT(*) as total FROM urun_stok us" . $where_clause;
-   $stmt = $conn->prepare($count_query);
-   foreach ($params as $key => $value) {
-       $stmt->bindValue($key, $value);
-   }
-   $stmt->execute();
-   $total_records = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+// WHERE clause'u birleştir
+$where_clause = !empty($where_conditions) ? " WHERE " . implode(' AND ', $where_conditions) : '';
 
-   // Sayfalama
-   $total_pages = max(1, ceil($total_records / $items_per_page));
-   $page = min($page, $total_pages);
-   $offset = max(0, ($page - 1) * $items_per_page);
+    // Toplam kayıt sayısı
+    $count_query = "SELECT COUNT(*) as total FROM urun_stok us" . $where_clause;
+    $stmt = $conn->prepare($count_query);
+    foreach ($params as $key => $value) {
+        $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+        $stmt->bindValue($key, $value, $type);
+    }
+    $stmt->execute();
+    $total_records = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-   // Sütunları hazırla
-   $columns_str = implode(', ', array_map(function($col) {
-       if (in_array($col, ['departman', 'ana_grup', 'alt_grup', 'birim'])) {
-           return null;
-       }
-       return "us." . $col;
-   }, array_filter($selected_columns)));
+    // Sayfalama hesaplamaları
+    $total_pages = max(1, ceil($total_records / $items_per_page));
+    $page = min($page, $total_pages);
+    $offset = max(0, ($page - 1) * $items_per_page);
 
-   // Ana sorgu
-   $query = "SELECT 
-       $columns_str,
-       d.ad as departman,
-       ag.ad as ana_grup,
-       alg.ad as alt_grup,
-       b.ad as birim
-   FROM urun_stok us
-   LEFT JOIN departmanlar d ON us.departman_id = d.id
-   LEFT JOIN ana_gruplar ag ON us.ana_grup_id = ag.id
-   LEFT JOIN alt_gruplar alg ON us.alt_grup_id = alg.id
-   LEFT JOIN birimler b ON us.birim_id = b.id"
-   . $where_clause;
+    // Sütunları hazırla
+    $columns_str = implode(', ', array_map(function($col) {
+        if ($col === 'departman_id') return 'd.ad as departman';
+        if ($col === 'ana_grup_id') return 'ag.ad as ana_grup';
+        if ($col === 'alt_grup_id') return 'alg.ad as alt_grup';
+        if ($col === 'birim_id') return 'b.ad as birim';
+        return "us." . $col;
+    }, array_filter($selected_columns)));
 
-   // Sıralama
-   $query .= " ORDER BY 
-       CASE us.durum 
-           WHEN 'aktif' THEN 1 
-           WHEN 'pasif' THEN 2 
-           ELSE 3 
-       END, 
-       us." . $sort_column . " " . $sort_order;
+    // Ana sorgu
+    $query = "SELECT 
+        $columns_str,
+        d.ad as departman,
+        ag.ad as ana_grup,
+        alg.ad as alt_grup,
+        b.ad as birim
+    FROM urun_stok us
+    LEFT JOIN departmanlar d ON us.departman_id = d.id
+    LEFT JOIN ana_gruplar ag ON us.ana_grup_id = ag.id
+    LEFT JOIN alt_gruplar alg ON us.alt_grup_id = alg.id
+    LEFT JOIN birimler b ON us.birim_id = b.id"
+    . $where_clause;
 
-   // Limit ve Offset
-   $query .= " LIMIT :limit OFFSET :offset";
+    // Sıralama
+    $query .= " ORDER BY 
+        CASE us.durum 
+            WHEN 'aktif' THEN 1 
+            WHEN 'pasif' THEN 2 
+            ELSE 3 
+        END, 
+        us." . $sort_column . " " . $sort_order;
 
-   // Debug için sorgu ve parametreleri logla
-   error_log("SQL Query: " . $query);
-   error_log("Parameters: " . print_r($params, true));
+    // Limit ve Offset
+    $query .= " LIMIT :limit OFFSET :offset";
 
-   $stmt = $conn->prepare($query);
-   foreach ($params as $key => $value) {
-       $stmt->bindValue($key, $value);
-   }
-   $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
-   $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-   $stmt->execute();
-   $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-   
+    // Debug için sorgu ve parametreleri logla
+    error_log("SQL Query: " . $query);
+    error_log("Parameters: " . print_r($params, true));
+
+    // Sorguyu çalıştır
+    $stmt = $conn->prepare($query);
+    foreach ($params as $key => $value) {
+        $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+        $stmt->bindValue($key, $value, $type);
+    }
+    $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+	
    // Tablo HTML hazırla
    $table_html = '<table class="table"><thead><tr>';
    $table_html .= '<th class="w-4">

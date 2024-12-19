@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connection.php';
+require_once '../db_connection.php';
 
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     echo json_encode(['success' => false, 'error' => 'Yetkisiz erişim']);

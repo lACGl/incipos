@@ -1,6 +1,6 @@
 // stock_list.js
 
-import { ValidationUtils, DOMUtils, StorageUtils, showErrorToast, showSuccessToast, debounce, showLoadingToast, closeLoadingToast, fetchData, loadSelectOptions } from './utils.js';
+import { ValidationUtils, DOMUtils, StorageUtils, showToast ,showErrorToast, showSuccessToast, debounce, showLoadingToast, closeLoadingToast, fetchData, loadSelectOptions } from './utils.js';
 import { editProduct, deleteProduct, showPriceHistory, transferProduct, initializeKarMarji, showEditModal, getProductDetails, showDetailsModal } from './stock_list_actions.js';
 import { addProduct } from './stock_list_process.js';
 window.addProduct = addProduct;
@@ -11,6 +11,8 @@ window.updateItemsPerPage = updateItemsPerPage;
 window.selectedProducts = [];
 let currentStockOrder = 'DESC';
 let searchTimeout;
+let isRequestPending = false;
+
 const BASE_URL = '/';
 
 // Ortak DOM seçiciler
@@ -376,9 +378,11 @@ function initializePopupCloseListeners() {
 
 // Filtre panelini aç/kapat
 export function toggleFilters() {
-    document.getElementById('filtersPanel')?.classList.toggle('open');
+    const filtersPanel = document.getElementById('filtersPanel');
+    if (filtersPanel) {
+        filtersPanel.classList.toggle('open');
+    }
 }
-
 window.toggleActions = function(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -397,43 +401,106 @@ window.toggleActions = function(event) {
 
 // Arama işlemi
 function initializeSearch() {
-    if (!searchInput) return;
+    const searchInput = document.querySelector('.search-box input[name="search_term"]');
+    const tableContainer = document.getElementById('tableContainer');
+    if (!searchInput || !tableContainer) return;
 
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.className = 'loading-indicator hidden';
-    loadingIndicator.innerHTML = `
-        <div class="flex items-center justify-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span class="ml-2">Aranıyor...</span>
-        </div>`;
-    searchInput.parentNode.appendChild(loadingIndicator);
-
-    const debouncedSearch = debounce(async value => {
-        if (!tableContainer || !itemsForm) return;
-
+    searchInput.addEventListener('input', debounce(async () => {
+        // Her aramanın başında tüm mevcut modalları kapat
+        Swal.close();
+        
         try {
-            loadingIndicator.classList.remove('hidden');
-            tableContainer.style.opacity = '0.5';
-            const formData = new FormData(itemsForm);
-            formData.append('search_term', value);
-            formData.append('page', '1');
+            // Yeni loading modalı göster
+            await Swal.fire({
+                title: 'Aranıyor...',
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false
+            });
 
-            const data = await fetchData('get_table_data.php', { method: 'POST', body: formData });
+            const formData = new FormData(document.getElementById('itemsForm'));
+            const response = await fetch('get_table_data.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Arama yapılırken bir hata oluştu');
+            }
+
+            // Önce loading'i kapat, sonra tabloyu güncelle
+            await Swal.close();
+
+            // Tabloyu güncelle
             tableContainer.innerHTML = data.table;
-            if (paginationContainer && data.pagination) paginationContainer.innerHTML = data.pagination;
+            
+            // Diğer güncellemeler
+            if (data.total_products) {
+                document.getElementById('total-products').textContent = data.total_products;
+            }
+            if (data.pagination) {
+                const paginationContainer = document.querySelector('.pagination');
+                if (paginationContainer) {
+                    paginationContainer.innerHTML = data.pagination;
+                }
+            }
+
+            // Event listenerları yeniden bağla
             initializeEventListeners();
             initializeProductRowEvents();
             initializePaginationEvents();
-        } catch (error) {
-            showErrorToast('Arama yapılırken bir hata oluştu.');
-        } finally {
-            loadingIndicator.classList.add('hidden');
-            tableContainer.style.opacity = '1';
-        }
-    }, 500);
 
-    searchInput.addEventListener('input', e => debouncedSearch(e.target.value.trim()));
+        } catch (error) {
+            console.error('Arama hatası:', error);
+            // Loading modalını kapat ve hata mesajını göster
+            await Swal.fire({
+                icon: 'error',
+                title: 'Hata!',
+                text: error.message,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+    }, 300));
+
+    // ESC tuşuna basıldığında modalları kapat
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            Swal.close();
+        }
+    });
 }
+
+// Style'ı basitleştir
+const style = document.createElement('style');
+style.textContent = `
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .spinner {
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+`;
+document.head.appendChild(style);
+
 
 
 // Checkbox'ları toplu seçme/iptal etme
@@ -553,46 +620,73 @@ function initializeRowClickEvents() {
 }
 
 export async function updateTableAjax(page = 1, additionalData = null) {
-    if (!itemsForm) return;
-
-    const formData = new FormData(itemsForm);
-    formData.append('page', page);
-
-    if (additionalData) {
-        if (additionalData instanceof FormData) {
-            additionalData.forEach((value, key) => formData.append(key, value));
-        } else {
-            Object.entries(additionalData).forEach(([key, value]) => formData.append(key, value));
-        }
-    }
-
+    // Eğer bekleyen bir istek varsa, yeni isteği yapma
+    if (isRequestPending) return;
+    
+    isRequestPending = true;
+    
     try {
-        // Loading başlangıcı - sadece toast göster, opacity değiştirme
+        const formData = new FormData(document.getElementById('itemsForm'));
+        formData.append('page', page);
+
+        // Additional data varsa ekle
+        if (additionalData) {
+            if (additionalData instanceof FormData) {
+                additionalData.forEach((value, key) => formData.append(key, value));
+            } else {
+                Object.entries(additionalData).forEach(([key, value]) => {
+                    formData.append(key, value);
+                });
+            }
+        }
+
+        // Stok durumu filtresi
+        const stockStatus = document.querySelector('select[name="stock_status"]')?.value;
+        if (stockStatus) {
+            formData.append('stock_status', stockStatus);
+        }
+
+        // Son hareket tarihi filtresi
+        const lastMovementDate = document.querySelector('input[name="last_movement_date"]')?.value;
+        if (lastMovementDate) {
+            formData.append('last_movement_date', lastMovementDate);
+        }
+
         showLoadingToast('Yükleniyor...');
-        
-        const data = await fetchData('get_table_data.php', { 
-            method: 'POST', 
-            body: formData 
+
+        const response = await fetch('get_table_data.php', {
+            method: 'POST',
+            body: formData
         });
 
-        // Başarılı response
+        const data = await response.json();
+
         if (data.success) {
-            tableContainer.innerHTML = data.table;
-            updatePagination(data.pagination);
-            updateTotalProducts(data.total_products);
-            reinitializeEventListeners();
+            document.getElementById('tableContainer').innerHTML = data.table;
+            if (data.pagination) {
+                document.querySelector('.pagination').innerHTML = data.pagination;
+            }
+            if (data.total_products) {
+                document.getElementById('total-products').textContent = data.total_products;
+            }
+            
+            // Event listener'ları yeniden bağla
+            initializeEventListeners();
+            initializeProductRowEvents();
+            initializePaginationEvents();
         } else {
             throw new Error(data.message || 'Veriler yüklenirken bir hata oluştu');
         }
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Update error:', error);
         showErrorToast(error.message);
     } finally {
-        // Loading bitişi - her durumda toast'u kapat
+        isRequestPending = false;
         closeLoadingToast();
     }
 }
+
 function showLoadingEffects(container) {
     container.style.opacity = '0.5';
     showLoadingToast('Yükleniyor...');
@@ -709,6 +803,65 @@ export function initializeProductEventListeners() {
     });
 }
 
+// Filtre değerlerini sıfırlama fonksiyonu
+function resetFilters() {
+    const stockStatusSelect = document.querySelector('select[name="stock_status"]');
+    const lastMovementDate = document.querySelector('input[name="last_movement_date"]');
+    
+    if (stockStatusSelect) stockStatusSelect.value = '';
+    if (lastMovementDate) lastMovementDate.value = '';
+    
+    updateTableAjax(1);
+}
+
+// Aktif filtreleri gösterme fonksiyonu
+function showActiveFilters() {
+    const filters = [];
+    
+    const stockStatus = document.querySelector('select[name="stock_status"]')?.value;
+    if (stockStatus) {
+        const stockStatusText = {
+            'out': 'Stok Yok',
+            'low': 'Kritik Stok',
+            'normal': 'Normal Stok'
+        }[stockStatus];
+        filters.push(`Stok Durumu: ${stockStatusText}`);
+    }
+
+    const lastMovementDate = document.querySelector('input[name="last_movement_date"]')?.value;
+    if (lastMovementDate) {
+        filters.push(`Son Hareket: ${lastMovementDate}`);
+    }
+
+    if (filters.length > 0) {
+        showToast('info', `Aktif Filtreler: ${filters.join(', ')}`);
+    }
+}
+
+// stock_list.js içindeki event listener kısmına eklenecek
+document.addEventListener('DOMContentLoaded', function() {
+    // Mevcut event listener'lar...
+
+    // Stok durumu değişikliğini dinle
+    const stockStatusSelect = document.querySelector('select[name="stock_status"]');
+    if (stockStatusSelect) {
+        stockStatusSelect.addEventListener('change', function() {
+            // Sayfa 1'e dön ve tabloyu güncelle
+            updateTableAjax(1);
+        });
+    }
+
+    // Son hareket tarihi değişikliğini dinle
+    const lastMovementDate = document.querySelector('input[name="last_movement_date"]');
+    if (lastMovementDate) {
+        lastMovementDate.addEventListener('change', function() {
+            // Sayfa 1'e dön ve tabloyu güncelle
+            updateTableAjax(1);
+        });
+    }
+});
+
+
 // Sayfa yüklendiğinde başlat
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -717,4 +870,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSearch();
 	initializeColumnSelection();
 	initializeProductEventListeners();
+	
+	    // Filtre butonuna event listener ekle
+    const toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
+    if (toggleFiltersBtn) {
+        toggleFiltersBtn.addEventListener('click', toggleFilters);
+    }
 });

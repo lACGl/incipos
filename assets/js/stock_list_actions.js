@@ -35,8 +35,9 @@ function getRowData(id) {
 /**
  * Genel yardımcı fonksiyon: Ürün detaylarını API'den alır
  */
-function fetchProductDetails(id) {
-    return fetch(`get_product_details.php?id=${id}`).then(response => response.json());
+async function fetchProductDetails(id) {
+    const response = await fetch(`api/get_product_details.php?id=${id}`);
+    return await response.json();
 }
 
 /**
@@ -828,28 +829,39 @@ window.showStockDetails = async function(id, event) {
     closeUpdatePopup();
 
     try {
-        const data = await fetchStockDetails(id);
+        // İki API'yi paralel olarak çağır
+        const [productData, stockData] = await Promise.all([
+            fetchProductDetails(id),
+            fetchStockDetails(id)
+        ]);
 
-        if (!data.success) {
-            throw new Error(data.message || 'Stok detayları alınamadı');
+        console.log("Ürün Detayları:", productData); // Debug için
+        console.log("Stok Detayları:", stockData);   // Debug için
+
+        if (!productData.success || !stockData.success) {
+            throw new Error('Veriler alınamadı');
         }
-
-        Swal.close();
 
         await Swal.fire({
             title: 'Stok Detayları',
-            html: generateStockDetailsHtml(data),
+            html: `
+                <div class="text-left space-y-6">
+                    ${generateProductInfoHtml(productData.product)}
+                    ${generateDepotStockHtml(stockData.depo_stok)}
+                    ${generateStoreStocksHtml(stockData.magaza_stoklari)}
+                    ${generateTotalStockHtml(stockData.toplam_stok)}
+                    ${generateStockMovementsHtml(stockData.hareketler)}
+                </div>
+            `,
             width: '800px',
             showCloseButton: true,
             showConfirmButton: false,
             customClass: { container: 'stock-details-modal' },
-            stopKeydownPropagation: true,
-            didOpen: attachModalEventListeners
+            stopKeydownPropagation: true
         });
 
-        await loadOptions();
     } catch (error) {
-        handleFetchError(error, 'Stok detayları alınırken bir hata oluştu.');
+        handleFetchError(error, 'Detaylar alınırken bir hata oluştu.');
     }
 };
 
@@ -857,7 +869,7 @@ window.showStockDetails = async function(id, event) {
  * Stok detaylarını getiren yardımcı fonksiyon
  */
 async function fetchStockDetails(id) {
-    const response = await fetch(`get_stock_details.php?id=${id}`);
+    const response = await fetch(`api/get_stock_details.php?id=${id}`);
     return await response.json();
 }
 
@@ -884,6 +896,22 @@ function generateStockDetailsHtml(data) {
     `;
 }
 
+function generateProductInfoHtml(product) {
+    return `
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Ürün Bilgileri</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="font-semibold">Barkod:</div>
+                <div>${product.barkod || '-'}</div>
+                <div class="font-semibold">Ürün Adı:</div>
+                <div>${product.ad || '-'}</div>
+                <div class="font-semibold">KDV Oranı:</div>
+                <div>%${product.kdv_orani || '0'}</div>
+            </div>
+        </div>
+    `;
+}
+
 /**
  * Depo stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
  */
@@ -893,45 +921,45 @@ function generateDepotStockHtml(depoStok) {
             <h3 class="font-bold text-lg mb-2">Depo Stok</h3>
             <div class="grid grid-cols-2 gap-2">
                 <div class="font-semibold">Miktar:</div>
-                <div>${depoStok.stok_miktari || 0}</div>
+                <div>${depoStok?.stok_miktari || 0}</div>
                 <div class="font-semibold">Son Güncelleme:</div>
-                <div>${depoStok.son_guncelleme ? new Date(depoStok.son_guncelleme).toLocaleString('tr-TR') : '-'}</div>
+                <div>${depoStok?.son_guncelleme ? new Date(depoStok.son_guncelleme).toLocaleString('tr-TR') : '-'}</div>
             </div>
         </div>
     `;
 }
 
+
 /**
  * Mağaza stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
  */
-function generateStoreStocksHtml(magazaStoklari, toplamMagazaStok) {
+function generateStoreStocksHtml(magazaStoklari) {
     return `
         <div class="bg-green-50 p-4 rounded-lg">
             <h3 class="font-bold text-lg mb-2">Mağaza Stokları</h3>
             <table class="min-w-full">
                 <thead>
                     <tr>
-                        <th class="text-left">Mağaza</th>
-                        <th class="text-right">Stok</th>
-                        <th class="text-right">Satış Fiyatı</th>
+                        <th class="px-4 py-2 text-left">Mağaza</th>
+                        <th class="px-4 py-2 text-right">Stok</th>
+                        <th class="px-4 py-2 text-right">Satış Fiyatı</th>
+                        <th class="px-4 py-2 text-right">Son Güncelleme</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${magazaStoklari.map(magaza => `
+                    ${Array.isArray(magazaStoklari) ? magazaStoklari.map(magaza => `
                         <tr>
-                            <td>${magaza.magaza_adi || '-'}</td>
-                            <td class="text-right">${magaza.stok_miktari || 0}</td>
-                            <td class="text-right">₺${parseFloat(magaza.satis_fiyati || 0).toFixed(2)}</td>
+                            <td class="px-4 py-2">${magaza.magaza_adi || '-'}</td>
+                            <td class="px-4 py-2 text-right">${magaza.stok_miktari || 0}</td>
+                            <td class="px-4 py-2 text-right">₺${parseFloat(magaza.satis_fiyati || 0).toFixed(2)}</td>
+                            <td class="px-4 py-2 text-right">${
+                                magaza.son_guncelleme ? 
+                                new Date(magaza.son_guncelleme).toLocaleString('tr-TR') : 
+                                '-'
+                            }</td>
                         </tr>
-                    `).join('') || '<tr><td colspan="3" class="text-center">Mağaza stoku bulunmuyor</td></tr>'}
+                    `).join('') : '<tr><td colspan="4" class="text-center">Mağaza stoku bulunmuyor</td></tr>'}
                 </tbody>
-                <tfoot>
-                    <tr class="font-bold">
-                        <td>Toplam</td>
-                        <td class="text-right">${toplamMagazaStok}</td>
-                        <td></td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
     `;
@@ -940,13 +968,23 @@ function generateStoreStocksHtml(magazaStoklari, toplamMagazaStok) {
 /**
  * Genel toplam stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
  */
-function generateTotalStockHtml(genelToplam) {
+function generateTotalStockHtml(totalStock) {
     return `
         <div class="bg-purple-50 p-4 rounded-lg">
             <h3 class="font-bold text-lg mb-2">Genel Toplam</h3>
-            <div class="grid grid-cols-2 gap-2">
-                <div class="font-semibold">Toplam Stok:</div>
-                <div>${genelToplam}</div>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <div class="font-semibold">Depo:</div>
+                    <div>${totalStock.depo || 0}</div>
+                </div>
+                <div>
+                    <div class="font-semibold">Mağaza:</div>
+                    <div>${totalStock.magaza || 0}</div>
+                </div>
+                <div>
+                    <div class="font-semibold">Genel Toplam:</div>
+                    <div>${totalStock.genel_toplam || 0}</div>
+                </div>
             </div>
         </div>
     `;
@@ -1152,21 +1190,47 @@ function formatCurrency(price) {
 }
 
 export function deleteProduct(id) {
-    console.log(`Deleting product with id: ${id}`);
-    if (confirm('Bu ürünü silmek istediğinize emin misiniz?')) {
-        fetch(`delete_product.php?id=${id}`, { method: 'POST' })
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu ürünü silmek istediğinize emin misiniz?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Evet, sil!',
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('api/delete_product.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: id })
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Ürün başarıyla silindi');
-                    location.reload(); // Sayfayı yenileyerek güncellemeleri göster
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Başarılı!',
+                        text: 'Ürün başarıyla silindi',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload(); // Sayfayı yenile
+                    });
                 } else {
-                    alert('Ürün silinirken bir hata oluştu');
+                    throw new Error(data.message || 'Silme işlemi başarısız oldu');
                 }
             })
             .catch(error => {
-                console.error('Silme hatası:', error);
-                alert('Bir hata oluştu');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Hata!',
+                    text: error.message
+                });
             });
-    }
+        }
+    });
 }

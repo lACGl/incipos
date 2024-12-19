@@ -91,34 +91,73 @@ function createTable($conn, $selected_columns, $items_per_page, $offset, $search
         return $col !== 'id';
     });
 
-    // Tüm ürün verilerini almak için sorguyu güncelle
-    $query = "SELECT * FROM urun_stok";
+    // WHERE koşullarını oluştur
+    $where_conditions = [];
     $params = [];
 
+    // Arama filtresi
     if (!empty($search_term)) {
-        $query .= " WHERE barkod LIKE :search_term OR ad LIKE :search_term";
+        $where_conditions[] = "(us.barkod LIKE :search_term OR us.ad LIKE :search_term OR us.kod LIKE :search_term)";
         $params[':search_term'] = '%' . $search_term . '%';
     }
 
-     $query .= " LIMIT :limit OFFSET :offset";
-    
+    // Departman filtresi
+    if (isset($_POST['departman_id']) && !empty($_POST['departman_id'])) {
+        $where_conditions[] = "us.departman_id = :departman_id";
+        $params[':departman_id'] = $_POST['departman_id'];
+    }
+
+    // Ana Grup filtresi
+    if (isset($_POST['ana_grup_id']) && !empty($_POST['ana_grup_id'])) {
+        $where_conditions[] = "us.ana_grup_id = :ana_grup_id";
+        $params[':ana_grup_id'] = $_POST['ana_grup_id'];
+    }
+
+    // Stok durumu filtresi
+    if (isset($_POST['stock_status']) && !empty($_POST['stock_status'])) {
+        switch ($_POST['stock_status']) {
+            case 'out':
+                $where_conditions[] = "us.stok_miktari = 0";
+                break;
+            case 'low':
+                $where_conditions[] = "us.stok_miktari > 0 AND us.stok_miktari <= 10";
+                break;
+            case 'normal':
+                $where_conditions[] = "us.stok_miktari > 10";
+                break;
+        }
+    }
+
+    // Son hareket tarihi filtresi
+    if (isset($_POST['last_movement_date']) && !empty($_POST['last_movement_date'])) {
+        $where_conditions[] = "us.id IN (
+            SELECT urun_id 
+            FROM stok_hareketleri 
+            WHERE DATE(tarih) >= :last_movement_date
+        )";
+        $params[':last_movement_date'] = $_POST['last_movement_date'];
+    }
+
+    // WHERE clause'u birleştir
+    $where_clause = !empty($where_conditions) ? " WHERE " . implode(' AND ', $where_conditions) : '';
+
+    // Ana sorgu
+    $query = "SELECT us.* FROM urun_stok us" . $where_clause;
+    $query .= " ORDER BY us.id DESC LIMIT :limit OFFSET :offset";
+
     $stmt = $conn->prepare($query);
     $stmt->bindValue(':limit', (int)$items_per_page, PDO::PARAM_INT);
     $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
     
     foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
     }
     
     $stmt->execute();
 
-    // Tek bir tablo başlangıcı
+    // Tablo HTML'ini oluştur
     $table = "<table class='min-w-full divide-y divide-gray-200'>";
-    
-    // Tablo başlığı
     $table .= "<thead class='bg-gray-50'><tr>";
-    
-    // Checkbox başlığını ekle
     $table .= '<th class="w-4">
         <input type="checkbox" 
                id="selectAll" 
@@ -134,13 +173,18 @@ function createTable($conn, $selected_columns, $items_per_page, $offset, $search
     $table .= "<th class='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Eylemler</th>";
     $table .= "</tr></thead>";
     
-    // Tablo gövdesi
     $table .= "<tbody class='bg-white divide-y divide-gray-200'>";
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-       $table .= "<tr class='product-row hover:bg-gray-50' data-product='" . htmlspecialchars(json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT)) . "'>";
+        $table .= "<tr class='product-row hover:bg-gray-50' data-product='" . htmlspecialchars(json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT)) . "'>";
+        $table .= '<td class="w-4 px-6 py-4">
+            <input type="checkbox" 
+                   name="selected_products[]" 
+                   value="'.$row['id'].'" 
+                   class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+        </td>';
+
         foreach ($visible_columns as $column) {
             $value = $row[$column];
-            // Özel format kontrolleri
             if ($column === 'satis_fiyati' || $column === 'indirimli_fiyat') {
                 $value = '₺' . number_format($value, 2);
             } elseif ($column === 'stok_miktari') {
@@ -153,7 +197,6 @@ function createTable($conn, $selected_columns, $items_per_page, $offset, $search
         // Eylem butonları
         $table .= "<td class='px-6 py-4 whitespace-nowrap'>
             <div class='flex items-center space-x-2'>
-                <!-- Düzenleme -->
                 <button onclick='editProduct({$row['id']})' 
                         class='text-blue-600 hover:text-blue-800 tooltip'
                         data-tooltip='Düzenle'>
@@ -163,7 +206,6 @@ function createTable($conn, $selected_columns, $items_per_page, $offset, $search
                     </svg>
                 </button>
 
-                <!-- Stok Hareketi -->
                 <button onclick='addStock({$row['id']})' 
                         class='text-green-600 hover:text-green-800 tooltip'
                         data-tooltip='Stok Ekle/Çıkar'>
@@ -173,7 +215,6 @@ function createTable($conn, $selected_columns, $items_per_page, $offset, $search
                     </svg>
                 </button>
 
-                <!-- Detaylar -->
                 <button onclick='showDetails({$row['id']})' 
                         class='text-gray-600 hover:text-gray-800 tooltip'
                         data-tooltip='Detayları Göster'>
@@ -185,7 +226,6 @@ function createTable($conn, $selected_columns, $items_per_page, $offset, $search
                     </svg>
                 </button>
 
-                <!-- Silme -->
                 <button onclick='deleteProduct({$row['id']})' 
                         class='text-red-600 hover:text-red-800 tooltip'
                         data-tooltip='Sil'>
@@ -194,15 +234,15 @@ function createTable($conn, $selected_columns, $items_per_page, $offset, $search
                               d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'/>
                     </svg>
                 </button>
- <!-- Stok Detay Butonu -->
-        <button onclick=\"showStockDetails({$row['id']})\" 
-                class='text-purple-600 hover:text-purple-800 tooltip'
-                data-tooltip='Stok Detayları'>
-            <svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' 
-                      d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'/>
-            </svg>
-        </button>
+
+                <button onclick='showStockDetails({$row['id']})' 
+                        class='text-purple-600 hover:text-purple-800 tooltip'
+                        data-tooltip='Stok Detayları'>
+                    <svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' 
+                              d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'/>
+                    </svg>
+                </button>
             </div>
         </td>";
         
@@ -217,171 +257,174 @@ $table_html = createTable($conn, $selected_columns, $items_per_page, $offset, $s
 ?>
 
 <!-- Rest of the HTML remains the same -->
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <title>Stock Management</title>    
-	    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-	<link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="/assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-	    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-		<link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-minimal@5/minimal.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-minimal@5/minimal.css" rel="stylesheet">
+</head>
 <body>
     <div class="container">
-<!-- Wrap everything in a form -->
-<form id="itemsForm">
-  <div class="menu-wrapper">
-    <div class="menu">
-      <button type="button" class="filters-button" onclick="toggleFilters()">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-        </svg>
-        Filtreler
-      </button>
-	<button type="button" class="actions-button" onclick="toggleActions(event)">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M12.1 2.7c0 0-2.9 0-4 1.1L3.7 8.2c-.8.8-.8 2 0 2.8l9.3 9.3c.8.8 2 .8 2.8 0l4.4-4.4c1.1-1.1 1.1-4 1.1-4l-9.2-9.2z"/>
-    <circle cx="15" cy="9" r="1"/>
-  </svg>
-  İşlemler
-  <div id="actionsMenu" class="actions-menu">
-<a href="#" onclick="addProduct()">Ürün Ekle</a>
-<a href="#" onclick="deleteSelected()">Seçili Ürünleri Sil</a>
-<a href="#" onclick="deactivateSelected()">Seçili Ürünleri Pasife Al</a>
-<a href="#" onclick="activateSelected()">Seçili Ürünleri Aktife Al</a>
-<a href="#" onclick="exportSelected()">Seçili Ürünleri Dışarı Aktar</a>
-  </div>
-</button>
-    </div>
-    
-    <div id="filtersPanel" class="filters-panel">
-      <div class="filters-content">
-        <!-- Search Box -->
-        <div class="search-box relative">
-    <input type="text" 
-           name="search_term" 
-           placeholder="Barkod veya ürün adı ara..." 
-           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-</div>
-
-        <!-- Columns Selection -->
-        <div class="columns-section">
-          <div class="filters-title">Gösterilecek Sütunlar</div>
-          <div class="checkbox-group">
-            <?php foreach ($columns as $column): ?>
-              <?php if ($column !== 'id'): ?>
-                <div class="checkbox-wrapper">
-                  <input type="checkbox" 
-                         id="col_<?php echo $column; ?>"
-                         name="columns[]" 
-                         value="<?php echo htmlspecialchars($column); ?>"
-                         <?php echo in_array($column, $selected_columns) ? 'checked' : ''; ?>>
-                  <label for="col_<?php echo $column; ?>"><?php echo htmlspecialchars($column); ?></label>
+        <form id="itemsForm">
+            <div class="menu-wrapper">
+                <div class="menu">
+                    <button type="button" class="filters-button" id="toggleFiltersBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        Filtreler
+                    </button>
+                    <button type="button" class="actions-button" onclick="toggleActions(event)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12.1 2.7c0 0-2.9 0-4 1.1L3.7 8.2c-.8.8-.8 2 0 2.8l9.3 9.3c.8.8 2 .8 2.8 0l4.4-4.4c1.1-1.1 1.1-4 1.1-4l-9.2-9.2z"/>
+                            <circle cx="15" cy="9" r="1"/>
+                        </svg>
+                        İşlemler
+                        <div id="actionsMenu" class="actions-menu">
+                            <a href="#" onclick="addProduct()">Ürün Ekle</a>
+                            <a href="#" onclick="deleteSelected()">Seçili Ürünleri Sil</a>
+                            <a href="#" onclick="deactivateSelected()">Seçili Ürünleri Pasife Al</a>
+                            <a href="#" onclick="activateSelected()">Seçili Ürünleri Aktife Al</a>
+                            <a href="#" onclick="exportSelected()">Seçili Ürünleri Dışarı Aktar</a>
+                        </div>
+                    </button>
                 </div>
-              <?php endif; ?>
-            <?php endforeach; ?>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</form>
-            
-  <div class="items-per-page-section">
-    <h3>Gösterilecek Ürün Sayısı:</h3>
-    <select name="items_per_page" id="itemsPerPage" onchange="updateItemsPerPage(this.value)">
-      <option value="5" <?php echo ($items_per_page == 5) ? 'selected' : ''; ?>>5</option>
-      <option value="10" <?php echo ($items_per_page == 10) ? 'selected' : ''; ?>>10</option>
-      <option value="20" <?php echo ($items_per_page == 20) ? 'selected' : ''; ?>>20</option>
-      <option value="50" <?php echo ($items_per_page == 50) ? 'selected' : ''; ?>>50</option>
-      <option value="100" <?php echo ($items_per_page == 100) ? 'selected' : ''; ?>>100</option>
-      <option value="200" <?php echo ($items_per_page == 200) ? 'selected' : ''; ?>>200</option>
-      <option value="500" <?php echo ($items_per_page == 500) ? 'selected' : ''; ?>>500</option>
-      <option value="1000" <?php echo ($items_per_page == 1000) ? 'selected' : ''; ?>>1000</option>
-    </select>
-  </div>
+
+                <div id="filtersPanel" class="filters-panel">
+                    <div class="filters-content">
+                        <!-- Search Box -->
+                        <div class="search-box relative">
+                            <input type="text" 
+                                   name="search_term" 
+                                   placeholder="Barkod veya ürün adı ara..." 
+                                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div class="flex space-x-4 mb-4">
+                            <!-- Stok Durumu Filtresi -->
+                            <div class="w-1/3">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Stok Durumu</label>
+                                <select name="stock_status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200">
+                                    <option value="" class="bg-white">Tümü</option>
+                                    <option value="out" class="bg-red-100">Stok Yok</option>
+                                    <option value="low" class="bg-yellow-100">Kritik Stok (10 ve altı)</option>
+                                    <option value="normal" class="bg-blue-100">Normal Stok</option>
+                                </select>
+                            </div>
+
+                            <!-- Son Hareket Tarihi Filtresi -->
+                            <div class="w-1/3">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Son Güncelleme Tarihi</label>
+                                <input type="date" 
+                                       name="last_movement_date" 
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200">
+                            </div>
+                        </div>
+
+                        <!-- Columns Selection -->
+                        <div class="filters-title mt-4 mb-2">Gösterilecek Sütunlar</div>
+                        <div class="flex flex-wrap gap-4">
+                            <?php foreach ($columns as $column): ?>
+                                <?php if ($column !== 'id'): ?>
+                                    <label class="flex items-center gap-2 min-w-[150px] hover:bg-gray-100 p-2 rounded">
+                                        <input type="checkbox" 
+                                               id="col_<?php echo $column; ?>"
+                                               name="columns[]" 
+                                               value="<?php echo htmlspecialchars($column); ?>"
+                                               class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300"
+                                               <?php echo in_array($column, $selected_columns) ? 'checked' : ''; ?>>
+                                        <span class="text-sm text-gray-700">
+                                            <?php echo htmlspecialchars($column); ?>
+                                        </span>
+                                    </label>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </form>
-<h2>(<span id="total-products"><?php echo number_format($total_records, 0, ',', '.'); ?></span> ürün) - İstek <?php echo $execution_time; ?> saniyede tamamlandı.</h2>
-            
-        <!-- Table Container eklendi -->
-        <div id="tableContainer">
+
+        <div class="items-per-page-section mt-4">
+            <h3>Gösterilecek Ürün Sayısı:</h3>
+            <select name="items_per_page" id="itemsPerPage" onchange="updateItemsPerPage(this.value)" 
+                    class="ml-2 rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200">
+                <option value="5" <?php echo ($items_per_page == 5) ? 'selected' : ''; ?>>5</option>
+                <option value="10" <?php echo ($items_per_page == 10) ? 'selected' : ''; ?>>10</option>
+                <option value="20" <?php echo ($items_per_page == 20) ? 'selected' : ''; ?>>20</option>
+                <option value="50" <?php echo ($items_per_page == 50) ? 'selected' : ''; ?>>50</option>
+                <option value="100" <?php echo ($items_per_page == 100) ? 'selected' : ''; ?>>100</option>
+                <option value="200" <?php echo ($items_per_page == 200) ? 'selected' : ''; ?>>200</option>
+                <option value="500" <?php echo ($items_per_page == 500) ? 'selected' : ''; ?>>500</option>
+                <option value="1000" <?php echo ($items_per_page == 1000) ? 'selected' : ''; ?>>1000</option>
+            </select>
+        </div>
+
+        <h2 class="mt-4 mb-4">
+            (<span id="total-products"><?php echo number_format($total_records, 0, ',', '.'); ?></span> ürün) 
+            - İstek <?php echo $execution_time; ?> saniyede tamamlandı.
+        </h2>
+
+        <!-- Table Container -->
+        <div id="tableContainer" class="overflow-x-auto">
             <?php echo $table_html; ?>
         </div>
 
+        <!-- Pagination -->
+        <div class="pagination mt-4">
+            <?php if ($current_page > 1): ?>
+                <a href="?page=1&search_term=<?php echo $search_term; ?>" class="page-first">İlk</a>
+                <a href="?page=<?php echo ($current_page - 1); ?>&search_term=<?php echo $search_term; ?>" class="page-prev">Önceki</a>
+            <?php endif; ?>
 
-<!-- Pagination --><div class="pagination">
-    <!-- İlk Sayfa -->
-    <?php if ($current_page > 1): ?>
-        <a href="?page=1&search_term=<?php echo $search_term; ?>" class="page-first">First</a>
-    <?php endif; ?>
+            <?php
+            $maxPages = 3;
+            $halfMax = floor($maxPages / 2);
+            
+            if ($total_pages <= $maxPages) {
+                $start = 1;
+                $end = $total_pages;
+            } elseif ($current_page <= $halfMax) {
+                $start = 1;
+                $end = $maxPages;
+            } elseif ($current_page > ($total_pages - $halfMax)) {
+                $start = $total_pages - $maxPages + 1;
+                $end = $total_pages;
+            } else {
+                $start = $current_page - $halfMax;
+                $end = $current_page + $halfMax;
+            }
 
-    <!-- Önceki -->
-    <?php if ($current_page > 1): ?>
-        <a href="?page=<?php echo ($current_page - 1); ?>&search_term=<?php echo $search_term; ?>" class="page-prev">Previous</a>
-    <?php endif; ?>
+            for ($i = $start; $i <= $end; $i++): ?>
+                <a href="?page=<?php echo $i; ?>&search_term=<?php echo $search_term; ?>" 
+                   class="<?php echo ($i == $current_page) ? 'active' : ''; ?>">
+                    <?php echo $i; ?>
+                </a>
+            <?php endfor; ?>
 
-    <?php
-    $maxPages = 3;  // Gösterilecek maksimum sayfa sayısı
-    $halfMax = floor($maxPages / 2);
-    
-    if ($total_pages <= $maxPages) {
-        $start = 1;
-        $end = $total_pages;
-    } elseif ($current_page <= $halfMax) {
-        $start = 1;
-        $end = $maxPages;
-    } elseif ($current_page > ($total_pages - $halfMax)) {
-        $start = $total_pages - $maxPages + 1;
-        $end = $total_pages;
-    } else {
-        $start = $current_page - $halfMax;
-        $end = $current_page + $halfMax;
-    }
-
-    for ($i = $start; $i <= $end; $i++): ?>
-        <a href="?page=<?php echo $i; ?>&search_term=<?php echo $search_term; ?>" 
-           <?php echo ($i == $current_page) ? 'class="active"' : ''; ?>>
-            <?php echo $i; ?>
-        </a>
-    <?php endfor; ?>
-
-    <!-- Sonraki -->
-    <?php if ($current_page < $total_pages): ?>
-        <a href="?page=<?php echo ($current_page + 1); ?>&search_term=<?php echo $search_term; ?>" class="page-next">Next</a>
-    <?php endif; ?>
-
-    <!-- Son Sayfa -->
-    <?php if ($current_page < $total_pages): ?>
-        <a href="?page=<?php echo $total_pages; ?>&search_term=<?php echo $search_term; ?>" class="page-last">Last</a>
-    <?php endif; ?>
-</div>
+            <?php if ($current_page < $total_pages): ?>
+                <a href="?page=<?php echo ($current_page + 1); ?>&search_term=<?php echo $search_term; ?>" class="page-next">Sonraki</a>
+                <a href="?page=<?php echo $total_pages; ?>&search_term=<?php echo $search_term; ?>" class="page-last">Son</a>
+            <?php endif; ?>
+        </div>
     </div>
-<!-- Footer -->
-<footer class="mt-8 text-center text-gray-600 text-sm">
-    <p>© 2024 İnciPos Admin Paneli</p>
-</footer>
 
-<!-- Ana JavaScript dosyaları -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Footer -->
+    <footer class="mt-8 text-center text-gray-600 text-sm">
+        <p>© 2024 İnciPos Admin Paneli</p>
+    </footer>
 
-<!-- Önce utility ve helper fonksiyonları -->
-<script type="module" src="/assets/js/utils.js"></script>
-
-<!-- Sonra ana tablo mantığı -->
-<script type="module" src="/assets/js/stock_list.js"></script>
-<script type="module" src="/assets/js/stock_list_process.js"></script>
-<script type="module" src="/assets/js/stock_list_actions.js"></script>
-
-<script type="module" src="/assets/js/main.js"></script>
-<!-- <script src="/assets/js/purchase_invoices.js"></script>-->
-
-<!-- Bu script bloğuna ihtiyacınız yok, kaldırabilirsiniz -->
-<!--
-<script>
-    window.toggleActions = toggleActions;
-</script>
--->
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module" src="/assets/js/utils.js"></script>
+    <script type="module" src="/assets/js/stock_list.js"></script>
+    <script type="module" src="/assets/js/stock_list_process.js"></script>
+    <script type="module" src="/assets/js/stock_list_actions.js"></script>
+    <script type="module" src="/assets/js/main.js"></script>
 </body>
 </html>

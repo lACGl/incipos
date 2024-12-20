@@ -93,4 +93,16 @@ Main.js dosyası parçalanmaya çalışıldı fakat vazgeçildi.
 16.12.2024 
 -- Ürün arama fonksiyonu yeniden yazıldı ve daha stabil çalışıyor. 
 -- Stok detayları modalındaki hata giderildi.
--- Stok detayları modalına son güncelleme eklendi. ///
+-- Stok detayları modalına son güncelleme eklendi.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+19.12.2024
+-- Filtrelemeyi geliştirmek adına Stok durumu eklendi.
+-- Filtrelemeyi geliştirmek adına son güncelleme tarihi eklendi.
+-- Departman filtresi eklendi.
+-- Ana Grup filtresi eklendi.
+-- Stok miktarına göre sıralama eklendi.
+-- Admin Dashboarda chart başlangıcı yapıldı.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+20.12.2024
+-- admin_dashboard sayfasına ürün kartları eklendi.
+-- Reports sayfası yazıldı ve detaylı satış grafikleri vs eklendi.

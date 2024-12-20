@@ -53,6 +53,8 @@ $execution_time = round($end_time - $start_time, 3);
             </button>
         </div>
 
+<div id="dashboardRoot" class="mb-8"></div>
+
         <!-- Main Menu Cards -->
         <div class="grid md:grid-cols-3 gap-6 mb-8">
             <!-- Stok Listesi -->
@@ -75,7 +77,17 @@ $execution_time = round($end_time - $start_time, 3);
                 <p class="text-gray-600 mb-4">Satış faturalarınızı burada görüntüleyebilir ve yönetebilirsiniz.</p>
                 <a href="sales_invoices.php" class="text-blue-500 hover:text-blue-700 font-medium">Satış Faturalarına Git →</a>
             </div>
+        </div>           
+
+		<!-- Raporlar -->
+            <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition duration-200">
+                <h2 class="text-xl font-semibold mb-3">Raporlar</h2>
+                <p class="text-gray-600 mb-4">Raporları buradan görüntüleyebilir ve yönetebilirsiniz.</p>
+                <a href="reports.php" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">Satış Raporları</a>
+            </div>
         </div>
+		
+		
 
         <!-- Settings Modal -->
         <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
@@ -366,3 +378,88 @@ $execution_time = round($end_time - $start_time, 3);
         }
     });
     </script>
+	
+<!-- Sayfanın en altına script'leri ekleyin -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<script>
+function DashboardSummary() {
+  const [summaryData, setSummaryData] = React.useState({
+    totalProducts: 0,
+    totalValue: 0,
+    lowStock: 0,
+    dailyTotal: 0
+  });
+
+  React.useEffect(() => {
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function fetchDashboardData() {
+    try {
+      const response = await fetch('api/get_dashboard_summary.php');
+      const data = await response.json();
+      if (data.success) {
+        setSummaryData(data.summary);
+      }
+    } catch (error) {
+      console.error('Dashboard verisi alınırken hata:', error);
+    }
+  }
+
+  return React.createElement('div', { className: 'space-y-6' }, [
+    // Özet Kartlar
+    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-4 gap-4', key: 'summary-cards' }, [
+      // Toplam Ürün Kartı
+      React.createElement('div', { className: 'bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow', key: 'products' },
+        React.createElement('div', { className: 'flex items-center justify-between' }, [
+          React.createElement('div', { key: 'info' }, [
+            React.createElement('p', { className: 'text-gray-500 text-sm', key: 'label' }, 'Toplam Ürün'),
+            React.createElement('p', { className: 'text-2xl font-bold', key: 'value' }, summaryData.totalProducts)
+          ])
+        ])
+      ),
+
+      // Stok Değeri Kartı
+      React.createElement('div', { className: 'bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow', key: 'value' },
+        React.createElement('div', { className: 'flex items-center justify-between' }, [
+          React.createElement('div', { key: 'info' }, [
+            React.createElement('p', { className: 'text-gray-500 text-sm', key: 'label' }, 'Stok Değeri'),
+            React.createElement('p', { className: 'text-2xl font-bold', key: 'value' }, 
+              `₺${summaryData.totalValue.toLocaleString()}`)
+          ])
+        ])
+      ),
+
+      // Günlük Satış Kartı
+      React.createElement('div', { className: 'bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow', key: 'daily-sales' },
+        React.createElement('div', { className: 'flex items-center justify-between' }, [
+          React.createElement('div', { key: 'info' }, [
+            React.createElement('p', { className: 'text-gray-500 text-sm', key: 'label' }, 'Günlük Satış'),
+            React.createElement('p', { className: 'text-2xl font-bold', key: 'value' }, 
+              `₺${(summaryData.dailyTotal || 0).toLocaleString()}`)
+          ])
+        ])
+      ),
+
+      // Düşük Stok Kartı
+      React.createElement('div', { className: 'bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow', key: 'low-stock' },
+        React.createElement('div', { className: 'flex items-center justify-between' }, [
+          React.createElement('div', { key: 'info' }, [
+            React.createElement('p', { className: 'text-gray-500 text-sm', key: 'label' }, 'Düşük Stok'),
+            React.createElement('p', { className: 'text-2xl font-bold', key: 'value' }, summaryData.lowStock)
+          ])
+        ])
+      )
+    ])
+  ]);
+}
+
+// Render dashboard
+const rootNode = document.getElementById('dashboardRoot');
+const root = ReactDOM.createRoot(rootNode);
+root.render(React.createElement(DashboardSummary));
+</script>

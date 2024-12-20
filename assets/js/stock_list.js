@@ -67,31 +67,232 @@ function initializeEventListeners() {
     });
 }
 
-
 // Stok sıralama fonksiyonu
-export function sortTableByStock() {
+export 
+function sortTableByStock() {
+    // Sıralama yönünü değiştir
     currentStockOrder = currentStockOrder === 'ASC' ? 'DESC' : 'ASC';
-    const formData = new FormData(itemsForm);
+
+    // Form verilerini al
+    const formData = new FormData();
+    
+    // Mevcut form verilerini ekle
+    const existingForm = document.getElementById('itemsForm');
+    if (existingForm) {
+        new FormData(existingForm).forEach((value, key) => {
+            formData.append(key, value);
+        });
+    }
+    
+    // Sıralama parametrelerini ekle
     formData.append('sort_column', 'stok_miktari');
     formData.append('sort_order', currentStockOrder);
 
-    showLoadingToast('Sıralanıyor...');
+    // Loading göster
+    const loadingToast = Swal.fire({
+        title: 'Sıralanıyor...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
 
-    fetchData('get_table_data.php', {
+    // API isteği
+    fetch('get_table_data.php', {
         method: 'POST',
-        body: formData,
+        body: formData
     })
-        .then(data => {
-            if (data.success) {
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Tabloyu güncelle
+            const tableContainer = document.getElementById('tableContainer');
+            if (tableContainer) {
                 tableContainer.innerHTML = data.table;
-                updateSortIcon();
-                initializeEventListeners();
-            } else {
-                throw new Error(data.message || 'Sıralama işlemi başarısız oldu');
             }
-        })
-        .catch(error => showErrorToast('Sıralama işlemi sırasında bir hata oluştu'))
-        .finally(closeLoadingToast);
+            
+            // Sıralama ikonunu güncelle
+            const icon = document.querySelector('.stok-header .sort-icon');
+            if (icon) {
+                icon.textContent = currentStockOrder === 'ASC' ? '↑' : '↓';
+            }
+            
+            // Event listener'ları yeniden ekle
+            initializeEventListeners();
+            
+            loadingToast.close();
+        } else {
+            throw new Error(data.message || 'Sıralama işlemi başarısız oldu');
+        }
+    })
+    .catch(error => {
+        console.error('Sıralama hatası:', error);
+        loadingToast.close();
+        Swal.fire({
+            icon: 'error',
+            title: 'Hata!',
+            text: 'Sıralama işlemi sırasında bir hata oluştu',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    });
+}
+
+// Departmana göre filtreleme fonksiyonu
+async function filterByDepartment() {
+    try {
+        // Departmanları API'dan al
+        const response = await fetch('api/get_departmanlar.php');
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error('Departmanlar yüklenemedi');
+        }
+
+        // Swal ile filtreleme modalını göster
+        const { value: selectedId } = await Swal.fire({
+            title: 'Departmana Göre Filtrele',
+            html: `
+                <select id="departmentFilter" class="swal2-input">
+                    <option value="">Tümü</option>
+                    ${result.data.map(dept => `
+                        <option value="${dept.id}">${dept.ad}</option>
+                    `).join('')}
+                </select>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Filtrele',
+            cancelButtonText: 'İptal',
+            preConfirm: () => {
+                const select = document.getElementById('departmentFilter');
+                return select.value;
+            }
+        });
+
+        if (selectedId) {
+            // Form verilerini hazırla
+            const formData = new FormData();
+            formData.append('departman_id', selectedId);
+            
+            // Seçili sütunları ekle
+            document.querySelectorAll('input[name="columns[]"]:checked').forEach(checkbox => {
+                formData.append('columns[]', checkbox.value);
+            });
+
+            // Loading göster
+            showLoadingToast('Filtreleniyor...');
+
+            // API isteği gönder
+            const data = await fetch('get_table_data.php', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json());
+
+            if (data.success) {
+                // Tablo içeriğini güncelle
+                document.getElementById('tableContainer').innerHTML = data.table;
+                
+                // Toplam ürün sayısını güncelle
+                if (data.total_products) {
+                    document.getElementById('total-products').textContent = data.total_products;
+                }
+
+                // Event listener'ları yeniden bağla
+                initializeEventListeners();
+                initializeProductRowEvents();
+                initializePaginationEvents();
+
+                closeLoadingToast();
+                showSuccessToast('Filtreleme tamamlandı');
+            } else {
+                throw new Error(data.message || 'Filtreleme işlemi başarısız oldu');
+            }
+        }
+    } catch (error) {
+        console.error('Filtreleme hatası:', error);
+        closeLoadingToast();
+        showErrorToast(error.message);
+    }
+}
+
+async function filterByAnaGrup() {
+    try {
+        // Ana grupları API'dan al
+        const response = await fetch('api/get_ana_gruplar.php');
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error('Ana gruplar yüklenemedi');
+        }
+
+        // Swal ile filtreleme modalını göster
+        const { value: selectedId } = await Swal.fire({
+            title: 'Ana Gruba Göre Filtrele',
+            html: `
+                <select id="anaGrupFilter" class="swal2-input">
+                    <option value="">Tümü</option>
+                    ${result.data.map(anaGrup => `
+                        <option value="${anaGrup.id}">${anaGrup.ad}</option>
+                    `).join('')}
+                </select>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Filtrele',
+            cancelButtonText: 'İptal',
+            preConfirm: () => {
+                return document.getElementById('anaGrupFilter').value;
+            }
+        });
+
+        if (selectedId !== undefined) {
+            // Form verilerini hazırla
+            const formData = new FormData();
+            
+            // Seçili ana grup ID'sini ekle
+            if (selectedId) {
+                formData.append('ana_grup_id', selectedId);
+            }
+
+            // Seçili sütunları ekle
+            document.querySelectorAll('input[name="columns[]"]:checked').forEach(checkbox => {
+                formData.append('columns[]', checkbox.value);
+            });
+
+            // Loading göster
+            showLoadingToast('Filtreleniyor...');
+
+            // API isteği gönder
+            const data = await fetch('get_table_data.php', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json());
+
+            if (data.success) {
+                // Tablo içeriğini güncelle
+                document.getElementById('tableContainer').innerHTML = data.table;
+
+                // Toplam ürün sayısını güncelle
+                if (data.total_products) {
+                    document.getElementById('total-products').textContent = data.total_products;
+                }
+
+                // Event listener'ları yeniden bağla
+                initializeEventListeners();
+                initializeProductRowEvents();
+                initializePaginationEvents();
+
+                closeLoadingToast();
+                showSuccessToast('Filtreleme tamamlandı');
+            } else {
+                throw new Error(data.message || 'Filtreleme işlemi başarısız oldu');
+            }
+        }
+    } catch (error) {
+        console.error('Filtreleme hatası:', error);
+        closeLoadingToast();
+        showErrorToast(error.message);
+    }
 }
 
 // Sıralama ikonunu güncelle
@@ -557,14 +758,6 @@ async function filterBy(endpoint, title, selectId, formDataKey) {
     }
 }
 
-function filterByDepartment() {
-    filterBy('api/get_departmanlar.php', 'Departman', 'departmentFilter', 'departman_id');
-}
-
-function filterByAnaGrup() {
-    filterBy('api/get_ana_gruplar.php', 'Ana Grup', 'anaGrupFilter', 'ana_grup_id');
-}
-
 // Ürün satır event'lerini başlat
 function initializeProductRowEvents() {
     cleanupOldEventListeners();
@@ -877,3 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleFiltersBtn.addEventListener('click', toggleFilters);
     }
 });
+
+window.sortTableByStock = sortTableByStock;
+window.filterByDepartment = filterByDepartment;
+window.filterByAnaGrup = filterByAnaGrup;

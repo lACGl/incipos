@@ -123,10 +123,6 @@ export async function showEditModal(productId) {
         <div class="kar-marji-note text-sm text-green-600 mt-1"></div>
     </div>
     <div class="form-group">
-        <label for="stok_miktari" class="form-label">Miktar</label>
-        <input type="number" id="stok_miktari" name="stok_miktari" class="form-input" value="${product.stok_miktari || ''}" placeholder="0">
-    </div>
-    <div class="form-group">
         <label for="kdv_orani" class="form-label">KDV Oranı (%)*</label>
         <select id="kdv_orani" name="kdv_orani" class="form-input">
             <option value="" ${product.kdv_orani === null ? 'selected' : ''}>Seçiniz</option>
@@ -217,7 +213,6 @@ preConfirm: async () => {
             'web_id': 'web_id',
             'alis_fiyati': 'alis_fiyati',
             'satis_fiyati': 'satis_fiyati',
-            'stok_miktari': 'stok_miktari',
             'kdv_orani': 'kdv_orani',
             'departman': 'departman_id',
             'birim': 'birim_id',
@@ -853,7 +848,7 @@ window.showStockDetails = async function(id, event) {
                     ${generateStockMovementsHtml(stockData.hareketler)}
                 </div>
             `,
-            width: '800px',
+            width: '60%',
             showCloseButton: true,
             showConfirmButton: false,
             customClass: { container: 'stock-details-modal' },

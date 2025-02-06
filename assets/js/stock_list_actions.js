@@ -1,5 +1,3 @@
-// stock_list_actions.js
-
 import { showLoadingToast, closeLoadingToast, showErrorToast,  FormatUtils, LoadingUtils, APIUtils, DOMUtils, loadSelectOptions, initializeNewEntryModal  } from './utils.js';
 import { updateTableAjax, updateStock } from './stock_list.js';
 

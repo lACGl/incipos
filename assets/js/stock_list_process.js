@@ -1,4 +1,3 @@
-// stock_list_process.js
 import { editProduct, deleteProduct, showPriceHistory, transferProduct, initializeKarMarji } from './stock_list_actions.js';
 import { updateTableAjax } from './stock_list.js';
 import { initializeNewEntryModal, loadSelectOptions } from './utils.js';

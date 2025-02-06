@@ -20,11 +20,6 @@ export function closeModal(modalId) {
     if (modal) modal.style.display = 'none';
 }
 
-// utils.js
-export function initializeModalEvents() {
-}
-
-
 // Validasyon işlemleri
 export const ValidationUtils = {
     validatePrices: (alisFiyati, satisFiyati) => {

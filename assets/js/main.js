@@ -1,7 +1,7 @@
-// main.js
-
 import { showSuccessToast, showErrorToast, debounce, openModal, closeModal, initializeModalEvents } from './utils.js';
 
+window.showSettings = showSettings;
+window.closeSettings = closeSettings;
 
 let listenersInitialized = false;
 let searchTimeout;
@@ -13,15 +13,18 @@ function showSettings() {
         .then(data => {
             if (data.success) {
                 const form = document.getElementById('settingsForm');
-                const select = form.querySelector('select[name="varsayilan_stok_lokasyonu"]');
-                select.value = data.settings.varsayilan_stok_lokasyonu || 'depo';
+                if (form) {
+                    const select = form.querySelector('select[name="varsayilan_stok_lokasyonu"]');
+                    if (select) {
+                        select.value = data.settings.varsayilan_stok_lokasyonu || 'depo';
+                    }
+                }
             }
         })
         .catch(error => {
             console.error('Ayarlar yüklenirken hata:', error);
             showErrorToast('Ayarlar yüklenirken bir hata oluştu.');
         });
-
     openModal('settingsModal');
 }
 
@@ -65,11 +68,6 @@ function initializeSearch(inputSelector, callback, delay = 500) {
     }
 }
 
-// Örnek arama callback fonksiyonu
-function handleSearch() {
-    console.log('Arama yapılıyor...');
-    // Buraya arama işlemlerini ekleyebilirsiniz
-}
 
 // Başlatma fonksiyonu
 function initializeMain() {
@@ -77,7 +75,6 @@ function initializeMain() {
 
     initializeModalEvents();
     initializeSettingsForm();
-    initializeSearch('#searchInput', handleSearch);
 
     listenersInitialized = true;
 }

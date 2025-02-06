@@ -1,4 +1,8 @@
 /* Temel Container Stili */
+#header{
+	z-index:9999;
+}
+
 .container {
     padding: 20px;
     max-width: 1200px;
@@ -1141,3 +1145,65 @@ select[name="stock_status"]:has(option[value="normal"]:checked) {
     ring-color: #93c5fd;
 }
 
+.checkbox-wrapper {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+}
+
+.checkbox-wrapper:hover {
+    background-color: #f3f4f6;
+}
+
+.checkbox-wrapper label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.filters-title {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.grid-cols-6 {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: 100%;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.form-checkbox:checked {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.form-checkbox:focus {
+    outline: none;
+    ring: 2px;
+    ring-offset: 2px;
+    ring-color: #93c5fd;
+}
+
+.columns-section {
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+.columns-section button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: 1px solid #e5e7eb;
+}
+
+.columns-section button:hover {
+    background-color: #f3f4f6;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+}

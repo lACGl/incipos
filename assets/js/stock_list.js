@@ -1,5 +1,3 @@
-// stock_list.js
-
 import { ValidationUtils, DOMUtils, StorageUtils, showToast ,showErrorToast, showSuccessToast, debounce, showLoadingToast, closeLoadingToast, fetchData, loadSelectOptions } from './utils.js';
 import { editProduct, deleteProduct, showPriceHistory, transferProduct, initializeKarMarji, showEditModal, getProductDetails, showDetailsModal } from './stock_list_actions.js';
 import { addProduct } from './stock_list_process.js';
@@ -7,6 +5,7 @@ window.addProduct = addProduct;
 window.toggleAllCheckboxes = toggleAllCheckboxes;
 window.toggleFilters = toggleFilters;
 window.updateItemsPerPage = updateItemsPerPage;
+window.toggleColumns = toggleColumns;
 
 window.selectedProducts = [];
 let currentStockOrder = 'DESC';
@@ -1031,10 +1030,46 @@ function showActiveFilters() {
     }
 }
 
+// Sütunları göster/gizle
+function toggleColumns() {
+    const menu = document.getElementById('columnsMenu');
+    const arrow = document.getElementById('columnArrow');
+    
+    if (!menu) {
+        console.error('columnsMenu elementi bulunamadı');
+        return;
+    }
+
+    // Menüyü aç/kapa
+    menu.classList.toggle('hidden');
+    
+    // Oku döndür
+    if (arrow) {
+        arrow.style.transform = menu.classList.contains('hidden') ? '' : 'rotate(180deg)';
+    }
+
+    // Dışarı tıklamayı dinle
+    function handleClickOutside(event) {
+        const button = document.getElementById('columnsButton');
+        if (!menu.contains(event.target) && !button.contains(event.target)) {
+            menu.classList.add('hidden');
+            if (arrow) arrow.style.transform = '';
+            document.removeEventListener('click', handleClickOutside);
+        }
+    }
+
+    // Sadece menü açıkken event listener'ı ekle
+    if (!menu.classList.contains('hidden')) {
+        // Bir sonraki tick'te event listener'ı ekle (bu sayede toggle tıklaması event'i tetiklemez)
+        setTimeout(() => {
+            document.addEventListener('click', handleClickOutside);
+        }, 0);
+    }
+}
+
+
 // stock_list.js içindeki event listener kısmına eklenecek
 document.addEventListener('DOMContentLoaded', function() {
-    // Mevcut event listener'lar...
-
     // Stok durumu değişikliğini dinle
     const stockStatusSelect = document.querySelector('select[name="stock_status"]');
     if (stockStatusSelect) {
@@ -1051,6 +1086,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Sayfa 1'e dön ve tabloyu güncelle
             updateTableAjax(1);
         });
+    }
+	
+	    // Menü dışına tıklandığında menüyü kapat
+    const menu = document.getElementById('columnsMenu');
+    if (menu) {
+        menu.classList.add('hidden');
     }
 });
 

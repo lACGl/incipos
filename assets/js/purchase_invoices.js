@@ -101,19 +101,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// get_tedarikciler.php API'sini kontrol eden test fonksiyonu
-async function testTedarikciAPI() {
-    try {
-        const response = await fetch(API_ENDPOINTS.GET_TEDARIKCILER);
-        const data = await response.json();
-        console.log('API Test Sonucu:', data);
-        return data;
-    } catch (error) {
-        console.error('API Test Hatası:', error);
-        return null;
-    }
-}
-
 async function getTedarikciListesi() {
     try {
         const response = await fetch('api/get_tedarikciler.php');
@@ -244,105 +231,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Fatura ekleme fonksiyonu
-async function addInvoice() {
-	    // Önce mevcut modalı kapat
-    const activeModal = document.querySelector('.modal');
-    if (activeModal) {
-        activeModal.remove(); // Alternatif: activeModal.style.display = 'none';
-    }
-    try {
-        // Önce tedarikçileri yükle
-        const tedarikcilerResponse = await fetch('api/get_tedarikciler.php');
-        const tedarikcilerData = await tedarikcilerResponse.json();
-
-        if (!tedarikcilerData.success) {
-            throw new Error('Tedarikçiler yüklenemedi');
-        }
-
-        // Tedarikçi seçeneklerini oluştur
-        const tedarikciOptions = `
-            <option value="">Tedarikçi Seçin</option>
-            <option value="add_new" class="font-semibold text-blue-600">+ Yeni Tedarikçi Ekle</option>
-            ${tedarikcilerData.tedarikciler.map(t => 
-                `<option value="${t.id}">${t.ad}</option>`
-            ).join('')}
-        `;
-
-        // Modal'ı oluştur
-        const modalContent = `
-            <div id="addInvoiceModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="modal-content bg-white p-6 rounded-lg shadow-lg w-full max-w-xl">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold">Yeni Fatura Ekle</h2>
-                        <button onclick="closeModal('addInvoiceModal')" class="text-gray-500 hover:text-gray-700">×</button>
-                    </div>
-
-                    <form id="addInvoiceForm" onsubmit="handleAddInvoice(event)">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Fatura Seri*</label>
-                                <input type="text" name="fatura_seri" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Fatura No*</label>
-                                <input type="text" name="fatura_no" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            </div>
-                        </div>
-
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700">Tedarikçi*</label>
-                            <select name="tedarikci" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                                ${tedarikciOptions}
-                            </select>
-                        </div>
-
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700">Fatura Tarihi*</label>
-                            <input type="date" name="fatura_tarihi" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        </div>
-
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700">Açıklama</label>
-                            <textarea name="aciklama" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
-                        </div>
-
-                        <div class="mt-6 flex justify-end space-x-3">
-                            <button type="button" onclick="closeModal('addInvoiceModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700">
-                                İptal
-                            </button>
-                            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                                Fatura Oluştur
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        `;
-
-        // Modal'ı sayfaya ekle
-        document.body.insertAdjacentHTML('beforeend', modalContent);
-
-        // Tedarikçi seçimi değişikliğini dinle
-        const tedarikciSelect = document.querySelector('select[name="tedarikci"]');
-        if (tedarikciSelect) {
-            tedarikciSelect.addEventListener('change', function(e) {
-                if (e.target.value === 'add_new') {
-                    e.target.value = ''; // Select'i sıfırla
-                    openAddTedarikciModal();
-                }
-            });
-        }
-
-    } catch (error) {
-        console.error('Modal açılırken hata:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Hata!',
-            text: 'Fatura ekleme modalı açılırken bir hata oluştu: ' + error.message
-        });
-    }
-}
 
 // Tedarikçi seçeneklerini yükleyen yeni fonksiyon
 document.addEventListener('DOMContentLoaded', async function() {
@@ -628,6 +516,9 @@ document.getElementById('addProductForm')?.addEventListener('submit', function(e
 });
 
 function addToInvoice(product) {
+	if (!window.selectedProducts) {
+    window.selectedProducts = [];
+}
     // Ürün zaten ekli mi kontrol et
     const existingProduct = window.selectedProducts.find(p => p.id === product.id);
     if (existingProduct) {
@@ -1590,9 +1481,326 @@ function editInvoice(id, event) {
     });
 }
 
-
 function addProducts(faturaId) {
     document.getElementById('productFaturaId').value = faturaId;
     loadExistingProducts(faturaId);
     openModal('addProductModal');
+} 
+
+// Fatura Ekleme Modalını Aç
+function addInvoice() {
+    Swal.fire({
+        title: 'Yeni Fatura Ekle',
+        html: `
+            <form id="addInvoiceForm" class="text-left">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Fatura Tipi*</label>
+                        <select id="fatura_tipi" name="fatura_tipi" class="w-full rounded-md border-gray-300">
+                            <option value="satis">Satış</option>
+                            <option value="iade">İade</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Fatura Seri*</label>
+                        <input type="text" id="fatura_seri" name="fatura_seri" class="w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Fatura No*</label>
+                        <input type="text" id="fatura_no" name="fatura_no" class="w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Fatura Tarihi*</label>
+                        <input type="date" id="fatura_tarihi" name="fatura_tarihi" class="w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">İrsaliye No</label>
+                        <input type="text" id="irsaliye_no" name="irsaliye_no" class="w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">İrsaliye Tarihi</label>
+                        <input type="date" id="irsaliye_tarihi" name="irsaliye_tarihi" class="w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Tedarikçi*</label>
+                        <select id="tedarikci" name="tedarikci" class="w-full rounded-md border-gray-300">
+                            <option value="">Seçiniz</option>
+                            <option value="add_new" class="font-semibold text-blue-600">+ Yeni Tedarikçi Ekle</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Açıklama</label>
+                    <textarea id="aciklama" name="aciklama" rows="3" class="w-full rounded-md border-gray-300"></textarea>
+                </div>
+            </form>
+        `,
+        width: '800px',
+        showCancelButton: true,
+        confirmButtonText: 'Kaydet',
+        cancelButtonText: 'İptal',
+        didOpen: () => {
+            // Tedarikçileri yükle
+            loadTedarikciOptions();
+
+            // Tedarikçi select değişikliğini dinle
+            document.getElementById('tedarikci').addEventListener('change', function(e) {
+                if (e.target.value === 'add_new') {
+                    e.target.value = '';
+                    openAddTedarikciModal();
+                }
+            });
+        },
+        preConfirm: () => {
+            return validateAndCollectFormData();
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            saveInvoice(result.value);
+        }
+    });
+}
+
+// Yeni Tedarikçi Ekleme Modalı
+function openAddTedarikciModal() {
+    Swal.fire({
+        title: 'Yeni Tedarikçi Ekle',
+        html: `
+            <form id="addTedarikciForm" class="text-left">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Tedarikçi Adı*</label>
+                    <input type="text" id="tedarikci_ad" name="ad" class="w-full rounded-md border-gray-300" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Telefon*</label>
+                    <input type="tel" id="tedarikci_telefon" name="telefon" class="w-full rounded-md border-gray-300" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Adres*</label>
+                    <textarea id="tedarikci_adres" name="adres" rows="3" class="w-full rounded-md border-gray-300" required></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Şehir*</label>
+                    <input type="text" id="tedarikci_sehir" name="sehir" class="w-full rounded-md border-gray-300" required>
+                </div>
+            </form>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Kaydet',
+        cancelButtonText: 'İptal',
+        preConfirm: () => {
+            return saveTedarikci();
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            // Tedarikçi listesini güncelle ve yeni eklenen tedarikçiyi seç
+            loadTedarikciOptions().then(() => {
+                document.getElementById('tedarikci').value = result.value.id;
+            });
+        }
+    });
+}
+
+// Form Validasyonu ve Veri Toplama
+function validateAndCollectFormData() {
+    const requiredFields = ['fatura_seri', 'fatura_no', 'fatura_tarihi', 'tedarikci'];
+    const missingFields = [];
+
+    requiredFields.forEach(field => {
+        const element = document.getElementById(field);
+        if (!element.value.trim()) {
+            missingFields.push(element.previousElementSibling.textContent.replace('*', ''));
+        }
+    });
+
+    if (missingFields.length > 0) {
+        throw new Error(`Lütfen zorunlu alanları doldurun: ${missingFields.join(', ')}`);
+    }
+
+    const form = document.getElementById('addInvoiceForm');
+    const formData = new FormData(form);
+    return Object.fromEntries(formData.entries());
+}
+
+// Tedarikçi Kaydetme
+async function saveTedarikci() {
+    const form = document.getElementById('addTedarikciForm');
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch('api/add_tedarikci.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Tedarikçi eklenirken bir hata oluştu');
+        }
+
+        return data;
+
+    } catch (error) {
+        Swal.showValidationMessage(error.message);
+        return false;
+    }
+}
+
+// Fatura Kaydetme
+async function saveInvoice(formData) {
+    try {
+        const response = await fetch('api/add_invoice.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Fatura kaydedilirken bir hata oluştu');
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Başarılı!',
+            text: 'Fatura başarıyla eklendi',
+            timer: 1500,
+            showConfirmButton: false
+        }).then(() => {
+            window.location.reload();
+        });
+
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Hata!',
+            text: error.message
+        });
+    }
+}
+
+// Ürün Ekleme Modalı
+function addProducts(faturaId) {
+    Swal.fire({
+        title: 'Ürün Ekle',
+        html: `
+            <div class="mb-4">
+                <input type="text" id="productSearch" class="w-full px-4 py-2 rounded-md border-gray-300" 
+                       placeholder="Barkod okutun veya ürün adı ile arama yapın">
+            </div>
+            <div id="searchResults" class="mb-4 max-h-40 overflow-y-auto"></div>
+            <div id="selectedProducts">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2">Ürün</th>
+                            <th class="px-4 py-2">Miktar</th>
+                            <th class="px-4 py-2">Birim Fiyat</th>
+                            <th class="px-4 py-2">Toplam</th>
+                            <th class="px-4 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="selectedProductsBody"></tbody>
+                </table>
+            </div>
+        `,
+        width: '800px',
+        showCancelButton: true,
+        confirmButtonText: 'Kaydet',
+        cancelButtonText: 'İptal',
+        didOpen: () => {
+            initializeProductSearch(faturaId);
+        }
+    });
+}
+
+// Ürün Arama İşlevselliği
+function initializeProductSearch(faturaId) {
+    const searchInput = document.getElementById('productSearch');
+    let searchTimeout;
+
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const searchTerm = searchInput.value.trim();
+            if (searchTerm.length >= 3) {
+                searchProducts(searchTerm, faturaId);
+            }
+        }, 300);
+    });
+
+    // Barkod okuyucu için enter tuşunu dinle
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const searchTerm = searchInput.value.trim();
+            if (searchTerm) {
+                searchProducts(searchTerm, faturaId);
+            }
+        }
+    });
+}
+
+// Ürün Arama
+async function searchProducts(term, faturaId) {
+    try {
+        const response = await fetch(`api/search_product.php?term=${encodeURIComponent(term)}`);
+        const data = await response.json();
+
+        const resultsDiv = document.getElementById('searchResults');
+        
+        if (!data.success) {
+            if (data.not_found) {
+                // Ürün bulunamadı - Yeni ürün ekleme seçeneği sun
+                showAddNewProductOption(term, faturaId);
+            }
+            return;
+        }
+
+        displaySearchResults(data.products, faturaId);
+
+    } catch (error) {
+        console.error('Arama hatası:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Hata!',
+            text: 'Arama sırasında bir hata oluştu'
+        });
+    }
+}
+
+// Mağazaya Transfer İşlemi
+function transferToStore(faturaId) {
+    Swal.fire({
+        title: 'Mağazaya Transfer',
+        html: `
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Mağaza Seçin*</label>
+                <select id="magaza" class="w-full rounded-md border-gray-300">
+                    <option value="">Seçiniz</option>
+                </select>
+            </div>
+            <div id="transferProducts">
+                <!-- Ürünler burada listelenecek -->
+            </div>
+        `,
+        width: '800px',
+        showCancelButton: true,
+        confirmButtonText: 'Transfer Et',
+        cancelButtonText: 'İptal',
+        didOpen: () => {
+            loadMagazalar();
+            loadInvoiceProducts(faturaId);
+        },
+        preConfirm: () => {
+            return validateAndCollectTransferData(faturaId);
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            processTransfer(result.value);
+        }
+    });
 }

@@ -1,5 +1,5 @@
 <?php
-session_start();
+include 'header.php';
 require_once 'db_connection.php';
 
 // Kullanıcı giriş kontrolü
@@ -80,6 +80,19 @@ $total_products = $stmt->fetch(PDO::FETCH_ASSOC)['total_products'];
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $total_pages = ceil($total_products / $items_per_page);
 $offset = ($current_page - 1) * $items_per_page;
+
+// İstatistik kartları için sorgular
+$total_query = "SELECT COUNT(*) as total FROM urun_stok";
+$total_products = $conn->query($total_query)->fetch(PDO::FETCH_ASSOC)['total'];
+
+$in_stock_query = "SELECT COUNT(*) as total FROM urun_stok WHERE stok_miktari > 0";
+$in_stock_products = $conn->query($in_stock_query)->fetch(PDO::FETCH_ASSOC)['total'];
+
+$critical_stock_query = "SELECT COUNT(*) as total FROM urun_stok WHERE stok_miktari > 0 AND stok_miktari <= 10";
+$critical_stock = $conn->query($critical_stock_query)->fetch(PDO::FETCH_ASSOC)['total'];
+
+$out_of_stock_query = "SELECT COUNT(*) as total FROM urun_stok WHERE stok_miktari = 0";
+$out_of_stock = $conn->query($out_of_stock_query)->fetch(PDO::FETCH_ASSOC)['total'];
 
 // stock_list.php içinde createTable fonksiyonunu güncelle
 function createTable($conn, $selected_columns, $items_per_page, $offset, $search_column, $search_term) {
@@ -270,83 +283,203 @@ $table_html = createTable($conn, $selected_columns, $items_per_page, $offset, $s
 </head>
 <body>
     <div class="container">
-        <form id="itemsForm">
-            <div class="menu-wrapper">
-                <div class="menu">
-                    <button type="button" class="filters-button" id="toggleFiltersBtn">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                        </svg>
-                        Filtreler
-                    </button>
-                    <button type="button" class="actions-button" onclick="toggleActions(event)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12.1 2.7c0 0-2.9 0-4 1.1L3.7 8.2c-.8.8-.8 2 0 2.8l9.3 9.3c.8.8 2 .8 2.8 0l4.4-4.4c1.1-1.1 1.1-4 1.1-4l-9.2-9.2z"/>
-                            <circle cx="15" cy="9" r="1"/>
-                        </svg>
-                        İşlemler
-                        <div id="actionsMenu" class="actions-menu">
-                            <a href="#" onclick="addProduct()">Ürün Ekle</a>
-                            <a href="#" onclick="deleteSelected()">Seçili Ürünleri Sil</a>
-                            <a href="#" onclick="deactivateSelected()">Seçili Ürünleri Pasife Al</a>
-                            <a href="#" onclick="activateSelected()">Seçili Ürünleri Aktife Al</a>
-                            <a href="#" onclick="exportSelected()">Seçili Ürünleri Dışarı Aktar</a>
-                        </div>
-                    </button>
+<form id="itemsForm">
+    <div class="menu-wrapper">
+        <div class="menu">
+            <!-- Top Menu Buttons -->
+            <button type="button" class="filters-button" id="toggleFiltersBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filtreler
+            </button>
+            <button type="button" class="actions-button" onclick="toggleActions(event)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12.1 2.7c0 0-2.9 0-4 1.1L3.7 8.2c-.8.8-.8 2 0 2.8l9.3 9.3c.8.8 2 .8 2.8 0l4.4-4.4c1.1-1.1 1.1-4 1.1-4l-9.2-9.2z"/>
+                    <circle cx="15" cy="9" r="1"/>
+                </svg>
+                İşlemler
+                <div id="actionsMenu" class="actions-menu">
+                    <a href="#" onclick="addProduct()">Ürün Ekle</a>
+                    <a href="#" onclick="deleteSelected()">Seçili Ürünleri Sil</a>
+                    <a href="#" onclick="deactivateSelected()">Seçili Ürünleri Pasife Al</a>
+                    <a href="#" onclick="activateSelected()">Seçili Ürünleri Aktife Al</a>
+                    <a href="#" onclick="exportSelected()">Seçili Ürünleri Dışarı Aktar</a>
+                </div>
+            </button>
+        </div>
+
+        <!-- Filters Panel -->
+        <div id="filtersPanel" class="filters-panel">
+            <div class="filters-content space-y-4">
+                <!-- Full Width Search Box in Its Own Row -->
+                <div class="w-full">
+                    <input type="text" 
+                           name="search_term" 
+                           placeholder="Barkod veya ürün adı ara..." 
+                           class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
-                <div id="filtersPanel" class="filters-panel">
-                    <div class="filters-content">
-                        <!-- Search Box -->
-                        <div class="search-box relative">
-                            <input type="text" 
-                                   name="search_term" 
-                                   placeholder="Barkod veya ürün adı ara..." 
-                                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
+                <!-- Three Filters in One Row -->
+                <div class="flex gap-4">
+                    <!-- Stok Durumu Filter -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Stok Durumu</label>
+                        <select name="stock_status" class="w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200">
+                            <option value="" class="bg-white">Tümü</option>
+                            <option value="out" class="bg-red-100">Stok Yok</option>
+                            <option value="low" class="bg-yellow-100">Kritik Stok (10 ve altı)</option>
+                            <option value="normal" class="bg-blue-100">Normal Stok</option>
+                        </select>
+                    </div>
 
-                        <div class="flex space-x-4 mb-4">
-                            <!-- Stok Durumu Filtresi -->
-                            <div class="w-1/3">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Stok Durumu</label>
-                                <select name="stock_status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200">
-                                    <option value="" class="bg-white">Tümü</option>
-                                    <option value="out" class="bg-red-100">Stok Yok</option>
-                                    <option value="low" class="bg-yellow-100">Kritik Stok (10 ve altı)</option>
-                                    <option value="normal" class="bg-blue-100">Normal Stok</option>
-                                </select>
+                    <!-- Son Güncelleme Tarihi Filter -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Son Güncelleme Tarihi</label>
+                        <input type="date" 
+                               name="last_movement_date" 
+                               class="w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200">
+                    </div>
+
+                    <!-- Gösterilecek Sütunlar Dropdown -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Gösterilecek Sütunlar</label>
+                        <button type="button" 
+                                id="columnsButton" 
+                                onclick="toggleColumns()" 
+                                class="w-full h-10 flex justify-between items-center px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500">
+                            <span>Sütunları Seç</span>
+                            <svg class="w-5 h-5 ml-2 transform transition-transform" id="columnArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Columns Menu -->
+                        <div id="columnsMenu" class="hidden absolute right-0 mt-2 w-[800px] bg-white shadow-xl rounded-lg ring-1 ring-black ring-opacity-5 z-50">
+                            <div class="grid grid-cols-4 gap-6 p-6">
+                                <!-- Temel Bilgiler -->
+                                <div class="space-y-3">
+                                    <h4 class="font-medium text-gray-900 text-lg">Temel Bilgiler</h4>
+                                    <div class="space-y-3">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="kod" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300" checked>
+                                            <span class="ml-2 text-gray-700">Ürün Kodu</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="barkod" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300" checked>
+                                            <span class="ml-2 text-gray-700">Barkod</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="ad" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300" checked>
+                                            <span class="ml-2 text-gray-700">Ürün Adı</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="web_id" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Web ID</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Fiyat Bilgileri -->
+                                <div class="space-y-3">
+                                    <h4 class="font-medium text-gray-900 text-lg">Fiyat Bilgileri</h4>
+                                    <div class="space-y-3">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="alis_fiyati" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Alış Fiyatı</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="satis_fiyati" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300" checked>
+                                            <span class="ml-2 text-gray-700">Satış Fiyatı</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="indirimli_fiyat" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">İndirimli Fiyat</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="kdv_orani" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">KDV Oranı</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Stok Bilgileri -->
+                                <div class="space-y-3">
+                                    <h4 class="font-medium text-gray-900 text-lg">Stok Bilgileri</h4>
+                                    <div class="space-y-3">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="stok_miktari" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300" checked>
+                                            <span class="ml-2 text-gray-700">Stok Miktarı</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="kayit_tarihi" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Kayıt Tarihi</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="durum" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300" checked>
+                                            <span class="ml-2 text-gray-700">Durum</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="yil" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Üretim Yılı</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Kategori Bilgileri -->
+                                <div class="space-y-3">
+                                    <h4 class="font-medium text-gray-900 text-lg">Kategori Bilgileri</h4>
+                                    <div class="space-y-3">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="departman_id" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Departman</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="birim_id" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Birim</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="ana_grup_id" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Ana Grup</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="columns[]" value="alt_grup_id" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300">
+                                            <span class="ml-2 text-gray-700">Alt Grup</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-
-                            <!-- Son Hareket Tarihi Filtresi -->
-                            <div class="w-1/3">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Son Güncelleme Tarihi</label>
-                                <input type="date" 
-                                       name="last_movement_date" 
-                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200">
-                            </div>
-                        </div>
-
-                        <!-- Columns Selection -->
-                        <div class="filters-title mt-4 mb-2">Gösterilecek Sütunlar</div>
-                        <div class="flex flex-wrap gap-4">
-                            <?php foreach ($columns as $column): ?>
-                                <?php if ($column !== 'id'): ?>
-                                    <label class="flex items-center gap-2 min-w-[150px] hover:bg-gray-100 p-2 rounded">
-                                        <input type="checkbox" 
-                                               id="col_<?php echo $column; ?>"
-                                               name="columns[]" 
-                                               value="<?php echo htmlspecialchars($column); ?>"
-                                               class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300"
-                                               <?php echo in_array($column, $selected_columns) ? 'checked' : ''; ?>>
-                                        <span class="text-sm text-gray-700">
-                                            <?php echo htmlspecialchars($column); ?>
-                                        </span>
-                                    </label>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+				<!-- İstatistik Kartları -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 mb-6">
+    <!-- Toplam Ürün -->
+    <div class="bg-blue-50 p-4 rounded-lg">
+        <h3 class="text-sm font-medium text-blue-800">Toplam Ürün</h3>
+        <p class="text-2xl font-bold text-blue-900"><?php echo number_format($total_products, 0, ',', '.'); ?></p>
+    </div>
+
+    <!-- Stoklu Ürün -->
+    <div class="bg-green-50 p-4 rounded-lg">
+        <h3 class="text-sm font-medium text-green-800">Stoklu Ürün</h3>
+        <p class="text-2xl font-bold text-green-900"><?php echo number_format($in_stock_products, 0, ',', '.'); ?></p>
+    </div>
+
+    <!-- Kritik Stok -->
+    <div class="bg-yellow-50 p-4 rounded-lg">
+        <h3 class="text-sm font-medium text-yellow-800">Kritik Stok</h3>
+        <p class="text-2xl font-bold text-yellow-900"><?php echo number_format($critical_stock, 0, ',', '.'); ?></p>
+    </div>
+
+    <!-- Stoksuz Ürün -->
+    <div class="bg-red-50 p-4 rounded-lg">
+        <h3 class="text-sm font-medium text-red-800">Stoksuz Ürün</h3>
+        <p class="text-2xl font-bold text-red-900"><?php echo number_format($out_of_stock, 0, ',', '.'); ?></p>
+    </div>
+</div>
             </div>
         </form>
 
@@ -414,17 +547,22 @@ $table_html = createTable($conn, $selected_columns, $items_per_page, $offset, $s
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="mt-8 text-center text-gray-600 text-sm">
-        <p>© 2024 İnciPos Admin Paneli</p>
-    </footer>
+<?php
+// Sayfa yüklenme süresini hesapla
+$end_time = microtime(true);
+$execution_time = round($end_time - $start_time, 3);
 
-    <!-- Scripts -->
+// Sayfa özel scriptleri
+$page_scripts = '
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script type="module" src="/assets/js/utils.js"></script>
     <script type="module" src="/assets/js/stock_list.js"></script>
     <script type="module" src="/assets/js/stock_list_process.js"></script>
     <script type="module" src="/assets/js/stock_list_actions.js"></script>
     <script type="module" src="/assets/js/main.js"></script>
-</body>
-</html>
+';
+
+// Footer'ı dahil et
+include 'footer.php';
+?>
+

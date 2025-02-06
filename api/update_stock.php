@@ -1,10 +1,9 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+error_reporting(0);
+ini_set('display_errors', 0);
+header('Content-Type: application/json');
 session_start();
 require_once '../db_connection.php';
-
-header('Content-Type: application/json');
 
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     die(json_encode(['success' => false, 'message' => 'Yetkisiz erişim']));
@@ -12,7 +11,10 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
 
 try {
     $data = json_decode(file_get_contents('php://input'), true);
-    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Geçersiz JSON verisi');
+    }
+
     $id = $data['id'] ?? null;
     $amount = floatval($data['amount'] ?? 0);
     $operation = $data['operation'] ?? null;
@@ -20,13 +22,15 @@ try {
     $magaza_id = $data['magaza_id'] ?? null;
     $price = floatval($data['price'] ?? 0);
 
-    if (!$id || !$amount || !$operation) {
-        throw new Exception('Eksik parametreler');
+    // Geçerlilik kontrolleri
+    if (!$id || $amount <= 0 || !$operation) {
+        throw new Exception('Eksik veya geçersiz parametreler');
     }
+
+    $amount = round($amount, 2); // Miktarı 2 decimal'e yuvarla
 
     $conn->beginTransaction();
 
-    // Ürün bilgilerini al
     $stmt = $conn->prepare("SELECT satis_fiyati, barkod FROM urun_stok WHERE id = ?");
     $stmt->execute([$id]);
     $urun = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -35,7 +39,7 @@ try {
         throw new Exception('Ürün bulunamadı');
     }
 
-    // Eğer fiyat belirtilmemişse son işlem fiyatını bul
+    // Son fiyat bilgisini al
     if (!$price) {
         $stmt = $conn->prepare("
             SELECT maliyet 
@@ -50,7 +54,7 @@ try {
     }
 
     if ($location === 'depo') {
-        // Depo stok kontrolü
+        // Depo stoğunu güncelle
         $stmt = $conn->prepare("
             SELECT stok_miktari 
             FROM depo_stok 
@@ -60,14 +64,18 @@ try {
         $stmt->execute([$id]);
         $current_stock = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($operation === 'remove' && (!$current_stock || $current_stock['stok_miktari'] < $amount)) {
-            throw new Exception('Depoda yeterli stok yok');
+        // Stok çıkışı için kontrol
+        if ($operation === 'remove') {
+            if (!$current_stock || $current_stock['stok_miktari'] < $amount) {
+                throw new Exception('Depoda yeterli stok yok');
+            }
         }
 
+        // Stok güncelleme
         if ($current_stock) {
             $new_amount = $operation === 'add' ? 
-                         $current_stock['stok_miktari'] + $amount : 
-                         $current_stock['stok_miktari'] - $amount;
+                       ($current_stock['stok_miktari'] + $amount) : 
+                       ($current_stock['stok_miktari'] - $amount);
 
             $stmt = $conn->prepare("
                 UPDATE depo_stok 
@@ -88,13 +96,13 @@ try {
             $stmt->execute([$id, $amount]);
         }
 
-        // Stok hareketi ekle
+        // Stok hareketi kaydet
         $stmt = $conn->prepare("
             INSERT INTO stok_hareketleri (
                 urun_id, miktar, hareket_tipi, aciklama,
                 tarih, kullanici_id, depo_id, maliyet, satis_fiyati
             ) VALUES (
-                ?, ?, ?, 'Manuel stok girişi',
+                ?, ?, ?, ?,
                 NOW(), ?, 1, ?, ?
             )
         ");
@@ -102,16 +110,17 @@ try {
             $id,
             $amount,
             $operation === 'add' ? 'giris' : 'cikis',
+            $operation === 'add' ? 'Manuel stok girişi' : 'Manuel stok çıkışı',
             $_SESSION['user_id'] ?? null,
             $price,
             $urun['satis_fiyati']
         ]);
-    } else {
+    }  else {
         if (!$magaza_id) {
             throw new Exception('Mağaza seçilmedi');
         }
 
-        // Mağaza stok kontrolü
+        // Mağaza stoğunu kontrol et
         $stmt = $conn->prepare("
             SELECT stok_miktari 
             FROM magaza_stok 
@@ -121,22 +130,46 @@ try {
         $stmt->execute([$magaza_id, $urun['barkod']]);
         $current_stock = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($operation === 'remove' && (!$current_stock || $current_stock['stok_miktari'] < $amount)) {
-            throw new Exception('Mağazada yeterli stok yok');
+        if ($operation === 'remove') {
+            if (!$current_stock || $current_stock['stok_miktari'] < $amount) {
+                throw new Exception('Mağazada yeterli stok yok');
+            }
         }
 
+        // ÖNEMLİ: Önce stok hareketini kaydet
+        $stmt = $conn->prepare("
+            INSERT INTO stok_hareketleri (
+                urun_id, miktar, hareket_tipi, aciklama,
+                tarih, kullanici_id, magaza_id, maliyet, satis_fiyati
+            ) VALUES (
+                ?, ?, ?, ?,
+                NOW(), ?, ?, ?, ?
+            )
+        ");
+        $stmt->execute([
+            $id,
+            $amount,
+            $operation === 'add' ? 'giris' : 'cikis',
+            $operation === 'add' ? 'Manuel stok girişi' : 'Manuel stok çıkışı',
+            $_SESSION['user_id'] ?? null,
+            $magaza_id,
+            $price,
+            $urun['satis_fiyati']
+        ]);
+
+        // Sonra mağaza stoğunu güncelle
         if ($current_stock) {
             $new_amount = $operation === 'add' ? 
-                         $current_stock['stok_miktari'] + $amount : 
-                         $current_stock['stok_miktari'] - $amount;
+                       ($current_stock['stok_miktari'] + $amount) : 
+                       ($current_stock['stok_miktari'] - $amount);
 
             $stmt = $conn->prepare("
-    UPDATE magaza_stok 
-    SET stok_miktari = ?, 
-        satis_fiyati = ?,
-        son_guncelleme = NOW() 
-    WHERE magaza_id = ? AND barkod = ?
-");
+                UPDATE magaza_stok 
+                SET stok_miktari = ?, 
+                    satis_fiyati = ?,
+                    son_guncelleme = NOW() 
+                WHERE magaza_id = ? AND barkod = ?
+            ");
             $stmt->execute([$new_amount, $price, $magaza_id, $urun['barkod']]);
         } else {
             if ($operation === 'remove') {
@@ -145,11 +178,7 @@ try {
 
             $stmt = $conn->prepare("
                 INSERT INTO magaza_stok (
-                    barkod, 
-                    magaza_id, 
-                    stok_miktari, 
-                    satis_fiyati,
-                    son_guncelleme
+                    barkod, magaza_id, stok_miktari, satis_fiyati, son_guncelleme
                 ) VALUES (?, ?, ?, ?, NOW())
             ");
             $stmt->execute([
@@ -159,39 +188,18 @@ try {
                 $price
             ]);
         }
-
-        // Stok hareketi ekle
-        $stmt = $conn->prepare("
-            INSERT INTO stok_hareketleri (
-                urun_id, miktar, hareket_tipi, aciklama,
-                tarih, kullanici_id, magaza_id, maliyet, satis_fiyati
-            ) VALUES (
-                ?, ?, ?, 'Manuel stok girişi',
-                NOW(), ?, ?, ?, ?
-            )
-        ");
-        $stmt->execute([
-            $id,
-            $amount,
-            $operation === 'add' ? 'giris' : 'cikis',
-            $_SESSION['user_id'] ?? null,
-            $magaza_id,
-            $price,
-            $urun['satis_fiyati']
-        ]);
     }
 
-    // Toplam stoku güncelle
+    // Toplam stoku hesapla
     $stmt = $conn->prepare("
         SELECT 
-            (SELECT COALESCE(SUM(stok_miktari), 0) FROM depo_stok WHERE urun_id = ?) as depo_stok,
-            (SELECT COALESCE(SUM(stok_miktari), 0) FROM magaza_stok WHERE barkod = ?) as magaza_stok
+            COALESCE((SELECT stok_miktari FROM depo_stok WHERE urun_id = ? AND depo_id = 1), 0) +
+            COALESCE((SELECT SUM(stok_miktari) FROM magaza_stok WHERE barkod = ?), 0) as total_stock
     ");
     $stmt->execute([$id, $urun['barkod']]);
-    $total_stock = $stmt->fetch(PDO::FETCH_ASSOC);
+    $total = $stmt->fetchColumn();
 
-    $total = floatval($total_stock['depo_stok']) + floatval($total_stock['magaza_stok']);
-
+    // Ana stok tablosunu güncelle
     $stmt = $conn->prepare("UPDATE urun_stok SET stok_miktari = ? WHERE id = ?");
     $stmt->execute([$total, $id]);
 
@@ -211,5 +219,14 @@ try {
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
+    ]);
+} catch (Throwable $t) {
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    error_log('Kritik hata: ' . $t->getMessage());
+    echo json_encode([
+        'success' => false,
+        'message' => 'Sistem hatası oluştu'
     ]);
 }

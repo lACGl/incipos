@@ -98,13 +98,15 @@ async function performApiRequest(url, data, successMessage) {
         showErrorToast(error.message);
     }
 }
+		
+		export function addProduct(options = {}) {
+    const { 
+        initialBarkod = '', // Başlangıç barkod değeri
+        onSave = null      // Kayıt sonrası callback
+    } = options;
 
-// Ürün Ekle Fonksiyonu
-export function addProduct() {
-    Swal.fire({
-        title: 'Yeni Ürün Ekle',
-        width: '50%',
-        html: `
+    // Modal HTML'i aynı kalacak
+    const modalHtml = `
 <div class="form-container">
     <div class="form-group">
         <label for="kod" class="form-label">Kod*</label>
@@ -191,13 +193,23 @@ export function addProduct() {
         <input type="file" id="resim" name="resim" class="form-input">
     </div>
 </div>
-        `,
+        `
+
+    Swal.fire({
+        title: 'Yeni Ürün Ekle',
+        html: modalHtml,
+        width: '50%',
         showCancelButton: true,
-        confirmButtonText: 'Ekle',
+        confirmButtonText: 'Kaydet',
         cancelButtonText: 'İptal',
         didOpen: () => {
             console.log('Modal açıldı');
             
+            // Barkod alanını doldur
+            if (initialBarkod) {
+                document.getElementById('barkod').value = initialBarkod;
+            }
+
             // Kar marjı hesaplama
             const alisFiyati = document.getElementById('alis_fiyati');
             const satisFiyati = document.getElementById('satis_fiyati');
@@ -231,76 +243,90 @@ export function addProduct() {
             initializeNewEntryModal('ana_grup', 'api/add_ana_grup.php');
             initializeNewEntryModal('alt_grup', 'api/add_alt_grup.php');
         },
-        preConfirm: () => {
-            // Zorunlu alan kontrolü
-            const requiredFields = ['kod', 'barkod', 'ad', 'kdv_orani', 'alis_fiyati', 'satis_fiyati'];
-            const missingFields = [];
+        preConfirm: async () => {
+            try {
+                // Zorunlu alan kontrolü
+                const requiredFields = ['kod', 'barkod', 'ad', 'kdv_orani', 'alis_fiyati', 'satis_fiyati'];
+                const missingFields = [];
 
-            requiredFields.forEach(field => {
-                const element = document.getElementById(field);
-                if (!element || !element.value.trim()) {
-                    missingFields.push(field);
+                requiredFields.forEach(field => {
+                    const element = document.getElementById(field);
+                    if (!element || !element.value.trim()) {
+                        missingFields.push(field);
+                    }
+                });
+
+                if (missingFields.length > 0) {
+                    Swal.showValidationMessage(`Eksik alanlar: ${missingFields.join(', ')}`);
+                    return false;
                 }
-            });
 
-            if (missingFields.length > 0) {
-                Swal.showValidationMessage(`Eksik alanlar: ${missingFields.join(', ')}`);
-                return false;
-            }
+                // Form verilerini topla
+                const formData = {
+                    kod: document.getElementById('kod').value.trim(),
+                    barkod: document.getElementById('barkod').value.trim(),
+                    ad: document.getElementById('ad').value.trim(),
+                    web_id: document.getElementById('web_id').value || null,
+                    alis_fiyati: parseFloat(document.getElementById('alis_fiyati').value) || 0,
+                    satis_fiyati: parseFloat(document.getElementById('satis_fiyati').value) || 0,
+                    stok_miktari: parseFloat(document.getElementById('stok_miktari').value) || 0,
+                    kdv_orani: document.getElementById('kdv_orani').value,
+                    departman: document.getElementById('departman').value || null,
+                    birim: document.getElementById('birim').value || null,
+                    ana_grup: document.getElementById('ana_grup').value || null,
+                    alt_grup: document.getElementById('alt_grup').value || null,
+                    yil: parseInt(document.getElementById('yil').value) || new Date().getFullYear(),
+                    durum: document.getElementById('durum').value
+                };
 
-            // Form verilerini topla
-            const formData = {
-                kod: document.getElementById('kod').value.trim(),
-                barkod: document.getElementById('barkod').value.trim(),
-                ad: document.getElementById('ad').value.trim(),
-                web_id: document.getElementById('web_id').value || null,
-                alis_fiyati: parseFloat(document.getElementById('alis_fiyati').value) || 0,
-                satis_fiyati: parseFloat(document.getElementById('satis_fiyati').value) || 0,
-                stok_miktari: parseFloat(document.getElementById('stok_miktari').value) || 0,
-                kdv_orani: document.getElementById('kdv_orani').value,
-                departman: document.getElementById('departman').value || null,
-                birim: document.getElementById('birim').value || null,
-                ana_grup: document.getElementById('ana_grup').value || null,
-                alt_grup: document.getElementById('alt_grup').value || null,
-                yil: parseInt(document.getElementById('yil').value) || new Date().getFullYear(),
-                durum: document.getElementById('durum').value
-            };
+                const response = await fetch('api/add_product.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
 
-            // API isteği
-            return fetch('api/add_product.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            })
-            .then(response => response.json())
-            .then(result => {
+                const result = await response.json();
+
                 if (!result.success) {
                     throw new Error(result.message || 'Bir hata oluştu');
                 }
+
+                // Kayıt başarılıysa ve callback varsa çağır
+                if (onSave) {
+                    onSave(result);
+                }
+
                 return result;
-            });
+            } catch (error) {
+                Swal.showValidationMessage(error.message);
+                return false;
+            }
         }
     }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Başarılı!',
-                text: 'Ürün başarıyla eklendi',
-                showConfirmButton: false,
-                timer: 1500
-            }).then(() => {
-                updateTableAjax(); // Tabloyu güncelle
-            });
-        }
-    }).catch(error => {
+    if (result.isConfirmed) {
+        // Başarı mesajını göster
         Swal.fire({
-            icon: 'error',
-            title: 'Hata!',
-            text: error.message
+            icon: 'success',
+            title: 'Başarılı!',
+            text: 'Ürün başarıyla eklendi',
+            showConfirmButton: false,
+            timer: 1500
+        }).then(() => {
+            if (onSave) {
+                onSave(result.value);
+            } else {
+                // Normal modda tabloyu güncelle
+                updateTableAjax();
+            }
         });
+    }
+}).catch(error => {
+    Swal.fire({
+        icon: 'error',
+        title: 'Hata!',
+        text: error.message
     });
+});
 }
 
 // Seçili Ürünleri Sil
@@ -345,6 +371,9 @@ function exportSelected() {
     }
     window.location.href = `export_products.php?ids=${ids.join(',')}`;
 }
+
+// stock_list_process.js
+
 
 // Legacy support için window objesine ekleme
 window.StockListProcessModule = StockListProcessModule;

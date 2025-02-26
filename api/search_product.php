@@ -19,23 +19,23 @@ try {
     }
 
     // SQL sorgusunu hazırla
-    $sql = "SELECT 
-                id, 
-                barkod, 
-                kod, 
-                ad, 
-                stok_miktari, 
-                satis_fiyati, 
-                kdv_orani 
-            FROM urun_stok 
-            WHERE (
-                barkod LIKE :term 
-                OR kod LIKE :term 
-                OR ad LIKE :term 
-                OR LOWER(ad) LIKE LOWER(:term)
-            )
-            AND durum = 'aktif'
-            LIMIT 10";
+$sql = "SELECT 
+    us.id, 
+    us.kod,  
+    us.barkod, 
+    us.ad, 
+    us.stok_miktari, 
+    us.satis_fiyati,
+    us.alis_fiyati,
+    us.kdv_orani 
+FROM urun_stok us 
+WHERE (
+    us.barkod LIKE :term 
+    OR us.kod LIKE :term 
+    OR us.ad LIKE :term 
+)
+AND us.durum = 'aktif'
+LIMIT 10";
 
     $stmt = $conn->prepare($sql);
     $searchParam = '%' . $search_term . '%';

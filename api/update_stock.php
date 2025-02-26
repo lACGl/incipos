@@ -21,6 +21,7 @@ try {
     $location = $data['location'] ?? 'depo';
     $magaza_id = $data['magaza_id'] ?? null;
     $price = floatval($data['price'] ?? 0);
+    $satis_fiyati = floatval($data['satis_fiyati'] ?? 0);
 
     // Geçerlilik kontrolleri
     if (!$id || $amount <= 0 || !$operation) {
@@ -51,6 +52,11 @@ try {
         $stmt->execute([$id]);
         $lastPrice = $stmt->fetch(PDO::FETCH_COLUMN);
         $price = $lastPrice ?: $urun['satis_fiyati'];
+    }
+
+    // Satış fiyatı belirlenmemişse varsayılan kar marjı ile hesapla
+    if (!$satis_fiyati || $satis_fiyati <= 0) {
+        $satis_fiyati = $price * 1.2; // %20 kar marjı
     }
 
     if ($location === 'depo') {
@@ -113,7 +119,7 @@ try {
             $operation === 'add' ? 'Manuel stok girişi' : 'Manuel stok çıkışı',
             $_SESSION['user_id'] ?? null,
             $price,
-            $urun['satis_fiyati']
+            $satis_fiyati
         ]);
     }  else {
         if (!$magaza_id) {
@@ -154,7 +160,7 @@ try {
             $_SESSION['user_id'] ?? null,
             $magaza_id,
             $price,
-            $urun['satis_fiyati']
+            $satis_fiyati
         ]);
 
         // Sonra mağaza stoğunu güncelle
@@ -170,7 +176,7 @@ try {
                     son_guncelleme = NOW() 
                 WHERE magaza_id = ? AND barkod = ?
             ");
-            $stmt->execute([$new_amount, $price, $magaza_id, $urun['barkod']]);
+            $stmt->execute([$new_amount, $satis_fiyati, $magaza_id, $urun['barkod']]);
         } else {
             if ($operation === 'remove') {
                 throw new Exception('Mağazada stok bulunamadı');
@@ -185,9 +191,36 @@ try {
                 $urun['barkod'],
                 $magaza_id,
                 $amount,
-                $price
+                $satis_fiyati
             ]);
         }
+    }
+
+    // EKLENEN KOD: Ana ürün tablosundaki satış fiyatını güncelle
+    if ($operation === 'add' && $satis_fiyati > 0) {
+        $stmt = $conn->prepare("
+            UPDATE urun_stok 
+            SET satis_fiyati = ? 
+            WHERE id = ?
+        ");
+        $stmt->execute([$satis_fiyati, $id]);
+
+        // Fiyat değişiklik kaydı ekle
+        $stmt = $conn->prepare("
+            INSERT INTO urun_fiyat_gecmisi (
+                urun_id, islem_tipi, eski_fiyat, yeni_fiyat, 
+                aciklama, kullanici_id, tarih
+            ) VALUES (
+                ?, 'satis_fiyati_guncelleme', ?, ?,
+                'Manuel stok girişinde fiyat güncellemesi', ?, NOW()
+            )
+        ");
+        $stmt->execute([
+            $id,
+            $urun['satis_fiyati'],
+            $satis_fiyati,
+            $_SESSION['user_id'] ?? null
+        ]);
     }
 
     // Toplam stoku hesapla

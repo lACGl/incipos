@@ -24,27 +24,32 @@ const selectAllCheckbox = document.getElementById('selectAll');
 
 // Sayfa yüklendiğinde yapılacak işlemler
 function initializePage() {
-    updateTableAjax(1);
+    // stock_list sayfasında olup olmadığımızı kontrol et
+    const isStockListPage = document.getElementById('itemsForm') !== null;
+    
+    if (isStockListPage) {
+        updateTableAjax(1);
 
-    if (itemsPerPageSelect) {
-        itemsPerPageSelect.addEventListener('change', handleItemsPerPageChange);
+        if (itemsPerPageSelect) {
+            itemsPerPageSelect.addEventListener('change', handleItemsPerPageChange);
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', debounceSearch);
+        }
+
+        if (itemsForm) {
+            itemsForm.addEventListener('submit', handleFormSubmit);
+        }
+
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+        }
+
+        initializeEventListeners();
+        initializeProductRowEvents();
+        initializePaginationEvents();
     }
-
-    if (searchInput) {
-        searchInput.addEventListener('input', debounceSearch);
-    }
-
-    if (itemsForm) {
-        itemsForm.addEventListener('submit', handleFormSubmit);
-    }
-
-    if (selectAllCheckbox) {
-        selectAllCheckbox.checked = false;
-    }
-
-    initializeEventListeners();
-    initializeProductRowEvents();
-    initializePaginationEvents();
 }
 
 function initializeEventListeners() {

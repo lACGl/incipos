@@ -733,6 +733,7 @@ export function generateProductDetailsHtml(product, stock) {
 export function generateStockMovementsHtml(hareketler) {
 	    hareketler = hareketler || [];
 
+
     return `
         <div class="mt-6">
             <h3 class="text-lg font-medium mb-3">Stok Hareketleri</h3>
@@ -927,6 +928,15 @@ function generateDepotStockHtml(depoStok) {
  * Mağaza stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
  */
 function generateStoreStocksHtml(magazaStoklari) {
+    // Tarihe göre azalan sırada sırala (en yeni güncelleme üstte)
+    const sortedMagazaStoklari = Array.isArray(magazaStoklari) 
+        ? magazaStoklari.sort((a, b) => {
+            const dateA = new Date(a.son_guncelleme || 0);
+            const dateB = new Date(b.son_guncelleme || 0);
+            return dateB - dateA;
+        }) 
+        : [];
+
     return `
         <div class="bg-green-50 p-4 rounded-lg">
             <h3 class="font-bold text-lg mb-2">Mağaza Stokları</h3>
@@ -940,7 +950,7 @@ function generateStoreStocksHtml(magazaStoklari) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${Array.isArray(magazaStoklari) ? magazaStoklari.map(magaza => `
+                    ${sortedMagazaStoklari.length ? sortedMagazaStoklari.map(magaza => `
                         <tr>
                             <td class="px-4 py-2">${magaza.magaza_adi || '-'}</td>
                             <td class="px-4 py-2 text-right">${magaza.stok_miktari || 0}</td>
@@ -957,7 +967,6 @@ function generateStoreStocksHtml(magazaStoklari) {
         </div>
     `;
 }
-
 /**
  * Genel toplam stok bilgisi HTML'sini oluşturan yardımcı fonksiyon
  */

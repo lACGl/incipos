@@ -189,19 +189,28 @@ $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <?php echo $statusTexts[$invoice['durum']]; ?>
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-center whitespace-nowrap">
-                                <div class="flex items-center justify-center space-x-2">
-                                    <?php if ($invoice['durum'] !== 'aktarildi'): ?>
-                                    <button type="button"
-        onclick="window.addProducts(<?php echo $invoice['id']; ?>)" 
-        class="text-blue-600 hover:text-blue-900" 
-        title="Ürün Ekle">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-    </svg>
-</button>
-                                    <?php endif; ?>
+<td class="px-6 py-4 text-center whitespace-nowrap">
+    <div class="flex items-center justify-center space-x-2">
+        <?php if ($invoice['durum'] === 'bos'): ?>
+        <button type="button"
+            onclick="window.addProducts(<?php echo $invoice['id']; ?>)" 
+            class="text-blue-600 hover:text-blue-900" 
+            title="Ürün Ekle">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+        </button>
+        <?php else: ?>
+        <button class="text-gray-400 cursor-not-allowed" 
+                title="Bu fatura durumunda ürün eklenemez"
+                disabled>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+        </button>
+        <?php endif; ?>
 
                                     <?php if ($invoice['durum'] === 'urun_girildi' || $invoice['durum'] === 'kismi_aktarildi'): ?>
     <button onclick="transferToStore(<?php echo $invoice['id']; ?>)" 
@@ -232,6 +241,17 @@ $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                   d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
                                     </button>
+									
+									 <button type="button" 
+            onclick="editInvoice(<?php echo $invoice['id']; ?>)" 
+            class="text-yellow-600 hover:text-yellow-900" 
+            title="Fatura Düzenle">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+        </button>
+									
 									 <button onclick="deleteInvoice(<?php echo $invoice['id']; ?>)" 
                 class="text-red-600 hover:text-red-800" 
                 title="Faturayı Sil">
@@ -291,34 +311,6 @@ $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
         const productData = JSON.parse(tr.dataset.product);
         window.addToInvoiceFromSearch(productData);
     };
-window.addToInvoiceFromSearch = function(product) {
-    if (!window.selectedProducts) {
-        window.selectedProducts = [];
-    }
-
-    const existingProduct = window.selectedProducts.find(p => p.id === product.id);
-    if (existingProduct) {
-        return;
-    }
-
-    window.selectedProducts.push({
-        id: product.id,
-        kod: product.kod || '-',
-        barkod: product.barkod,
-        ad: product.ad,
-        miktar: 1,
-        birim_fiyat: parseFloat(product.alis_fiyati || product.satis_fiyati),
-        kdv_orani: parseFloat(product.kdv_orani || 0),
-        toplam: parseFloat(product.alis_fiyati || product.satis_fiyati),
-        iskonto1: 0,
-        iskonto2: 0,
-        iskonto3: 0,
-        urun_id: product.id // Bu önemli
-    });
-
-    removeFromSearchResults(product.id);
-    updateProductTable();
-};
 
     // Yeni ürün ekle
     window.selectedProducts.push({
@@ -372,6 +364,7 @@ $page_scripts = '
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script type="module" src="assets/js/main.js"></script>
 <script type="module" src="assets/js/stock_list.js"></script>
+<script src="assets/js/invoice_import.js"></script>
 ';
 
 // Footer'ı dahil et

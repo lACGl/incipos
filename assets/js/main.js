@@ -1,4 +1,4 @@
-import { showSuccessToast, showErrorToast, debounce, openModal, closeModal, initializeModalEvents } from './utils.js';
+import { showSuccessToast, showErrorToast, debounce, openModal, closeModal } from './utils.js';
 
 window.showSettings = showSettings;
 window.closeSettings = closeSettings;
@@ -72,8 +72,7 @@ function initializeSearch(inputSelector, callback, delay = 500) {
 // Başlatma fonksiyonu
 function initializeMain() {
     if (listenersInitialized) return;
-
-    initializeModalEvents();
+	
     initializeSettingsForm();
 
     listenersInitialized = true;

@@ -32,6 +32,13 @@ include 'header.php';
             <p class="text-gray-600 mb-4">Satış faturalarınızı burada görüntüleyebilir ve yönetebilirsiniz.</p>
             <a href="sales_invoices.php" class="text-blue-500 hover:text-blue-700 font-medium">Satış Faturalarına Git →</a>
         </div>
+		
+		<!-- Müşteriler-->
+        <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition duration-200">
+            <h2 class="text-xl font-semibold mb-3">Müşteriler</h2>
+            <p class="text-gray-600 mb-4">Müşterilerinizi ve İnci Kartları burada görüntüleyebilir ve yönetebilirsiniz.</p>
+            <a href="customers.php" class="text-blue-500 hover:text-blue-700 font-medium">Müşterilere Git →</a>
+        </div>
 
         <!-- Raporlar -->
         <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition duration-200">

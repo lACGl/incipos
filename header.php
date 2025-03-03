@@ -122,7 +122,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <a href="purchase_invoices.php" class="<?php echo $current_page == 'purchase_invoices.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Alış Faturaları
                     </a>
-                    <a href="reports.php" class="<?php echo $current_page == 'reports.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="customers.php" class="<?php echo $current_page == 'customers.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                        Müşteriler
+                    </a><a href="reports.php" class="<?php echo $current_page == 'reports.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Raporlar
                     </a>
                 </nav>

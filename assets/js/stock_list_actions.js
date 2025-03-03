@@ -1059,6 +1059,7 @@ export async function transferProduct(id, event) {
     }
 }
 
+
 /**
  * API'den veri getiren yardımcı fonksiyon
  */

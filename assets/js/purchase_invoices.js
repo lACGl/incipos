@@ -1464,35 +1464,53 @@ function editInvoice(id, event) {
         html: `
             <form id="editInvoiceForm" class="text-left">
                 <input type="hidden" name="fatura_id" value="${id}">
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Fatura Seri*</label>
-                            <input type="text" name="fatura_seri" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Fatura No*</label>
-                            <input type="text" name="fatura_no" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                        </div>
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fatura Tipi*</label>
+                        <select name="fatura_tipi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <option value="satis">Satış</option>
+                            <option value="iade">İade</option>
+                        </select>
                     </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Tedarikçi*</label>
-                        <select name="tedarikci" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fatura Seri*</label>
+                        <input type="text" name="fatura_seri" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fatura No*</label>
+                        <input type="text" name="fatura_no" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fatura Tarihi*</label>
+                        <input type="date" name="fatura_tarihi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">İrsaliye No</label>
+                        <input type="text" name="irsaliye_no" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">İrsaliye Tarihi</label>
+                        <input type="date" name="irsaliye_tarihi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sipariş No</label>
+                        <input type="text" name="siparis_no" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sipariş Tarihi</label>
+                        <input type="date" name="siparis_tarihi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div class="mb-3 md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tedarikçi*</label>
+                        <select name="tedarikci" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required>
                             <option value="">Tedarikçi Seçin</option>
                             <option value="add_new" class="font-semibold text-blue-600">+ Yeni Tedarikçi Ekle</option>
                             <!-- Tedarikçiler JavaScript ile doldurulacak -->
                         </select>
                     </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Fatura Tarihi*</label>
-                        <input type="date" name="fatura_tarihi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Açıklama</label>
-                        <textarea name="aciklama" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                    <div class="mb-3 md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Açıklama</label>
+                        <textarea name="aciklama" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"></textarea>
                     </div>
                 </div>
             </form>
@@ -1500,14 +1518,15 @@ function editInvoice(id, event) {
         showCancelButton: true,
         confirmButtonText: 'Güncelle',
         cancelButtonText: 'İptal',
+        buttonsStyling: true,
+        customClass: {
+            confirmButton: 'bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded',
+            cancelButton: 'bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded ml-2'
+        },
         width: '600px',
         didOpen: async () => {
             try {
-                // Tedarikçileri yükle
-                const tedarikcilerResponse = await fetch('api/get_tedarikciler.php');
-                const tedarikcilerData = await tedarikcilerResponse.json();
-                
-                // Fatura detaylarını yükle
+                // Fatura detaylarını getir
                 const faturaResponse = await fetch(`api/get_invoice_details.php?id=${id}`);
                 const faturaData = await faturaResponse.json();
                 
@@ -1517,27 +1536,44 @@ function editInvoice(id, event) {
 
                 // Form alanlarını doldur
                 const form = document.getElementById('editInvoiceForm');
-                form.fatura_seri.value = faturaData.fatura.fatura_seri;
-                form.fatura_no.value = faturaData.fatura.fatura_no;
-                form.fatura_tarihi.value = faturaData.fatura.fatura_tarihi;
-                form.aciklama.value = faturaData.fatura.aciklama || '';
+                const fatura = faturaData.fatura;
+                
+                form.fatura_tipi.value = fatura.fatura_tipi || 'satis';
+                form.fatura_seri.value = fatura.fatura_seri || '';
+                form.fatura_no.value = fatura.fatura_no || '';
+                form.fatura_tarihi.value = fatura.fatura_tarihi || '';
+                form.irsaliye_no.value = fatura.irsaliye_no || '';
+                form.irsaliye_tarihi.value = fatura.irsaliye_tarihi || '';
+                form.siparis_no.value = fatura.siparis_no || '';
+                form.siparis_tarihi.value = fatura.siparis_tarihi || '';
+                form.aciklama.value = fatura.aciklama || '';
 
-                // Tedarikçi seçeneklerini doldur ve seçili olanı işaretle
-                const tedarikciSelect = form.tedarikci;
-                tedarikciSelect.innerHTML = `
-                    <option value="">Tedarikçi Seçin</option>
-                    <option value="add_new" class="font-semibold text-blue-600">+ Yeni Tedarikçi Ekle</option>
-                    ${tedarikcilerData.tedarikciler.map(t => 
-                        `<option value="${t.id}" ${t.id == faturaData.fatura.tedarikci ? 'selected' : ''}>
-                            ${t.ad}
-                        </option>`
-                    ).join('')}
-                `;
+                // Tedarikçileri yükle
+                const tedarikcilerResponse = await fetch('api/get_tedarikciler.php');
+                const tedarikcilerData = await tedarikcilerResponse.json();
+                
+                // Tedarikçi seçeneğini doldur
+                const tedarikciSelect = form.querySelector('select[name="tedarikci"]');
+                if (tedarikciSelect) {
+                    let tedarikciHTML = `
+                        <option value="">Tedarikçi Seçin</option>
+                        <option value="add_new" class="font-semibold text-blue-600">+ Yeni Tedarikçi Ekle</option>
+                    `;
+                    
+                    if (tedarikcilerData.success && tedarikcilerData.tedarikciler) {
+                        tedarikcilerData.tedarikciler.forEach(t => {
+                            const selected = t.id == fatura.tedarikci ? 'selected' : '';
+                            tedarikciHTML += `<option value="${t.id}" ${selected}>${t.ad}</option>`;
+                        });
+                    }
+                    
+                    tedarikciSelect.innerHTML = tedarikciHTML;
+                }
 
                 // Tedarikçi seçimi değişikliğini dinle
                 tedarikciSelect.addEventListener('change', function(e) {
                     if (e.target.value === 'add_new') {
-                        e.target.value = ''; // Select'i sıfırla
+                        e.target.value = '';
                         openAddTedarikciModal();
                     }
                 });
@@ -1582,6 +1618,9 @@ function editInvoice(id, event) {
         }
     });
 }
+
+// Window objesine fonksiyonu tanımla
+window.editInvoice = editInvoice;
 
 
 // Fatura Ekleme Modalını Aç
@@ -2194,7 +2233,7 @@ function transferToStore(faturaId) {
                     </div>
                 </form>
             `,
-            width: '800px',
+            width: '80%',
             showCancelButton: true,
             confirmButtonText: 'Aktarımı Tamamla',
             cancelButtonText: 'İptal',
@@ -2579,9 +2618,6 @@ function transferToStore(faturaId) {
     }
 }
 
-
-
-
 async function showInvoiceDetails(faturaId) {
     try {
         // Fatura detaylarını ve ürünleri getir
@@ -2736,7 +2772,6 @@ async function showInvoiceDetails(faturaId) {
         });
     }
 }
-
 
 // Kar marjı hesaplama
 function initializeKarMarji() {

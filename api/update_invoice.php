@@ -14,10 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $fatura_id = $_POST['fatura_id'] ?? null;
+    $fatura_tipi = $_POST['fatura_tipi'] ?? null;
     $fatura_seri = $_POST['fatura_seri'] ?? null;
     $fatura_no = $_POST['fatura_no'] ?? null;
     $tedarikci = $_POST['tedarikci'] ?? null;
     $fatura_tarihi = $_POST['fatura_tarihi'] ?? null;
+    $irsaliye_no = $_POST['irsaliye_no'] ?? null;
+    $irsaliye_tarihi = $_POST['irsaliye_tarihi'] ?? null; 
+    $siparis_no = $_POST['siparis_no'] ?? null;
+    $siparis_tarihi = $_POST['siparis_tarihi'] ?? null;
     $aciklama = $_POST['aciklama'] ?? '';
 
     if (!$fatura_id || !$fatura_seri || !$fatura_no || !$tedarikci || !$fatura_tarihi) {
@@ -38,19 +43,29 @@ try {
     // Faturayı güncelle
     $stmt = $conn->prepare("
         UPDATE alis_faturalari 
-        SET fatura_seri = ?,
+        SET fatura_tipi = ?,
+            fatura_seri = ?,
             fatura_no = ?,
             tedarikci = ?,
             fatura_tarihi = ?,
+            irsaliye_no = ?,
+            irsaliye_tarihi = ?,
+            siparis_no = ?,
+            siparis_tarihi = ?,
             aciklama = ?
         WHERE id = ?
     ");
 
     $stmt->execute([
+        $fatura_tipi,
         $fatura_seri,
         $fatura_no,
         $tedarikci,
         $fatura_tarihi,
+        $irsaliye_no,
+        $irsaliye_tarihi,
+        $siparis_no,
+        $siparis_tarihi,
         $aciklama,
         $fatura_id
     ]);

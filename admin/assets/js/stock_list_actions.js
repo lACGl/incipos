@@ -124,7 +124,7 @@ export async function showEditModal(productId) {
         <label for="kdv_orani" class="form-label">KDV Oranı (%)*</label>
         <select id="kdv_orani" name="kdv_orani" class="form-input">
             <option value="" ${product.kdv_orani === null ? 'selected' : ''}>Seçiniz</option>
-            ${[0, 1, 8, 10, 18, 20].map(oran => 
+            ${[0, 10, 20].map(oran => 
                 `<option value="${oran}" ${Number(product.kdv_orani) === oran ? 'selected' : ''}>${oran}%</option>`
             ).join('')}
         </select>

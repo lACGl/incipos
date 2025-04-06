@@ -142,10 +142,7 @@ async function performApiRequest(url, data, successMessage) {
         <select id="kdv_orani" name="kdv_orani" class="form-input">
             <option value="" selected>Seçiniz</option>
             <option value="0">0%</option>
-            <option value="1">1%</option>
-            <option value="8">8%</option>
             <option value="10">10%</option>
-            <option value="18">18%</option>
             <option value="20">20%</option>
         </select>
     </div>

@@ -78,6 +78,11 @@ include 'header.php';
     </div>
 
     <!-- Hızlı Erişim Menüsü -->
+    <div class="section-header">
+        <h2 class="section-title">Ana Modüller</h2>
+        <p class="section-subtitle">Temel işlemlerinizi yönetin</p>
+    </div>
+
     <div class="dashboard-menu">
         <div class="menu-card">
             <div class="menu-icon">
@@ -140,12 +145,72 @@ include 'header.php';
             </div>
             <h3 class="menu-title">Ayarlar</h3>
             <p class="menu-description">Sistem ayarlarını ve kullanıcı ayarlarını yönetin.</p>
-            <a href="#" class="menu-link" onclick="showSettings(); return false;">
+            <a href="settings.php" class="menu-link">
                 Ayarlara Git <i class="fas fa-chevron-right"></i>
             </a>
         </div>
     </div>
+    
+    <!-- Entegrasyonlar Bölümü -->
+    <div class="section-header mt-8">
+        <h2 class="section-title">Entegrasyonlar</h2>
+        <p class="section-subtitle">Harici sistemler ve API bağlantıları</p>
+    </div>
+    
+    <div class="dashboard-menu">
+        <div class="menu-card api-card">
+            <div class="menu-icon api-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h3 class="menu-title">Prestashop</h3>
+            <p class="menu-description">E-ticaret sitenizi ve ürün senkronizasyonunu yönetin.</p>
+            <a href="api/prestashop/index.php" class="menu-link">
+                Prestashop Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+        <div class="menu-card api-card">
+            <div class="menu-icon api-icon">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <h3 class="menu-title">BirFatura</h3>
+            <p class="menu-description">E-fatura entegrasyonunuzu ve işlemlerinizi yönetin.</p>
+            <a href="api/birfatura/dashboard.php" class="menu-link">
+                BirFatura Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
 </div>
+
+<style>
+/* Ek stiller */
+.section-header {
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.section-subtitle {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.mt-8 {
+    margin-top: 2rem;
+}
+
+.api-card {
+    border-left: 4px solid #4f46e5;
+}
+
+.api-icon {
+    color:navy;
+}
+</style>
 
 <?php
 // Sayfa yüklenme süresini hesapla

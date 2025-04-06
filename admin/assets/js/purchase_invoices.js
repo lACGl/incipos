@@ -872,10 +872,7 @@ function updateProductTable() {
                 <div class="flex flex-col">
                     <select class="kdv-orani border rounded px-2 py-1 w-16" onchange="updateRowTotal(this)">
                         <option value="0" ${product.kdv_orani === 0 ? 'selected' : ''}>0</option>
-                        <option value="1" ${product.kdv_orani === 1 ? 'selected' : ''}>1</option>
-                        <option value="8" ${product.kdv_orani === 8 ? 'selected' : ''}>8</option>
                         <option value="10" ${product.kdv_orani === 10 ? 'selected' : ''}>10</option>
-                        <option value="18" ${product.kdv_orani === 18 ? 'selected' : ''}>18</option>
                         <option value="20" ${product.kdv_orani === 20 ? 'selected' : ''}>20</option>
                     </select>
                     <div class="kdv-tutar text-xs text-green-600 mt-1">₺0.00</div>
@@ -2934,10 +2931,7 @@ function createProductRow(product) {
             <td class="px-4 py-2">
                 <select class="kdv-orani w-16 px-2 py-1 border rounded text-right" onchange="updateRowTotal(this)">
                     <option value="0" ${product.kdv_orani == 0 ? 'selected' : ''}>0</option>
-                    <option value="1" ${product.kdv_orani == 1 ? 'selected' : ''}>1</option>
-                    <option value="8" ${product.kdv_orani == 8 ? 'selected' : ''}>8</option>
                     <option value="10" ${product.kdv_orani == 10 ? 'selected' : ''}>10</option>
-                    <option value="18" ${product.kdv_orani == 18 ? 'selected' : ''}>18</option>
                     <option value="20" ${product.kdv_orani == 20 ? 'selected' : ''}>20</option>
                 </select>
             </td>

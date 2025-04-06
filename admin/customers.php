@@ -242,7 +242,7 @@ $execution_time = round($end_time - $start_time, 3);
 <head>
     <meta charset="UTF-8">
     <title>Müşteri Yönetimi</title>
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 </head>
@@ -343,13 +343,11 @@ $execution_time = round($end_time - $start_time, 3);
     
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="/assets/js/customer-management.js"></script>
     
     <?php
     // Sayfa özel scriptleri
     $page_scripts = '
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        <script src="/assets/js/customer-management.js"></script>
+        <script src="assets/js/customer-management.js"></script>
     ';
 
     // Footer'ı dahil et

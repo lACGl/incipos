@@ -127,6 +127,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </a><a href="reports.php" class="<?php echo $current_page == 'reports.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Raporlar
                     </a>
+					</a><a href="settings.php" class="<?php echo $current_page == 'settings.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                        Ayarlar
+                    </a>
                 </nav>
 
                 <!-- Kullanıcı Menüsü -->

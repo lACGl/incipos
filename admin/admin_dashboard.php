@@ -84,73 +84,114 @@ include 'header.php';
     </div>
 
     <div class="dashboard-menu">
-        <div class="menu-card">
+        <div class="menu-card" onclick="window.location.href='stock_list.php'" style="cursor: pointer;">
             <div class="menu-icon">
                 <i class="fas fa-box"></i>
             </div>
             <h3 class="menu-title">Stok Yönetimi</h3>
             <p class="menu-description">Ürünlerinizi ve stok seviyelerinizi yönetin.</p>
-            <a href="stock_list.php" class="menu-link">
+            <div class="menu-link">
                 Stok Listesine Git <i class="fas fa-chevron-right"></i>
-            </a>
+            </div>
         </div>
         
-        <div class="menu-card">
+        <div class="menu-card" onclick="window.location.href='purchase_invoices.php'" style="cursor: pointer;">
             <div class="menu-icon">
                 <i class="fas fa-truck-loading"></i>
             </div>
             <h3 class="menu-title">Alış Faturaları</h3>
             <p class="menu-description">Tedarikçilerden alımlarınızı takip edin.</p>
-            <a href="purchase_invoices.php" class="menu-link">
+            <div class="menu-link">
                 Alış Faturalarına Git <i class="fas fa-chevron-right"></i>
-            </a>
+            </div>
         </div>
         
-        <div class="menu-card">
+        <div class="menu-card"  onclick="window.location.href='sales_invoices.php'" style="cursor: pointer;">
             <div class="menu-icon">
                 <i class="fas fa-receipt"></i>
             </div>
             <h3 class="menu-title">Satış Faturaları</h3>
             <p class="menu-description">Satışlarınızı ve faturalarınızı görüntüleyin.</p>
-            <a href="sales_invoices.php" class="menu-link">
+            <div class="menu-link">
                 Satış Faturalarına Git <i class="fas fa-chevron-right"></i>
-            </a>
+            </div>
         </div>
         
-        <div class="menu-card">
+        <div class="menu-card"  onclick="window.location.href='customers.php'" style="cursor: pointer;">
             <div class="menu-icon">
                 <i class="fas fa-user-friends"></i>
             </div>
             <h3 class="menu-title">Müşteriler</h3>
             <p class="menu-description">Müşterilerinizi ve İnci Kartları yönetin.</p>
-            <a href="customers.php" class="menu-link">
+            <div class="menu-link">
                 Müşterilere Git <i class="fas fa-chevron-right"></i>
-            </a>
+            </div>
         </div>
         
-        <div class="menu-card">
+        <div class="menu-card" onclick="window.location.href='reports.php'" style="cursor: pointer;">
             <div class="menu-icon">
                 <i class="fas fa-chart-pie"></i>
             </div>
             <h3 class="menu-title">Raporlar</h3>
             <p class="menu-description">Detaylı satış ve stok raporlarını görüntüleyin.</p>
-            <a href="reports.php" class="menu-link">
+            <div class="menu-link">
                 Raporlara Git <i class="fas fa-chevron-right"></i>
-            </a>
+            </div>
         </div>
         
-        <div class="menu-card">
-            <div class="menu-icon">
-                <i class="fas fa-cog"></i>
-            </div>
-            <h3 class="menu-title">Ayarlar</h3>
-            <p class="menu-description">Sistem ayarlarını ve kullanıcı ayarlarını yönetin.</p>
-            <a href="settings.php" class="menu-link">
-                Ayarlara Git <i class="fas fa-chevron-right"></i>
-            </a>
-        </div>
+        <div class="menu-card" onclick="window.location.href='settings.php'" style="cursor: pointer;">
+			<div class="menu-icon">
+				<i class="fas fa-cog"></i>
+			</div>
+			<h3 class="menu-title">Ayarlar</h3>
+			<p class="menu-description">Sistem ayarlarını ve kullanıcı ayarlarını yönetin.</p>
+			<div class="menu-link">
+				Ayarlara Git <i class="fas fa-chevron-right"></i>
+			</div>
+		</div>
+
     </div>
     
+    <!-- Eklentiler Bölümü -->
+	<div class="section-header mt-8">
+        <h2 class="section-title">Eklentiler</h2>
+        <p class="section-subtitle">Eklentiler ile işlerinizi daha kolay ve yorulmadan halledin.</p>
+    </div>
+    
+    <div class="dashboard-menu">
+        <div class="menu-card api-card" onclick="window.location.href='discounts.php'" style="cursor: pointer;">
+            <div class="menu-icon extension-icon">
+			<i class="fas fa-percentage"></i>
+            </div>
+            <h3 class="menu-title">Kritik Stok</h3>
+            <p class="menu-description">Tek bir sayfa üzerinden indirimlerinizi yönetin.</p>
+            <div class="menu-link">
+                İndirim Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
+		
+		<div class="menu-card api-card" onclick="window.location.href=''" style="cursor: pointer;">
+            <div class="menu-icon extension-icon">
+			<i class="fas fa-alarm-exclamation"></i>
+            </div>
+            <h3 class="menu-title">Kritik Stok & Satın Alma Fırsatları</h3>
+            <p class="menu-description">Kritik seviyenin altına düşen ve tedarik edilebilecek ürünleri tek ekrandan görüntüleyin, kolayca siparişe dönüştürün.</p>
+            <div class="menu-link">
+                İndirim Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
+		
+		<div class="menu-card api-card" onclick="window.location.href=''" style="cursor: pointer;">
+            <div class="menu-icon dosyay-icon">
+			<i class="fas fa-file-plus"></i>
+            </div>
+            <h3 class="menu-title">Dosya Yönetimi</h3>
+            <p class="menu-description">Görselleri kolayca yükleyin, otomatik sıkıştırma ile hızlı ve düzenli bir arşiv oluşturun.</p>
+            <div class="menu-link">
+                İndirim Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
+    </div>
     <!-- Entegrasyonlar Bölümü -->
     <div class="section-header mt-8">
         <h2 class="section-title">Entegrasyonlar</h2>
@@ -158,27 +199,41 @@ include 'header.php';
     </div>
     
     <div class="dashboard-menu">
-        <div class="menu-card api-card">
+	
+        <div class="menu-card api-card" onclick="window.location.href='api/prestashop/index.php'" style="cursor: pointer;">
             <div class="menu-icon api-icon">
                 <i class="fas fa-shopping-cart"></i>
             </div>
             <h3 class="menu-title">Prestashop</h3>
             <p class="menu-description">E-ticaret sitenizi ve ürün senkronizasyonunu yönetin.</p>
-            <a href="api/prestashop/index.php" class="menu-link">
+            <div class="menu-link">
                 Prestashop Yönetimine Git <i class="fas fa-chevron-right"></i>
-            </a>
+            </div>
         </div>
         
-        <div class="menu-card api-card">
+		<div class="menu-card api-card" onclick="window.location.href='api/birfatura/dashboard.php'" style="cursor: pointer;">
+			<div class="menu-icon api-icon">
+				<i class="fas fa-file-invoice-dollar"></i>
+			</div>
+			<h3 class="menu-title">BirFatura</h3>
+			<p class="menu-description">E-fatura entegrasyonunuzu ve işlemlerinizi yönetin.</p>
+			<div class="menu-link">
+				BirFatura Yönetimine Git <i class="fas fa-chevron-right"></i>
+			</div>
+		</div>
+
+		
+		<div class="menu-card api-card"  onclick="window.location.href=''" style="cursor: pointer;">
             <div class="menu-icon api-icon">
-                <i class="fas fa-file-invoice-dollar"></i>
+                <i class="fas fa-address-book"></i>
             </div>
-            <h3 class="menu-title">BirFatura</h3>
-            <p class="menu-description">E-fatura entegrasyonunuzu ve işlemlerinizi yönetin.</p>
-            <a href="api/birfatura/dashboard.php" class="menu-link">
+            <h3 class="menu-title">NetGSM</h3>
+            <p class="menu-description">SMS gönderimlerinizi yönetin ve mesaj geçmişinizi görüntüleyin.</p>
+            <div class="menu-link">
                 BirFatura Yönetimine Git <i class="fas fa-chevron-right"></i>
-            </a>
+            </div>
         </div>
+		
     </div>
 </div>
 

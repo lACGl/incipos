@@ -19,11 +19,7 @@ try {
     if (!in_array('durum', $selected_columns)) $selected_columns[] = 'durum';
 
     // Görünür sütunları filtrele
-    //      !!!PHP7.3+ KULLANIM!!! $visible_columns = array_filter($selected_columns, fn($col) => !in_array($col, ['id', 'durum']));
-    $visible_columns = array_filter($selected_columns, function($col) {
-    return !in_array($col, ['id', 'durum']);
-    });
-
+     $visible_columns = array_filter($selected_columns, fn($col) => !in_array($col, ['id', 'durum']));
 
     // Sayfalama ayarları
     $items_per_page = (int)($_POST['items_per_page'] ?? $_SESSION['items_per_page'] ?? 50);

@@ -304,7 +304,10 @@ $table_html = createTable($conn, $selected_columns, $items_per_page, $offset, $s
                     <a href="#" onclick="activateSelected()">Seçili Ürünleri Aktife Al</a>
                     <a href="#" onclick="deactivateSelected()">Seçili Ürünleri Pasife Al</a>
                     <a href="#" onclick="importProducts()">Excel'den İçe Aktar</a>
-                    <a href="#" onclick="exportSelected()">Seçili Ürünleri Dışarı Aktar</a>
+                    <a href="#" onclick="exportSelected()">Seçili Ürünleri Dışarı Aktar</a>      
+					<a href="discounts.php" onclick="window.location.href='discounts.php'; return false;">İndirim Yönetimi</a>
+
+
                 </div>
             </button>
         </div>

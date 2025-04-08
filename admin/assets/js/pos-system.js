@@ -4178,6 +4178,266 @@ function openOdemeModal() {
 }
 
 /**
+ * Ürün sepete ekle
+ * @param {Object} product - Ürün nesnesi
+ * @param {number} quantity - Miktar (opsiyonel, varsayılan: 1)
+ */
+function addProductToCart(product, quantity = 1) {
+    if (!product || !product.id) {
+        console.error("Geçersiz ürün bilgisi");
+        return;
+    }
+    
+    // Miktar kontrolü
+    quantity = parseInt(quantity);
+    if (isNaN(quantity) || quantity <= 0) {
+        quantity = 1;
+    }
+    
+    // Fiyat hesaplama - önce indirim kontrolü yap
+    let price = parseFloat(product.satis_fiyati);
+    let originalPrice = parseFloat(product.satis_fiyati);
+    let discountRate = 0;
+    let isDiscounted = false;
+    
+    // İndirim kontrolü
+    const now = new Date();
+    let startDate = null;
+    let endDate = null;
+    
+    if (product.indirim_baslangic_tarihi) {
+        startDate = new Date(product.indirim_baslangic_tarihi);
+    }
+    
+    if (product.indirim_bitis_tarihi) {
+        endDate = new Date(product.indirim_bitis_tarihi);
+    }
+    
+    // İndirimli fiyat ve tarih kontrolü
+    if (product.indirimli_fiyat && 
+        startDate && endDate && 
+        now >= startDate && now <= endDate) {
+        
+        price = parseFloat(product.indirimli_fiyat);
+        isDiscounted = true;
+        
+        // İndirim oranını hesapla (yüzde olarak)
+        if (originalPrice > 0) {
+            discountRate = ((originalPrice - price) / originalPrice) * 100;
+        }
+    }
+    
+    // Mevcut sepeti kontrol et
+    let cartItems = getCartItems();
+    
+    // Bu ürün zaten sepette mi kontrol et
+    const existingItemIndex = cartItems.findIndex(item => item.id === product.id);
+    
+    if (existingItemIndex !== -1) {
+        // Ürün zaten sepette, miktarı artır
+        cartItems[existingItemIndex].quantity += quantity;
+    } else {
+        // Yeni ürün ekle
+        cartItems.push({
+            id: product.id,
+            barkod: product.barkod,
+            ad: product.ad,
+            birim_fiyat: price,
+            original_price: originalPrice,
+            quantity: quantity,
+            is_discounted: isDiscounted,
+            discount_rate: discountRate,
+            total: price * quantity
+        });
+    }
+    
+    // Sepeti güncelle
+    updateCart(cartItems);
+    
+    // Sepet arayüzünü güncelle
+    refreshCartUI();
+    
+    // Kullanıcıya bildir
+    showNotification("Ürün sepete eklendi", "success");
+}
+
+/**
+ * Sepet öğelerini al
+ * @returns {Array} Sepet öğeleri
+ */
+function getCartItems() {
+    // localStorage'dan veya session'dan sepeti al
+    const cartJSON = localStorage.getItem('cart');
+    return cartJSON ? JSON.parse(cartJSON) : [];
+}
+
+/**
+ * Sepeti güncelle
+ * @param {Array} items - Sepet öğeleri
+ */
+function updateCart(items) {
+    // Sepeti localStorage'a veya session'a kaydet
+    localStorage.setItem('cart', JSON.stringify(items));
+    
+    // Toplam hesaplama
+    calculateCartTotals();
+}
+
+/**
+ * Sepet toplamlarını hesapla
+ */
+function calculateCartTotals() {
+    const cartItems = getCartItems();
+    
+    let subtotal = 0;
+    let discount = 0;
+    let total = 0;
+    let itemCount = 0;
+    
+    cartItems.forEach(item => {
+        const itemTotal = item.birim_fiyat * item.quantity;
+        subtotal += item.original_price * item.quantity;
+        
+        if (item.is_discounted) {
+            const itemDiscount = (item.original_price - item.birim_fiyat) * item.quantity;
+            discount += itemDiscount;
+        }
+        
+        total += itemTotal;
+        itemCount += item.quantity;
+    });
+    
+    // Toplam değerleri güncelle
+    updateTotalDisplay(subtotal, discount, total, itemCount);
+}
+
+/**
+ * Sepet UI'ını güncelle
+ */
+function refreshCartUI() {
+    const cartItems = getCartItems();
+    const cartTableBody = document.getElementById('cartTableBody');
+    
+    if (!cartTableBody) return;
+    
+    // Tabloyu temizle
+    cartTableBody.innerHTML = '';
+    
+    // Boş sepet kontrolü
+    if (cartItems.length === 0) {
+        cartTableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    Sepetinizde ürün bulunmamaktadır.
+                    <br><small>Ürünleri barkod okutarak veya arayarak ekleyebilirsiniz.</small>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Sepetteki her ürün için satır ekle
+    cartItems.forEach((item, index) => {
+        const row = document.createElement('tr');
+        
+        // İndirimli ürün için stil
+        if (item.is_discounted) {
+            row.classList.add('bg-green-50');
+        }
+        
+        row.innerHTML = `
+            <td class="px-6 py-4">${item.ad}</td>
+            <td class="px-6 py-4 text-center">
+                <div class="flex items-center justify-center">
+                    <button onclick="decreaseQuantity(${index})" class="text-red-500 px-2">-</button>
+                    <input type="number" min="1" value="${item.quantity}" 
+                           onchange="updateItemQuantity(${index}, this.value)"
+                           class="w-16 text-center border rounded p-1">
+                    <button onclick="increaseQuantity(${index})" class="text-green-500 px-2">+</button>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-right">
+                ${item.is_discounted ? 
+                  `<span class="line-through text-gray-500">${formatCurrency(item.original_price)}</span><br>
+                   <span class="text-green-600 font-semibold">${formatCurrency(item.birim_fiyat)}</span>
+                   <span class="text-xs text-green-600 ml-1">(%${Math.round(item.discount_rate)})</span>` : 
+                  formatCurrency(item.birim_fiyat)}
+            </td>
+            <td class="px-6 py-4 text-right font-semibold">${formatCurrency(item.birim_fiyat * item.quantity)}</td>
+            <td class="px-6 py-4 text-center">
+                <button onclick="removeCartItem(${index})" class="text-red-600 hover:text-red-800">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+            </td>
+        `;
+        
+        cartTableBody.appendChild(row);
+    });
+}
+
+/**
+ * Toplam bilgilerini güncelle
+ */
+function updateTotalDisplay(subtotal, discount, total, itemCount) {
+    // Toplam ürün sayısını güncelle
+    const totalItemsElement = document.getElementById('totalItems');
+    if (totalItemsElement) {
+        totalItemsElement.textContent = itemCount;
+    }
+    
+    // Ara toplam değerini güncelle
+    const subtotalElement = document.getElementById('cartSubtotal');
+    if (subtotalElement) {
+        subtotalElement.textContent = formatCurrency(subtotal);
+    }
+    
+    // İndirim toplamını güncelle
+    const discountElement = document.getElementById('cartDiscount');
+    if (discountElement) {
+        discountElement.textContent = formatCurrency(discount);
+        
+        // İndirim varsa göster, yoksa gizle
+        const discountRow = document.getElementById('discountRow');
+        if (discountRow) {
+            discountRow.style.display = discount > 0 ? 'table-row' : 'none';
+        }
+    }
+    
+    // Genel toplam değerini güncelle
+    const totalElement = document.getElementById('cartTotal');
+    if (totalElement) {
+        totalElement.textContent = formatCurrency(total);
+    }
+}
+
+/**
+ * Bildirim göster
+ */
+function showNotification(message, type = 'info') {
+    // SweetAlert2 veya benzeri bir kütüphane ile bildirim göster
+    if (typeof Swal !== 'undefined') {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+        
+        Toast.fire({
+            icon: type,
+            title: message
+        });
+    } else {
+        // Swal yoksa basit bir bildirim göster
+        alert(message);
+    }
+}
+
+/**
  * Tüm modalları kapat
  */
 function closeAllModals() {

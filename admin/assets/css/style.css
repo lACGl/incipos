@@ -1386,6 +1386,18 @@ select[name="stock_status"]:has(option[value="normal"]:checked) {
     z-index: 2;
 }
 
+.extension-icon
+{
+	color:maroon;
+}
+
+.menu-icon-extension{
+	font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: maroon;
+    z-index: 2;
+}
+
 .menu-title {
     font-size: 1.25rem;
     font-weight: 600;

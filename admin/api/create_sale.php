@@ -1,413 +1,412 @@
 <?php
+// create_sale.php
+// Satış işlemlerini kaydeden API - Eksik alanlar düzeltildi
+
 session_start();
 require_once '../db_connection.php';
-require_once '../helpers/stock_functions.php';  
+require_once __DIR__ . '/../stock_functions.php';
 
-
-// JSON veri tipinde yanıt döndüreceğimizi belirt
+// CORS ayarları
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Content-Type');
 
-// Hata raporlama ayarları
-error_reporting(E_ALL);
-ini_set('display_errors', 0); // Hataları gösterme ama logla
-ini_set('log_errors', 1);
+$response = [
+    'success' => false,
+    'message' => '',
+    'invoiceId' => null
+];
 
-// Yetki kontrolü
-if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
-    echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim']);
-    exit;
-}
+// POST verilerini al
+$input = json_decode(file_get_contents('php://input'), true);
 
-// Gelen JSON verilerini logla (hata ayıklama için)
-$raw_post_data = file_get_contents('php://input');
-error_log('Gelen POS verisi: ' . $raw_post_data);
-
-// Hata yakalama
-try {
-    // JSON verilerini al
-    $inputData = json_decode($raw_post_data, true);
-    
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('JSON çözme hatası: ' . json_last_error_msg());
-    }
-    
-    // Veri kontrolü yap
-    if (!$inputData || !isset($inputData['sepet']) || empty($inputData['sepet'])) {
-        throw new Exception('Geçersiz veri formatı veya boş sepet');
-    }
-    
-    // Satış verilerini hazırla
-    $fisNo = $inputData['fisNo'] ?? null;
-    $islemTuru = $inputData['islemTuru'] ?? 'satis';
-    $magazaId = $inputData['magazaId'] ?? null;
-    $kasiyerId = $inputData['kasiyerId'] ?? null;
-    $musteriId = $inputData['musteriId'] ?? null;
-    $odemeYontemi = $inputData['odemeYontemi'] ?? 'nakit';
-    $kullanilacakPuan = floatval($inputData['kullanilacakPuan'] ?? 0);
-    $sepet = $inputData['sepet'];
-    $genelToplam = floatval($inputData['genelToplam'] ?? 0);
-    
-    // Ödeme yöntemine özel veriler
-    $alinanTutar = isset($inputData['alinanTutar']) ? floatval($inputData['alinanTutar']) : 0;
-    $banka = $inputData['banka'] ?? null;
-    $taksit = $inputData['taksit'] ?? '1';
-    
-    // Zorunlu alanları kontrol et
-    if (!$fisNo || !$magazaId || !$kasiyerId || !$odemeYontemi) {
-        throw new Exception('Zorunlu alanlar eksik (Fiş No, Mağaza, Kasiyer, Ödeme Yöntemi)');
-    }
-    
-    // Sepet toplamlarını hesapla
-    $toplamTutar = 0;
-    $kdvTutari = 0;
-    $indirimTutari = 0;
-    $sepetBrutTutar = 0;
-    
-    foreach ($sepet as $item) {
-        $brutTutar = $item['birim_fiyat'] * $item['miktar'];
-        $sepetBrutTutar += $brutTutar;
+if ($input) {
+    try {
+        $conn->beginTransaction();
         
-        // İndirim varsa
-        if (isset($item['indirim']) && $item['indirim'] > 0) {
-            if ($item['indirim_turu'] === 'yuzde') {
-                $itemIndirim = $brutTutar * ($item['indirim'] / 100);
-            } else {
-                $itemIndirim = $item['indirim'];
+        // Satış faturası oluştur - Eksik alanları ekledik
+        $insertInvoice = "INSERT INTO satis_faturalari (
+                            fatura_turu, 
+                            magaza, 
+                            fatura_seri,           /* Eklendi */
+                            fatura_no, 
+                            fatura_tarihi, 
+                            toplam_tutar, 
+                            personel, 
+                            musteri_id, 
+                            kdv_tutari,            /* Eklendi */
+                            indirim_tutari, 
+                            net_tutar, 
+                            odeme_turu, 
+                            islem_turu,
+                            kredi_karti_banka,     /* Eklendi */
+                            aciklama
+                          ) VALUES (
+                            'perakende', 
+                            :magaza, 
+                            :fatura_seri,          /* Eklendi */
+                            :fatura_no, 
+                            NOW(), 
+                            :toplam_tutar, 
+                            :personel, 
+                            :musteri_id, 
+                            :kdv_tutari,           /* Eklendi */
+                            :indirim_tutari, 
+                            :net_tutar, 
+                            :odeme_turu, 
+                            :islem_turu,
+                            :kredi_karti_banka,    /* Eklendi */
+                            :aciklama
+                          )";
+        
+        $stmt = $conn->prepare($insertInvoice);
+        
+        // Toplam fiyatları hesapla
+        $araToplam = 0;
+        $toplamIndirim = 0;
+        
+        // KDV hesaplama - YENİ
+        $toplamKdvTutari = 0;
+        
+        // Sepetteki her ürün için orijinal ve indirimli fiyat farklarını hesapla
+        foreach ($input['sepet'] as $item) {
+            // Ürünün normal fiyatını al (indirimli olmayan hali)
+            $normalFiyat = isset($item['original_price']) ? 
+                           $item['original_price'] : 
+                           $item['birim_fiyat'];
+                           
+            // Gerçek birim fiyat (indirimli veya normal)
+            $gercekBirimFiyat = $item['birim_fiyat'];
+            
+            // Ara toplamı orijinal fiyatlar üzerinden hesapla
+            $araToplam += $normalFiyat * $item['miktar'];
+            
+            // Eğer indirimli fiyat varsa, indirim tutarını hesapla
+            $birimIndirim = $normalFiyat - $gercekBirimFiyat;
+            if ($birimIndirim > 0) {
+                $toplamIndirim += $birimIndirim * $item['miktar'];
             }
-            $indirimTutari += $itemIndirim;
-        }
-        
-        $netTutar = $item['toplam'];
-        $toplamTutar += $netTutar;
-        
-        // KDV hesaplama
-        $kdvOrani = isset($item['kdv_orani']) ? floatval($item['kdv_orani']) : 18;
-        $itemKdv = $netTutar - ($netTutar / (1 + ($kdvOrani / 100)));
-        $kdvTutari += $itemKdv;
-    }
-    
-    // Puan kullanılıyorsa toplam tutardan düş
-    if ($kullanilacakPuan > 0) {
-        $toplamTutar = max(0, $toplamTutar - $kullanilacakPuan);
-    }
-    
-    // Transaction başlat
-    $conn->beginTransaction();
-    
-    // Satış faturası oluştur
-    $stmt = $conn->prepare("
-        INSERT INTO satis_faturalari (
-            fatura_turu, magaza, fatura_seri, fatura_no, 
-            fatura_tarihi, toplam_tutar, personel, 
-            musteri, kdv_tutari, indirim_tutari, 
-            net_tutar, odeme_turu, islem_turu, 
-            aciklama, kredi_karti_banka, musteri_id
-        ) VALUES (
-            'perakende', ?, 'POS', ?, 
-            NOW(), ?, ?, 
-            ?, ?, ?, 
-            ?, ?, ?, 
-            ?, ?, ?
-        )
-    ");
-    
-    $stmt->execute([
-        $magazaId,
-        $fisNo,
-        $toplamTutar,
-        $kasiyerId,
-        $musteriId,
-        $kdvTutari,
-        $indirimTutari,
-        $toplamTutar - $kdvTutari, // Net tutar: toplam - kdv
-        $odemeYontemi,
-        $islemTuru,
-        "POS satış sistemi",
-        $odemeYontemi === 'kredi_karti' ? $banka : null,
-        $musteriId
-    ]);
-    
-    $faturaId = $conn->lastInsertId();
-    
-    // Satış detaylarını ekle
-    $detayStmt = $conn->prepare("
-        INSERT INTO satis_fatura_detay (
-            fatura_id, urun_id, miktar, 
-            birim_fiyat, kdv_orani, indirim_orani, 
-            toplam_tutar
-        ) VALUES (
-            ?, ?, ?, 
-            ?, ?, ?, 
-            ?
-        )
-    ");
-    
-    foreach ($sepet as $item) {
-        $urunId = $item['id'];
-        $miktar = $item['miktar'];
-        $birimFiyat = $item['birim_fiyat'];
-        $kdvOrani = isset($item['kdv_orani']) ? floatval($item['kdv_orani']) : 18;
-        
-        // İndirim oranını hesapla
-        $indirimOrani = 0;
-        if (isset($item['indirim']) && $item['indirim'] > 0) {
-            if ($item['indirim_turu'] === 'yuzde') {
-                $indirimOrani = $item['indirim'];
-            } else {
-                // Tutar bazlı indirimi orana çevir
-                $indirimOrani = ($item['indirim'] / ($birimFiyat * $miktar)) * 100;
+            
+            // Ayrıca manuel indirim varsa ekle
+            if (isset($item['indirim']) && $item['indirim'] > 0) {
+                if ($item['indirim_turu'] === 'yuzde') {
+                    $manuelIndirim = ($gercekBirimFiyat * $item['miktar']) * ($item['indirim'] / 100);
+                } else {
+                    $manuelIndirim = $item['indirim'];
+                }
+                $toplamIndirim += $manuelIndirim;
+            }
+            
+            // KDV hesaplama - Her ürün için KDV tutarını hesapla ve topla
+            $kdvOrani = isset($item['kdv_orani']) ? floatval($item['kdv_orani']) : 0;
+            
+            // İndirimli tutarı al
+            $itemTotal = $gercekBirimFiyat * $item['miktar'];
+            
+            // Manuel indirim varsa düş
+            if (isset($item['indirim']) && $item['indirim'] > 0) {
+                if ($item['indirim_turu'] === 'yuzde') {
+                    $itemTotal *= (1 - ($item['indirim'] / 100));
+                } else {
+                    $itemTotal -= $item['indirim'];
+                }
+            }
+            
+            // KDV tutarını hesapla: (Toplam / (1 + KDV Oranı/100)) * (KDV Oranı/100)
+            // Alternatif KDV hesaplayış = KDV dahil fiyattan KDV'yi ayırma formülü
+            if ($kdvOrani > 0) {
+                $kdvTutari = ($itemTotal / (1 + ($kdvOrani / 100))) * ($kdvOrani / 100);
+                $toplamKdvTutari += $kdvTutari;
             }
         }
         
-        $detayStmt->execute([
-            $faturaId,
-            $urunId,
-            $miktar,
-            $birimFiyat,
-            $kdvOrani,
-            $indirimOrani,
-            $item['toplam']
-        ]);
+        // Net tutarı hesapla
+        $netTutar = $araToplam - $toplamIndirim;
         
-        // Stok güncellemesi (stok_hareketleri tablosuna kayıt)
-        $hareket_tipi = ($islemTuru === 'satis') ? 'cikis' : 'giris';
-        $aciklama = ($islemTuru === 'satis') ? 'POS satış' : 'POS iade';
+        // Fatura seri numarasını oluştur - Fiş numarasının ilk kısmını kullan veya varsayılan
+        $faturaSeri = 'POS';
+        if (isset($input['fisNo']) && strpos($input['fisNo'], '-') !== false) {
+            $faturaSeri = explode('-', $input['fisNo'])[0];
+        }
         
-        $stokStmt = $conn->prepare("
-            INSERT INTO stok_hareketleri (
-                urun_id, miktar, hareket_tipi, 
-                aciklama, belge_no, tarih, 
-                kullanici_id, magaza_id, satis_fiyati
-            ) VALUES (
-                ?, ?, ?, 
-                ?, ?, NOW(), 
-                ?, ?, ?
-            )
-        ");
+        // Fatura parametrelerini bind et
+        $stmt->bindParam(':fatura_seri', $faturaSeri); // Eklendi
+        $stmt->bindParam(':magaza', $input['magazaId']);
+        $stmt->bindParam(':fatura_no', $input['fisNo']);
+        $stmt->bindParam(':toplam_tutar', $araToplam);
+        $stmt->bindParam(':personel', $input['kasiyerId']);
+        $stmt->bindParam(':musteri_id', $input['musteriId']);
+        $stmt->bindParam(':kdv_tutari', $toplamKdvTutari); // Eklendi
+        $stmt->bindParam(':indirim_tutari', $toplamIndirim);
+        $stmt->bindParam(':net_tutar', $netTutar);
+        $stmt->bindParam(':odeme_turu', $input['odemeYontemi']);
+        $stmt->bindParam(':islem_turu', $input['islemTuru']);
         
-        $stokStmt->execute([
-            $urunId,
-            $miktar,
-            $hareket_tipi,
-            $aciklama,
-            $fisNo,
-            $_SESSION['user_id'] ?? null,
-            $magazaId,
-            $birimFiyat
-        ]);
+        // Kredi kartı işlemiyse banka bilgisini ekle
+        $krediKartiBanka = null;
+        if ($input['odemeYontemi'] === 'kredi_karti' && isset($input['banka'])) {
+            $krediKartiBanka = $input['banka'];
+        }
+        $stmt->bindParam(':kredi_karti_banka', $krediKartiBanka); // Eklendi
         
-        // Mağaza stoğunu güncelle
-        // Önce ürünün barkodunu al
-        $barkodStmt = $conn->prepare("SELECT barkod FROM urun_stok WHERE id = ?");
-        $barkodStmt->execute([$urunId]);
-        $barkod = $barkodStmt->fetchColumn();
+        // Açıklama alanı
+        $aciklama = "POS üzerinden satış";
+        // Ödeme yöntemine göre ek bilgiler
+        if ($input['odemeYontemi'] === 'kredi_karti' && isset($input['banka'])) {
+            $aciklama .= " - " . $input['banka'];
+            if (isset($input['taksit']) && $input['taksit'] > 1) {
+                $aciklama .= " " . $input['taksit'] . " taksit";
+            }
+        } elseif ($input['odemeYontemi'] === 'nakit' && isset($input['alinanTutar'])) {
+            $aciklama .= " - Alınan: " . $input['alinanTutar'] . " TL";
+        }
         
-        if ($barkod) {
-            if ($islemTuru === 'satis') {
-                // Satış ise stok azalt
-                $stokUpdateStmt = $conn->prepare("
-                    UPDATE magaza_stok 
-                    SET stok_miktari = stok_miktari - ?
-                    WHERE magaza_id = ? AND barkod = ?
-                ");
-            } else {
-                // İade ise stok artır
-                $stokUpdateStmt = $conn->prepare("
-                    UPDATE magaza_stok 
-                    SET stok_miktari = stok_miktari + ?
-                    WHERE magaza_id = ? AND barkod = ?
-                ");
+        $stmt->bindParam(':aciklama', $aciklama);
+        $stmt->execute();
+        
+        $invoiceId = $conn->lastInsertId();
+        
+        // Fatura detaylarını ekle
+        foreach ($input['sepet'] as $item) {
+            // Orijinal ve indirimli birim fiyatları kontrol et
+            $normalBirimFiyat = isset($item['original_price']) ? 
+                               $item['original_price'] : 
+                               $item['birim_fiyat'];
+                               
+            $indirimOrani = 0;
+            
+            // Birim bazında indirim oranını hesapla
+            if ($normalBirimFiyat > 0 && $normalBirimFiyat > $item['birim_fiyat']) {
+                $indirimOrani = (($normalBirimFiyat - $item['birim_fiyat']) / $normalBirimFiyat) * 100;
             }
             
-            $stokUpdateStmt->execute([$miktar, $magazaId, $barkod]);
+            // Eğer manuel indirim varsa ekle
+            if (isset($item['indirim']) && $item['indirim'] > 0) {
+                if ($item['indirim_turu'] === 'yuzde') {
+                    $indirimOrani += $item['indirim'];
+                } else {
+                    // Tutar bazlı indirimi orana çevir
+                    $kalemToplam = $item['birim_fiyat'] * $item['miktar'];
+                    if ($kalemToplam > 0) {
+                        $indirimOrani += ($item['indirim'] / $kalemToplam) * 100;
+                    }
+                }
+            }
             
-            // Eğer kayıt yapılamadıysa (satır yoksa), yeni kayıt ekle (iade durumunda)
-            if ($islemTuru === 'iade' && $stokUpdateStmt->rowCount() === 0) {
-                $stokInsertStmt = $conn->prepare("
-                    INSERT INTO magaza_stok (
-                        barkod, magaza_id, stok_miktari, 
-                        satis_fiyati
-                    ) VALUES (
-                        ?, ?, ?, 
-                        ?
-                    )
-                ");
+            // KDV oranını al veya varsayılan değer kullan
+            $kdvOrani = isset($item['kdv_orani']) ? floatval($item['kdv_orani']) : 0;
+            
+            $insertDetail = "INSERT INTO satis_fatura_detay (
+                                fatura_id, 
+                                urun_id, 
+                                miktar, 
+                                birim_fiyat, 
+                                kdv_orani,             /* Eklendi */
+                                indirim_orani, 
+                                toplam_tutar
+                             ) VALUES (
+                                :fatura_id, 
+                                :urun_id, 
+                                :miktar, 
+                                :birim_fiyat, 
+                                :kdv_orani,            /* Eklendi */
+                                :indirim_orani, 
+                                :toplam_tutar
+                             )";
+            
+            $stmt = $conn->prepare($insertDetail);
+            $stmt->bindParam(':fatura_id', $invoiceId);
+            $stmt->bindParam(':urun_id', $item['id']);
+            $stmt->bindParam(':miktar', $item['miktar']);
+            $stmt->bindParam(':birim_fiyat', $normalBirimFiyat); // Orijinal fiyat
+            $stmt->bindParam(':kdv_orani', $kdvOrani); // Eklendi
+            $stmt->bindParam(':indirim_orani', $indirimOrani);
+            
+            // Toplam tutarı hesapla (indirimli birim fiyat x miktar)
+            $itemTotal = $item['birim_fiyat'] * $item['miktar'];
+            
+            // Manuel indirim varsa düş
+            if (isset($item['indirim']) && $item['indirim'] > 0) {
+                if ($item['indirim_turu'] === 'yuzde') {
+                    $itemTotal *= (1 - ($item['indirim'] / 100));
+                } else {
+                    $itemTotal -= $item['indirim'];
+                }
+            }
+            
+            $stmt->bindParam(':toplam_tutar', $itemTotal);
+            $stmt->execute();
+            
+            // Stok güncelleme
+            $stokHareket = [
+                'urun_id' => $item['id'],
+                'miktar' => $item['miktar'] * ($input['islemTuru'] === 'satis' ? -1 : 1), // İade ise ters işaret
+                'hareket_tipi' => $input['islemTuru'] === 'satis' ? 'cikis' : 'giris',
+                'aciklama' => 'POS ' . ($input['islemTuru'] === 'satis' ? 'satış' : 'iade'),
+                'belge_no' => $input['fisNo'],
+                'tarih' => date('Y-m-d H:i:s'),
+                'kullanici_id' => isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null,
+                'magaza_id' => $input['magazaId'],
+                'satis_fiyati' => $item['birim_fiyat']
+            ];
+            
+            // Stok hareketini ekle
+            addStockMovement($stokHareket, $conn);
+            
+            // Mağaza stoğunu güncelle
+            if (isset($item['barkod']) && !empty($item['barkod'])) {
+                $stokDegisim = $item['miktar'] * ($input['islemTuru'] === 'satis' ? -1 : 1);
+                updateMagazaStock($item['barkod'], $input['magazaId'], $stokDegisim, $conn);
+            }
+        }
+        
+        // Müşteri işlemleri
+        if ($input['musteriId']) {
+            // Puan kullanımı
+            if (isset($input['kullanilacakPuan']) && $input['kullanilacakPuan'] > 0) {
+                $insertPuanKullanim = "INSERT INTO puan_harcama (
+                                        fatura_id, 
+                                        musteri_id, 
+                                        harcanan_puan, 
+                                        tarih
+                                    ) VALUES (
+                                        :fatura_id, 
+                                        :musteri_id, 
+                                        :harcanan_puan, 
+                                        NOW()
+                                    )";
                 
-                $stokInsertStmt->execute([
-                    $barkod,
-                    $magazaId,
-                    $miktar,
-                    $birimFiyat
-                ]);
+                $stmt = $conn->prepare($insertPuanKullanim);
+                $stmt->bindParam(':fatura_id', $invoiceId);
+                $stmt->bindParam(':musteri_id', $input['musteriId']);
+                $stmt->bindParam(':harcanan_puan', $input['kullanilacakPuan']);
+                $stmt->execute();
+                
+                // Müşteri puan bakiyesini güncelle
+                $updatePuan = "UPDATE musteri_puanlar SET 
+                               puan_bakiye = puan_bakiye - :kullanilan_puan,
+                               son_alisveris_tarihi = NOW()
+                               WHERE musteri_id = :musteri_id";
+                
+                $stmt = $conn->prepare($updatePuan);
+                $stmt->bindParam(':kullanilan_puan', $input['kullanilacakPuan']);
+                $stmt->bindParam(':musteri_id', $input['musteriId']);
+                $stmt->execute();
             }
-			// Satış işleminden etkilenen tüm ürünlerin toplam stoklarını güncelle
-			foreach ($sepet as $item) {
-				$urunId = $item['id'];
-				updateTotalStock($urunId, $conn);
-			}
-        }
-    }
-    
-    // Kullanılan puanları düş ve kaydı oluştur
-    if ($kullanilacakPuan > 0 && $musteriId) {
-        // Müşteri puanlarını güncelle
-        $puanUpdateStmt = $conn->prepare("
-            UPDATE musteri_puanlar
-            SET puan_bakiye = puan_bakiye - ?
-            WHERE musteri_id = ?
-        ");
-        $puanUpdateStmt->execute([$kullanilacakPuan, $musteriId]);
-        
-        // Puan harcama kaydı ekle
-        $puanHarcamaStmt = $conn->prepare("
-            INSERT INTO puan_harcama (
-                fatura_id, musteri_id, 
-                harcanan_puan, tarih
-            ) VALUES (
-                ?, ?, 
-                ?, NOW()
-            )
-        ");
-        $puanHarcamaStmt->execute([
-            $faturaId,
-            $musteriId,
-            $kullanilacakPuan
-        ]);
-    }
-    
-    // Kazanılan puanları hesapla ve ekle
-    if ($musteriId && $toplamTutar > 0 && $islemTuru === 'satis') {
-        // Müşteri puan oranını al
-$puanOranStmt = $conn->prepare("
-    SELECT puan_oran 
-    FROM musteri_puanlar 
-    WHERE musteri_id = ?
-");
-$puanOranStmt->execute([$musteriId]);
-$puanOran = $puanOranStmt->fetchColumn() ?: 1; // Varsayılan oran 1
-
-// Veritabanından gelen oran yüzde değeri olarak kabul edilir (5 ise %5)
-// 100'e bölerek dönüştürme yapalım
-$puanOran = $puanOran / 100;
-
-// Kazanılan puan miktarı
-$kazanilanPuan = $toplamTutar * $puanOran;
-        
-        // Müşteri puanlarını güncelle
-        $puanUpdateStmt = $conn->prepare("
-            UPDATE musteri_puanlar
-            SET puan_bakiye = puan_bakiye + ?,
-                son_alisveris_tarihi = NOW()
-            WHERE musteri_id = ?
-        ");
-        $puanUpdateStmt->execute([$kazanilanPuan, $musteriId]);
-        
-        // Eğer kayıt yoksa yeni oluştur
-        if ($puanUpdateStmt->rowCount() === 0) {
-            $puanInsertStmt = $conn->prepare("
-                INSERT INTO musteri_puanlar (
-                    musteri_id, puan_bakiye, 
-                    puan_oran, son_alisveris_tarihi
-                ) VALUES (
-                    ?, ?, 
-                    ?, NOW()
-                )
-            ");
-            $puanInsertStmt->execute([
-                $musteriId,
-                $kazanilanPuan,
-                $puanOran
-            ]);
+            
+            // Puan kazanımı (sadece satış işleminde)
+            if ($input['islemTuru'] === 'satis') {
+                // Müşteri puan oranını al
+                $queryPuanOran = "SELECT puan_oran FROM musteri_puanlar WHERE musteri_id = :musteri_id";
+                $stmt = $conn->prepare($queryPuanOran);
+                $stmt->bindParam(':musteri_id', $input['musteriId']);
+                $stmt->execute();
+                $puanOran = $stmt->fetchColumn();
+                
+                if ($puanOran) {
+                    // Puan hesapla (net tutar üzerinden)
+                    $kazanilanPuan = $netTutar * ($puanOran / 100);
+                    
+                    // Puan kaydını ekle
+                    $insertPuanKazanim = "INSERT INTO puan_kazanma (
+                                            fatura_id, 
+                                            musteri_id, 
+                                            kazanilan_puan, 
+                                            odeme_tutari, 
+                                            tarih
+                                        ) VALUES (
+                                            :fatura_id, 
+                                            :musteri_id, 
+                                            :kazanilan_puan, 
+                                            :odeme_tutari, 
+                                            NOW()
+                                        )";
+                    
+                    $stmt = $conn->prepare($insertPuanKazanim);
+                    $stmt->bindParam(':fatura_id', $invoiceId);
+                    $stmt->bindParam(':musteri_id', $input['musteriId']);
+                    $stmt->bindParam(':kazanilan_puan', $kazanilanPuan);
+                    $stmt->bindParam(':odeme_tutari', $netTutar);
+                    $stmt->execute();
+                    
+                    // Müşteri puan bakiyesini güncelle
+                    $updatePuan = "UPDATE musteri_puanlar SET 
+                                   puan_bakiye = puan_bakiye + :kazanilan_puan,
+                                   son_alisveris_tarihi = NOW()
+                                   WHERE musteri_id = :musteri_id";
+                    
+                    $stmt = $conn->prepare($updatePuan);
+                    $stmt->bindParam(':kazanilan_puan', $kazanilanPuan);
+                    $stmt->bindParam(':musteri_id', $input['musteriId']);
+                    $stmt->execute();
+                }
+            }
         }
         
-        // Puan kazanma kaydı ekle
-        $puanKazanmaStmt = $conn->prepare("
-            INSERT INTO puan_kazanma (
-                fatura_id, musteri_id, 
-                kazanilan_puan, odeme_tutari, 
-                tarih
-            ) VALUES (
-                ?, ?, 
-                ?, ?, 
-                NOW()
-            )
-        ");
-        $puanKazanmaStmt->execute([
-            $faturaId,
-            $musteriId,
-            $kazanilanPuan,
-            $toplamTutar
-        ]);
-    }
-    
-    // Borç ekleme işlemi (ödeme yöntemi borç ise)
-    if ($odemeYontemi === 'borc' && $musteriId) {
-        $borcStmt = $conn->prepare("
-            INSERT INTO musteri_borclar (
-                musteri_id, toplam_tutar, 
-                indirim_tutari, borc_tarihi, 
-                fis_no, odendi_mi, 
-                olusturma_tarihi, magaza_id
-            ) VALUES (
-                ?, ?, 
-                ?, NOW(), 
-                ?, 0, 
-                NOW(), ?
-            )
-        ");
-        $borcStmt->execute([
-            $musteriId,
-            $toplamTutar,
-            $indirimTutari,
-            $fisNo,
-            $magazaId
-        ]);
-        
-        $borcId = $conn->lastInsertId();
-        
-        // Borç detaylarını ekle
-        $borcDetayStmt = $conn->prepare("
-            INSERT INTO musteri_borc_detaylar (
-                borc_id, urun_adi, 
-                miktar, tutar, 
-                urun_id, olusturma_tarihi
-            ) VALUES (
-                ?, ?, 
-                ?, ?, 
-                ?, NOW()
-            )
-        ");
-        
-        foreach ($sepet as $item) {
-            $borcDetayStmt->execute([
-                $borcId,
-                $item['ad'],
-                $item['miktar'],
-                $item['toplam'],
-                $item['id']
-            ]);
+        // Borç kaydı (Ödeme yöntemi 'borc' ise)
+        if ($input['odemeYontemi'] === 'borc' && $input['musteriId']) {
+            $insertBorc = "INSERT INTO musteri_borclar (
+                            musteri_id, 
+                            toplam_tutar,
+                            borc_tarihi, 
+                            fis_no, 
+                            magaza_id
+                        ) VALUES (
+                            :musteri_id, 
+                            :toplam_tutar,
+                            NOW(), 
+                            :fis_no, 
+                            :magaza_id
+                        )";
+            
+            $stmt = $conn->prepare($insertBorc);
+            $stmt->bindParam(':musteri_id', $input['musteriId']);
+            $stmt->bindParam(':toplam_tutar', $netTutar);
+            $stmt->bindParam(':fis_no', $input['fisNo']);
+            $stmt->bindParam(':magaza_id', $input['magazaId']);
+            $stmt->execute();
+            
+            // Borç detaylarını ekle
+            $borcId = $conn->lastInsertId();
+            
+            foreach ($input['sepet'] as $item) {
+                $insertBorcDetay = "INSERT INTO musteri_borc_detaylar (
+                                    borc_id, 
+                                    urun_adi, 
+                                    miktar, 
+                                    tutar, 
+                                    urun_id
+                                ) VALUES (
+                                    :borc_id, 
+                                    :urun_adi, 
+                                    :miktar, 
+                                    :tutar, 
+                                    :urun_id
+                                )";
+                
+                $stmt = $conn->prepare($insertBorcDetay);
+                $stmt->bindParam(':borc_id', $borcId);
+                $stmt->bindParam(':urun_adi', $item['ad']);
+                $stmt->bindParam(':miktar', $item['miktar']);
+                $stmt->bindParam(':tutar', $item['toplam']);
+                $stmt->bindParam(':urun_id', $item['id']);
+                $stmt->execute();
+            }
         }
-    }
-    
-    $conn->commit();
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Satış başarıyla kaydedildi',
-        'invoiceId' => $faturaId,
-        'fisNo' => $fisNo
-    ]);
-    
-} catch (Exception $e) {
-    // Hata durumunda işlemi geri al
-    if (isset($conn) && $conn->inTransaction()) {
+        
+        $conn->commit();
+        
+        $response['success'] = true;
+        $response['message'] = 'Satış başarıyla kaydedildi';
+        $response['invoiceId'] = $invoiceId;
+    } catch (Exception $e) {
         $conn->rollBack();
+        $response['message'] = 'Hata: ' . $e->getMessage();
     }
-    
-    error_log('POS Satış Hatası: ' . $e->getMessage());
-    
-    echo json_encode([
-        'success' => false,
-        'message' => 'Satış kaydedilirken bir hata oluştu: ' . $e->getMessage()
-    ]);
+} else {
+    $response['message'] = 'Geçersiz veri formatı';
 }
+
+echo json_encode($response);
+?>

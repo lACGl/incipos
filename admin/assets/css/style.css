@@ -1388,7 +1388,7 @@ select[name="stock_status"]:has(option[value="normal"]:checked) {
 
 .extension-icon
 {
-	color:maroon;
+	color:crimson;
 }
 
 .menu-icon-extension{

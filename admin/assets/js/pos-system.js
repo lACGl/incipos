@@ -1369,19 +1369,87 @@ function closePaymentModal() {
 }
 
 /**
- * Barkod ile ürün arama
- * @param {string} barkod - Ürün barkodu veya kodu
+ * Barkod ile ürün arama - Barkod veya kelime araması düzeltilmiş versiyon
+ * @param {string} barkod - Ürün barkodu, kodu veya adının bir kısmı
  */
 function getUrunByBarkod(barkod) {
+    console.log("Barkod/Kelime araması:", barkod);
+    
+    // Direkt barkod araması dene
     $.ajax({
-        url: 'admin/api/search_product.php',
+        url: 'admin/api/apply_product_discount.php',
         type: 'GET',
-        data: { term: barkod },
+        data: { barkod: barkod },
         dataType: 'json',
         success: function(response) {
-            if (response.success && response.products && response.products.length > 0) {
-                const urun = response.products[0];
-                addToCart(urun);
+            // Eğer ürün bulunamazsa, kelime araması yap
+            if (!response.success || !response.product) {
+                console.log("Barkod ile ürün bulunamadı, kelime araması yapılıyor");
+                searchByKeyword(barkod);
+            } else {
+                // Ürün bulundu, sepete ekle
+                console.log("Barkod ile ürün bulundu:", response.product.ad);
+                addToCart(response.product);
+            }
+        },
+        error: function() {
+            // Hata durumunda kelime araması dene
+            console.log("Barkod araması sırasında hata, kelime araması yapılıyor");
+            searchByKeyword(barkod);
+        }
+    });
+}
+
+/**
+ * Canlı test için geliştirici hata ayıklama fonksiyonu
+ * Bu fonksiyon, sistem üzerinde yapılan değişiklikleri test etmek için kullanılır
+ */
+function testSystemChanges() {
+    console.log("Sistem değişiklikleri test ediliyor...");
+    
+    // Barkod ile bir ürün arama testi
+    const testBarkod = "silgi"; // Test için örnek bir kelime
+    console.log(`Test arama: "${testBarkod}"`);
+    
+    // Test araması yap
+    $.ajax({
+        url: 'admin/api/search_by_keyword.php',
+        type: 'GET',
+        data: { term: testBarkod },
+        dataType: 'json',
+        success: function(response) {
+            console.log("Test sonucu:", response);
+            if (response.success && response.product) {
+                console.log("Ürün bulundu:", response.product.ad);
+                console.log("Normal fiyat:", response.product.satis_fiyati);
+                console.log("İndirimli fiyat:", response.product.indirimli_fiyat);
+                console.log("Aktif fiyat:", response.product.active_price);
+            } else {
+                console.log("Ürün bulunamadı:", response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("Test sırasında hata:", status, error);
+        }
+    });
+}
+
+/**
+ * Kelime ile ürün arama - İlk ürünü sepete eklemek için
+ * @param {string} keyword - Arama kelimesi
+ */
+function searchByKeyword(keyword) {
+    console.log("Kelime araması yapılıyor:", keyword);
+    
+    $.ajax({
+        url: 'admin/api/search_by_keyword.php',
+        type: 'GET',
+        data: { term: keyword },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.product) {
+                console.log("Kelime araması sonucu:", response.product.ad);
+                addToCart(response.product);
             } else {
                 showToast('Ürün bulunamadı', 'error');
             }
@@ -1393,22 +1461,21 @@ function getUrunByBarkod(barkod) {
 }
 
 /**
- * ID ile ürün getir
+ * ID ile ürün getir - İndirimleri doğru uygulayan güncelleme
  * @param {number} id - Ürün ID
  */
 function getUrunById(id) {
     console.log('getUrunById çağrıldı: ID = ' + id); // Debug için log
     
-    // Fonksiyonun yalnızca bir kez çağrıldığından emin olmak için
     $.ajax({
-        url: 'admin/api/get_product_details.php',
+        url: 'admin/api/apply_product_discount.php', // Yeni API kullan
         type: 'GET',
         data: { id: id },
         dataType: 'json',
         success: function(response) {
             if (response.success && response.product) {
-                // Ürünü sepete ekle (yalnızca bir kez)
-                addToCart(response.product);
+                const urun = response.product;
+                addToCart(urun);
             } else {
                 showToast('Ürün bulunamadı', 'error');
             }
@@ -1436,29 +1503,34 @@ function updateDateTime() {
 }
 
 /**
- * Sepete ürün ekle
+ * Sepete ürün ekle - İndirimli fiyatları doğru işleyen güncelleme
  * @param {Object} urun - Ürün bilgileri
  */
 function addToCart(urun) {
     // Ürün sepette var mı kontrol et
     const existingIndex = sepet.findIndex(item => item.id === urun.id);
     
+    // İndirimli fiyat kontrolü - API'den gelen active_price kullanılıyor
+    const birimFiyat = urun.active_price || urun.indirimli_fiyat || urun.satis_fiyati;
+    
     if (existingIndex !== -1) {
         // Ürün sepette varsa miktarını artır
         sepet[existingIndex].miktar += 1;
         sepet[existingIndex].toplam = calculateItemTotal(sepet[existingIndex]);
     } else {
-        // Ürün sepette yoksa ekle
+        // Yeni ürün ekle
         sepet.push({
             id: urun.id,
             barkod: urun.barkod,
             kod: urun.kod,
             ad: urun.ad,
             miktar: 1,
-            birim_fiyat: parseFloat(urun.satis_fiyati),
+            birim_fiyat: parseFloat(birimFiyat),
+            original_price: parseFloat(urun.satis_fiyati), // Orijinal fiyatı sakla
+            has_discount: urun.has_discount || (urun.indirimli_fiyat !== null), // İndirim durumu
             indirim: 0,
             indirim_turu: null,
-            toplam: parseFloat(urun.satis_fiyati),
+            toplam: parseFloat(birimFiyat),
             kdv_orani: parseFloat(urun.kdv_orani)
         });
     }
@@ -1468,7 +1540,11 @@ function addToCart(urun) {
     updateSepetTotals();
     
     // Bildirim göster
-    showToast(`${urun.ad} sepete eklendi`);
+    if (urun.has_discount || urun.indirimli_fiyat) {
+        showToast(`${urun.ad} sepete eklendi (İndirimli Fiyat: ${formatPrice(birimFiyat)})`, 'success');
+    } else {
+        showToast(`${urun.ad} sepete eklendi`, 'success');
+    }
     
     // Barkod alanına fokusla
     $('#barkodInput').focus();
@@ -1509,18 +1585,31 @@ function updateCartItemQuantity(index, change) {
 }
 
 /**
- * Ürün toplam fiyatını hesapla (indirimler dahil)
- * @param {Object} item - Sepet öğesi
- * @returns {number} - Toplam fiyat
+ * Sepeti güncelle - indirim gösterimini iyileştirme
+ * calculateItemTotal fonksiyonunu güncelle
  */
 function calculateItemTotal(item) {
-    let total = item.birim_fiyat * item.miktar;
+    // Eğer orijinal fiyat varsa, kullan
+    const originalPrice = item.original_price || item.birim_fiyat;
+    const currentPrice = item.birim_fiyat;
+    let total = currentPrice * item.miktar;
     
-    // İndirim varsa uygula
+    // Ürünün kendinde indirim varsa hesapla (birim fiyat farkı)
+    let birimIndirimTutari = 0;
+    if (originalPrice > currentPrice) {
+        birimIndirimTutari = originalPrice - currentPrice;
+        // Bu farkı item'a kaydet - bu bilgiyi ekranda göstermek için kullanacağız
+        item.birim_indirim_tutari = birimIndirimTutari;
+        item.birim_indirim_orani = ((originalPrice - currentPrice) / originalPrice) * 100;
+    }
+    
+    // Manuel indirim varsa uygula
     if (item.indirim > 0) {
         if (item.indirim_turu === 'yuzde') {
+            // Yüzde indirim
             total = total * (1 - (item.indirim / 100));
         } else if (item.indirim_turu === 'tutar') {
+            // Tutar indirim
             total = total - item.indirim;
         }
     }
@@ -1529,7 +1618,7 @@ function calculateItemTotal(item) {
 }
 
 /**
- * Miktar Girişi için HTML eklemesi
+ * Sepet UI'ını güncelle - İndirim bilgilerini daha detaylı göster
  */
 function updateSepetUI() {
     let sepetHTML = '';
@@ -1538,8 +1627,30 @@ function updateSepetUI() {
         sepetHTML = '<tr><td colspan="6" class="px-3 py-2 text-center text-gray-500">Sepette ürün bulunmamaktadır</td></tr>';
     } else {
         sepet.forEach((item, index) => {
+            // İndirimli fiyat gösterimi için sınıf ekle
+            const originalPrice = item.original_price || item.birim_fiyat;
+            const hasPriceDiscount = item.has_discount || (originalPrice > item.birim_fiyat);
+            
+            // İndirim bilgisi hesapla
+            let indirimBilgisi = '-';
+            
+            // Birim indirim bilgisi
+            if (hasPriceDiscount) {
+                const indirimOrani = ((originalPrice - item.birim_fiyat) / originalPrice) * 100;
+                indirimBilgisi = `<span class="text-green-600">%${indirimOrani.toFixed(2)}</span>`;
+            }
+            
+            // Manuel indirim bilgisi
+            if (item.indirim > 0) {
+                if (item.indirim_turu === 'yuzde') {
+                    indirimBilgisi = `<span class="text-green-600">%${item.indirim.toFixed(2)}</span>`;
+                } else {
+                    indirimBilgisi = `<span class="text-green-600">${formatPrice(item.indirim)}</span>`;
+                }
+            }
+            
             sepetHTML += `
-            <tr>
+            <tr ${hasPriceDiscount ? 'class="bg-green-50"' : ''}>
                 <td class="px-3 py-2">
                     <div class="font-medium">${item.ad}</div>
                     <div class="text-xs text-gray-500">${item.barkod || item.kod}</div>
@@ -1555,16 +1666,14 @@ function updateSepetUI() {
                         </div>
                     </div>
                 </td>
-                <td class="px-3 py-2 text-right">${formatPrice(item.birim_fiyat)}</td>
                 <td class="px-3 py-2 text-right">
-                    ${item.indirim > 0 ? 
-                        (item.indirim_turu === 'yuzde' ? 
-                            `%${item.indirim.toFixed(2)}` : 
-                            formatPrice(item.indirim)
-                        ) : 
-                        '-'
+                    ${hasPriceDiscount ? 
+                        `<div class="line-through text-gray-500">${formatPrice(originalPrice)}</div>
+                         <div class="text-green-600 font-semibold">${formatPrice(item.birim_fiyat)}</div>` :
+                        formatPrice(item.birim_fiyat)
                     }
                 </td>
+                <td class="px-3 py-2 text-right">${indirimBilgisi}</td>
                 <td class="px-3 py-2 text-right">${formatPrice(item.toplam)}</td>
                 <td class="px-3 py-2 text-center">
                     <button class="btn-urun-cikar text-red-500 hover:text-red-700" data-index="${index}">
@@ -1579,20 +1688,27 @@ function updateSepetUI() {
 }
 
 /**
- * Sepet toplamlarını güncelle
+ * Sepet toplamlarını güncelle - İndirim gösterimini iyileştir
  */
 function updateSepetTotals() {
     // Toplam ürün sayısı
     const urunSayisi = sepet.reduce((total, item) => total + item.miktar, 0);
     
-    // Ara toplam (indirimler hariç)
-    const araToplam = sepet.reduce((total, item) => total + (item.birim_fiyat * item.miktar), 0);
+    // Ara toplam (indirimler hariç orijinal fiyatlar üzerinden)
+    let araToplam = 0;
+    sepet.forEach(item => {
+        const originalPrice = item.original_price || item.birim_fiyat;
+        araToplam += originalPrice * item.miktar;
+    });
+    
+    // İndirimli toplam
+    const indirimliToplam = sepet.reduce((total, item) => total + item.toplam, 0);
     
     // Toplam indirim
-    const toplamIndirim = araToplam - sepet.reduce((total, item) => total + item.toplam, 0);
+    const toplamIndirim = araToplam - indirimliToplam;
     
     // Genel toplam (indirimler dahil)
-    let genelToplam = sepet.reduce((total, item) => total + item.toplam, 0);
+    let genelToplam = indirimliToplam;
     
     // Müşteri puanı kullanılıyorsa
     if (kullanilacakPuan > 0) {
@@ -1605,16 +1721,14 @@ function updateSepetTotals() {
     $('#toplamIndirim').text(formatPrice(toplamIndirim));
     $('#genelToplam').text(formatPrice(genelToplam));
     
-// Kazanılacak puanı hesapla (yüzde olarak ve küsüratlı)
-if (seciliMusteri) {
-    const puan_oran = (seciliMusteri.puan_oran || 1) / 100;
-    // Math.floor kaldırıldı, küsüratlı hesaplama:
-    const kazanilacakPuan = genelToplam * puan_oran;
-    // Küsüratlı değeri 2 basamak olarak formatla
-    $('#kazanilacakPuan').text(`${kazanilacakPuan.toFixed(2)} Puan`);
-} else {
-    $('#kazanilacakPuan').text('0.00 Puan');
-}
+    // Kazanılacak puanı hesapla
+    if (seciliMusteri) {
+        const puan_oran = (seciliMusteri.puan_oran || 1) / 100;
+        const kazanilacakPuan = genelToplam * puan_oran;
+        $('#kazanilacakPuan').text(`${kazanilacakPuan.toFixed(2)} Puan`);
+    } else {
+        $('#kazanilacakPuan').text('0.00 Puan');
+    }
 }
 
 /**
@@ -1836,8 +1950,7 @@ function addNewCustomer(formData) {
 }
 
 /**
- * Ürün ara
- * @param {string} term - Arama terimi
+ * Stok arama fonksiyonu - İndirimli fiyatları doğru gösteren güncelleme 
  */
 function searchProducts(term) {
     $.ajax({
@@ -1847,7 +1960,8 @@ function searchProducts(term) {
         dataType: 'json',
         success: function(response) {
             if (response.success && response.products) {
-                renderProductList(response.products);
+                // İndirimler için stok listesini daha sonra hemen kontrol et
+                checkDiscountsForProducts(response.products);
             } else {
                 $('#stokListesi').html('<tr><td colspan="5" class="px-3 py-3 text-center text-gray-500">Ürün bulunamadı</td></tr>');
             }
@@ -1859,7 +1973,47 @@ function searchProducts(term) {
 }
 
 /**
- * Ürün listesini render et
+ * Ürün listesi için indirim kontrolü
+ * @param {Array} products - Ürün listesi
+ */
+function checkDiscountsForProducts(products) {
+    // Ürün ID'lerini bir dizi halinde al
+    const productIds = products.map(p => p.id);
+    
+    $.ajax({
+        url: 'admin/api/check_product_discounts.php',
+        type: 'POST',
+        data: JSON.stringify({ product_ids: productIds }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                // İndirim bilgilerini ürünlere ekle
+                const updatedProducts = products.map(product => {
+                    const discountInfo = response.discounts.find(d => d.id === product.id);
+                    if (discountInfo && discountInfo.has_discount) {
+                        product.indirimli_fiyat = discountInfo.discounted_price;
+                        product.has_discount = true;
+                    }
+                    return product;
+                });
+                
+                // Ürün listesini render et
+                renderProductList(updatedProducts);
+            } else {
+                // Normal şekilde render et
+                renderProductList(products);
+            }
+        },
+        error: function() {
+            // Hata durumunda normal şekilde render et
+            renderProductList(products);
+        }
+    });
+}
+
+/**
+ * Ürün listesini render et - İndirimli fiyat gösterimi ile
  * @param {Array} products - Ürünler listesi
  */
 function renderProductList(products) {
@@ -1869,15 +2023,23 @@ function renderProductList(products) {
         html = '<tr><td colspan="5" class="px-3 py-3 text-center text-gray-500">Ürün bulunamadı</td></tr>';
     } else {
         products.forEach(product => {
+            const hasDiscount = product.has_discount || (product.indirimli_fiyat !== null);
+            
             html += `
-            <tr class="urun-sec-row hover:bg-blue-50 cursor-pointer" data-id="${product.id}">
+            <tr class="urun-sec-row hover:bg-blue-50 cursor-pointer ${hasDiscount ? 'bg-green-50' : ''}" data-id="${product.id}">
                 <td class="px-3 py-2">${product.barkod || ''}</td>
                 <td class="px-3 py-2">
                     <div class="font-medium">${product.ad}</div>
                     <div class="text-xs text-gray-500">${product.kod || ''}</div>
                 </td>
                 <td class="px-3 py-2 text-center">${product.stok_miktari || 0}</td>
-                <td class="px-3 py-2 text-right">${formatPrice(product.satis_fiyati)}</td>
+                <td class="px-3 py-2 text-right">
+                    ${hasDiscount ? 
+                        `<div class="line-through text-gray-500">${formatPrice(product.satis_fiyati)}</div>
+                         <div class="text-green-600 font-semibold">${formatPrice(product.indirimli_fiyat)}</div>` :
+                        formatPrice(product.satis_fiyati)
+                    }
+                </td>
                 <td class="px-3 py-2 text-center">
                     <button class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded text-xs" onclick="getUrunById(${product.id})">
                         Ekle
@@ -2141,13 +2303,39 @@ function resetSepet(newFisNo = true) {
  * Satışı tamamla
  */
 function completeSale() {
-	    // Kasiyer ve mağaza kontrolü
+    // Kasiyer ve mağaza kontrolü
     if (!$('#kasiyer').val() || !$('#magaza').val()) {
         showToast('Lütfen kasiyer ve mağaza seçimi yapın', 'error');
         return;
     }
-
-    // Satış verileri hazırla
+    if (!seciliOdemeYontemi) {
+        showToast('Lütfen ödeme yöntemi seçiniz', 'error');
+        return;
+    }
+    
+    const odenecekTutar = getOdenecekTutar();
+    
+    // Ödeme yöntemi kontrolü ve ilgili işlemler 
+    if (seciliOdemeYontemi === 'nakit') {
+        const alinan = parseFloat($('#alinanTutar').val()) || odenecekTutar;
+        
+        if (alinan < odenecekTutar) {
+            if(!confirm('Girilen tutar ödenecek tutardan az. Devam etmek istiyor musunuz?')) {
+                return;
+            }
+        }
+    } else if (seciliOdemeYontemi === 'borc') {
+        if (!seciliMusteri) {
+            showToast('Borç eklemek için müşteri seçmelisiniz', 'error');
+            return;
+        }
+        
+        if (!confirm(`${seciliMusteri.ad} ${seciliMusteri.soyad} adlı müşteriye ${formatPrice(odenecekTutar)} tutarında borç eklenecek. Onaylıyor musunuz?`)) {
+            return;
+        }
+    }
+    
+    // Satış verileri hazırla - İndirim bilgilerini doğru şekilde dahil et
     const saleData = {
         fisNo: fisNo,
         islemTuru: islemTuru,
@@ -2156,7 +2344,13 @@ function completeSale() {
         musteriId: seciliMusteri ? seciliMusteri.id : null,
         odemeYontemi: seciliOdemeYontemi,
         kullanilacakPuan: kullanilacakPuan,
-        sepet: sepet,
+        sepet: sepet.map(item => {
+            // Orijinal ve indirimli fiyat bilgilerini dahil et
+            return {
+                ...item,
+                original_price: item.original_price || item.birim_fiyat // Orijinal fiyatı kesinlikle gönder
+            };
+        }),
         genelToplam: getOdenecekTutar()
     };
     
@@ -2169,7 +2363,7 @@ function completeSale() {
         saleData.taksit = $('#taksitSayisi').val();
     }
     
-    // AJAX ile satışı kaydet - SADECE TEK BİR AJAX ÇAĞRISI OLMALI
+    // AJAX ile satışı kaydet
     $.ajax({
         url: 'admin/api/create_sale.php',
         type: 'POST',
@@ -2192,7 +2386,7 @@ function completeSale() {
                 // Tarih ve saati güncelle
                 updateDateTime();
                 
-                showToast('Satış başarıyla tamamlandı');
+                showToast('Satış başarıyla tamamlandı', 'success');
             } else {
                 showToast(response.message || 'Satış kaydedilirken bir hata oluştu', 'error');
             }
@@ -3582,15 +3776,22 @@ function printReceipt(invoiceId) {
  * @returns {number} - Ödenecek tutar
  */
 function getOdenecekTutar() {
-    // Genel toplam (indirimler dahil)
-    let genelToplam = sepet.reduce((total, item) => total + item.toplam, 0);
+    // Toplam ürün fiyatları (orijinal fiyatlar)
+    const araToplam = sepet.reduce((total, item) => {
+        const originalPrice = item.original_price || item.birim_fiyat;
+        return total + (originalPrice * item.miktar);
+    }, 0);
     
-    // Müşteri puanı kullanılıyorsa
+    // İndirimli toplam (sepetteki her ürünün gerçek toplam fiyatı)
+    const indirimliToplam = sepet.reduce((total, item) => total + item.toplam, 0);
+    
+    // Müşteri puanı kullanılıyorsa düş
+    let odenecekTutar = indirimliToplam;
     if (kullanilacakPuan > 0) {
-        genelToplam = Math.max(0, genelToplam - kullanilacakPuan);
+        odenecekTutar = Math.max(0, odenecekTutar - kullanilacakPuan);
     }
     
-    return genelToplam;
+    return odenecekTutar;
 }
 
 /**
@@ -4157,16 +4358,32 @@ function saveShortcuts() {
 }
 
 /**
- * Ödeme modalını aç
+ * Ödeme modalını aç - İndirim bilgilerini ayrıntılı göster
  */
 function openOdemeModal() {
-    // Toplamları güncelle
-    const genelToplam = sepet.reduce((total, item) => total + item.toplam, 0);
+    // İndirimler dahil doğru tutarları hesapla
+    const araToplam = sepet.reduce((total, item) => {
+        const originalPrice = item.original_price || item.birim_fiyat;
+        return total + (originalPrice * item.miktar);
+    }, 0);
+    
+    const indirimliToplam = sepet.reduce((total, item) => total + item.toplam, 0);
+    const toplamIndirim = araToplam - indirimliToplam;
+    
     const odenecekTutar = getOdenecekTutar();
     
-    $('#odemeToplam').text(formatPrice(genelToplam));
+    // Ödeme modalı içeriğini hazırla
+    $('#odemeToplam').text(formatPrice(araToplam));
+    $('#odemeIndirim').text(formatPrice(toplamIndirim)); // İndirim satırı ekledik
     $('#odemeKullanilanPuan').text(kullanilacakPuan > 0 ? `${kullanilacakPuan} Puan` : '0 Puan');
     $('#odemeOdenecek').text(formatPrice(odenecekTutar));
+    
+    // İndirim satırı görünürlüğü
+    if (toplamIndirim > 0) {
+        $('#odemeIndirimSatiri').removeClass('hidden');
+    } else {
+        $('#odemeIndirimSatiri').addClass('hidden');
+    }
     
     // Ödeme yöntemlerini sıfırla
     seciliOdemeYontemi = null;
@@ -4176,6 +4393,7 @@ function openOdemeModal() {
     // Modalı aç
     $('#odemeModal').removeClass('hidden');
 }
+
 
 /**
  * Ürün sepete ekle

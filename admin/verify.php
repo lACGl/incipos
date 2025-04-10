@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'db_connection.php'; // Veritabanı bağlantısını sağlayın
+require_once 'session_manager.php'; // Session yönetim fonksiyonları
 
 // Kullanıcı oturum açmamışsa giriş sayfasına yönlendir
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -33,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($verificationCode == $_SESSION['verification_code']) {
             unset($_SESSION['verification_code']);
             unset($_SESSION['verification_start_time']);
+            
+            // SMS doğrulaması başarılı olarak işaretle
+            markSmsVerified();
+            
             header("Location: admin_dashboard.php");
             exit;
         } else {

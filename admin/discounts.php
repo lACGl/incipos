@@ -115,25 +115,32 @@ if (isset($_POST['delete_discount'])) {
 }
 
 // İndirim Uygulama (yeni eklenen)
+// İndirim Uygulama (yeni eklenen)
 if (isset($_POST['apply_discount_form'])) {
     $discount_id = $_POST['discount_id'];
     $application_type = $_POST['application_type'];
     $filter_value = null;
     
-    if ($application_type === 'secili' && isset($_POST['selected_products'])) {
-        $filter_value = $_POST['selected_products'];
-    } elseif ($application_type === 'departman' && isset($_POST['department_id'])) {
-        $filter_value = $_POST['department_id'];
-    } elseif ($application_type === 'ana_grup' && isset($_POST['main_group_id'])) {
-        $filter_value = $_POST['main_group_id'];
-    }
-    
-    $success = applyDiscount($conn, $discount_id, $application_type, $filter_value);
-    
-    if ($success) {
-        $success_message = "İndirim başarıyla uygulandı.";
-    } else {
-        $error_message = "İndirim uygulanırken hata oluştu.";
+    try {
+        if ($application_type === 'secili' && isset($_POST['selected_products'])) {
+            $filter_value = $_POST['selected_products'];
+        } elseif ($application_type === 'departman' && isset($_POST['department_id'])) {
+            $filter_value = $_POST['department_id'];
+        } elseif ($application_type === 'ana_grup' && isset($_POST['main_group_id'])) {
+            $filter_value = $_POST['main_group_id'];
+        }
+        
+        $success = applyDiscount($conn, $discount_id, $application_type, $filter_value);
+        
+        if ($success) {
+            $success_message = "İndirim başarıyla uygulandı.";
+        } else {
+            $error_message = "İndirim uygulanırken hata oluştu." . 
+                (isset($_SESSION['error_detail']) ? " Detay: " . $_SESSION['error_detail'] : "");
+            unset($_SESSION['error_detail']);
+        }
+    } catch (Exception $e) {
+        $error_message = "İndirim uygulanırken beklenmeyen bir hata oluştu: " . $e->getMessage();
     }
 }
 
@@ -192,7 +199,46 @@ function applyDiscount($conn, $discount_id, $application_type, $filter_value) {
         $product_ids = [];
         
         switch ($application_type) {
-            // ... mevcut kod ...
+            case 'tum':
+                // Tüm ürünleri al
+                $product_query = "SELECT id FROM urun_stok WHERE durum = 'aktif'";
+                $stmt = $conn->query($product_query);
+                $product_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                break;
+                
+            case 'secili':
+                // Seçili ürünleri al
+                if (is_array($filter_value)) {
+                    // POST'tan gelen dizi
+                    $product_ids = $filter_value;
+                } elseif (is_string($filter_value) && !empty($filter_value)) {
+                    // Virgülle ayrılmış ID'ler
+                    $product_ids = explode(',', $filter_value);
+                }
+                break;
+                
+            case 'departman':
+                // Departmana göre ürünleri al
+                $product_query = "SELECT id FROM urun_stok WHERE durum = 'aktif' AND departman_id = :departman_id";
+                $stmt = $conn->prepare($product_query);
+                $stmt->bindParam(':departman_id', $filter_value);
+                $stmt->execute();
+                $product_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                break;
+                
+            case 'ana_grup':
+                // Ana gruba göre ürünleri al
+                $product_query = "SELECT id FROM urun_stok WHERE durum = 'aktif' AND ana_grup_id = :ana_grup_id";
+                $stmt = $conn->prepare($product_query);
+                $stmt->bindParam(':ana_grup_id', $filter_value);
+                $stmt->execute();
+                $product_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                break;
+        }
+        
+        // Ürün ID'leri boşsa işlem yapma
+        if (empty($product_ids)) {
+            return false;
         }
         
         // İşlem başla
@@ -211,7 +257,7 @@ function applyDiscount($conn, $discount_id, $application_type, $filter_value) {
         // Ürünlere indirim uygula
         foreach ($product_ids as $product_id) {
             // Ürün bilgilerini al
-            $product_query = "SELECT id, satis_fiyati, indirimli_fiyat FROM urun_stok WHERE id = :id";
+            $product_query = "SELECT id, ad, satis_fiyati, indirimli_fiyat FROM urun_stok WHERE id = :id";
             $stmt = $conn->prepare($product_query);
             $stmt->bindParam(':id', $product_id);
             $stmt->execute();
@@ -288,6 +334,9 @@ function applyDiscount($conn, $discount_id, $application_type, $filter_value) {
             $conn->rollBack();
         }
         error_log("İndirim uygulama hatası: " . $e->getMessage());
+        
+        // Hatanın detayını görmek için
+        $_SESSION['error_detail'] = $e->getMessage(); 
         return false;
     }
 }

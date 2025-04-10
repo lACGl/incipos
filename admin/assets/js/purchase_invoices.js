@@ -2345,8 +2345,7 @@ function transferToStore(faturaId) {
                                        checked 
                                        onclick="updateProductSelection(${index}, this.checked)" 
                                        class="product-select form-checkbox h-4 w-4">
-                            </td>
-                            <td class="px-4 py-2">
+									   <td class="px-4 py-2">
                                 ${product.ad}
                                 <div class="text-xs text-gray-500">Barkod: ${product.barkod}</div>
                                 <div class="text-xs text-gray-500">
@@ -2578,7 +2577,22 @@ function transferToStore(faturaId) {
                         body: JSON.stringify(requestData)
                     });
                     
-                    const result = await response.json();
+                    // Yanıtı metin olarak al
+                    const responseText = await response.text();
+                    console.log('API Yanıtı (Ham):', responseText);
+                    
+                    // JSON olarak ayrıştır
+                    let result;
+                    if (responseText.trim()) {
+                        try {
+                            result = JSON.parse(responseText);
+                        } catch (e) {
+                            console.error('JSON ayrıştırma hatası:', e);
+                            throw new Error('Sunucu yanıtı geçersiz JSON formatında: ' + responseText.substr(0, 100) + '...');
+                        }
+                    } else {
+                        throw new Error('Sunucu boş yanıt döndürdü');
+                    }
                     
                     if (!result.success) {
                         throw new Error(result.message || 'Aktarım sırasında bir hata oluştu');

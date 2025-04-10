@@ -1,12 +1,12 @@
 <?php
-session_start();
-require_once 'db_connection.php';
+// Session management logic
+require_once 'session_manager.php';
 
-// Yetki kontrolü
-if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
-    header("Location: index.php");
-    exit;
-}
+// Session kontrolü - Yetkisiz erişimleri engelle
+checkUserSession();
+
+// Veritabanı bağlantısı
+require_once 'db_connection.php';
 
 // Aktif kullanıcı bilgilerini al
 $stmt = $conn->prepare("SELECT * FROM admin_user WHERE id = ?");

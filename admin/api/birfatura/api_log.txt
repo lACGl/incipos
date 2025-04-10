@@ -554,3 +554,9 @@
     "error": "Unauthorized access"
 }
 2025-04-06 12:18:20 - Çıkış yapıldı.
+2025-04-08 20:41:15 - orders endpoint çalıştırılıyor
+2025-04-08 20:41:15 - Token hatası. Beklenen: KeHxXtvWK6QovGL, Gelen: 
+2025-04-08 20:41:15 - Gönderilen yanıt: {
+    "error": "Unauthorized access"
+}
+2025-04-08 20:41:15 - Çıkış yapıldı.

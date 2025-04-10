@@ -163,32 +163,32 @@ include 'header.php';
             <div class="menu-icon extension-icon">
 			<i class="fas fa-percentage"></i>
             </div>
-            <h3 class="menu-title">Kritik Stok</h3>
+            <h3 class="menu-title">İndirim Yönetimi</h3>
             <p class="menu-description">Tek bir sayfa üzerinden indirimlerinizi yönetin.</p>
             <div class="menu-link">
                 İndirim Yönetimine Git <i class="fas fa-chevron-right"></i>
             </div>
         </div>
 		
-		<div class="menu-card api-card" onclick="window.location.href=''" style="cursor: pointer;">
+		<div class="menu-card api-card" onclick="window.location.href='critical_stock.php'" style="cursor: pointer;">
             <div class="menu-icon extension-icon">
 			<i class="fas fa-alarm-exclamation"></i>
             </div>
             <h3 class="menu-title">Kritik Stok & Satın Alma Fırsatları</h3>
             <p class="menu-description">Kritik seviyenin altına düşen ve tedarik edilebilecek ürünleri tek ekrandan görüntüleyin, kolayca siparişe dönüştürün.</p>
             <div class="menu-link">
-                İndirim Yönetimine Git <i class="fas fa-chevron-right"></i>
+                Stok Yönetimine Git <i class="fas fa-chevron-right"></i>
             </div>
         </div>
 		
 		<div class="menu-card api-card" onclick="window.location.href=''" style="cursor: pointer;">
-            <div class="menu-icon dosyay-icon">
-			<i class="fas fa-file-plus"></i>
+            <div class="menu-icon extension-icon">
+			<i class="fas fa-file-archive"></i>
             </div>
             <h3 class="menu-title">Dosya Yönetimi</h3>
             <p class="menu-description">Görselleri kolayca yükleyin, otomatik sıkıştırma ile hızlı ve düzenli bir arşiv oluşturun.</p>
             <div class="menu-link">
-                İndirim Yönetimine Git <i class="fas fa-chevron-right"></i>
+                Dosya Yönetimine Git <i class="fas fa-chevron-right"></i>
             </div>
         </div>
     </div>
@@ -223,14 +223,14 @@ include 'header.php';
 		</div>
 
 		
-		<div class="menu-card api-card"  onclick="window.location.href=''" style="cursor: pointer;">
+		<div class="menu-card api-card"  onclick="window.location.href='api/netgsm/'" style="cursor: pointer;">
             <div class="menu-icon api-icon">
                 <i class="fas fa-address-book"></i>
             </div>
             <h3 class="menu-title">NetGSM</h3>
             <p class="menu-description">SMS gönderimlerinizi yönetin ve mesaj geçmişinizi görüntüleyin.</p>
             <div class="menu-link">
-                BirFatura Yönetimine Git <i class="fas fa-chevron-right"></i>
+                NETGsm Yönetimine Git <i class="fas fa-chevron-right"></i>
             </div>
         </div>
 		

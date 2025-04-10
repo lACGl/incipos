@@ -1,6 +1,18 @@
 <?php
 session_start();
 require_once 'db_connection.php'; // Veritabanı bağlantısı dosyanız
+require_once 'session_manager.php'; // Session yönetim fonksiyonları
+
+// Eğer kullanıcı zaten giriş yapmış ve SMS doğrulaması tamamlanmışsa dashboard'a yönlendir
+if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] && isset($_SESSION['sms_verified']) && $_SESSION['sms_verified']) {
+    // Session süresini kontrol et (24 saat = 86400 saniye)
+    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] <= 86400)) {
+        // Session hala geçerli, dashboard'a yönlendir
+        $_SESSION['last_activity'] = time(); // Son aktivite zamanını güncelle
+        header("Location: admin_dashboard.php");
+        exit;
+    }
+}
 
 function sendSms($phoneNumber, $message) {
     $userCode = '4526060578'; // Netgsm kullanıcı kodu
@@ -73,17 +85,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$disableForm) {
             // Giriş başarılı
             $_SESSION['logged_in'] = true;
             $_SESSION['kullanici_adi'] = $username;
-
-            // SMS gönderimi
-            $phone = $user['telefon_no']; // Kullanıcı telefon numarası
-            $verificationCode = rand(100000, 999999); // 6 haneli doğrulama kodu
-            $_SESSION['verification_code'] = $verificationCode;
             $_SESSION['user_id'] = $user['id'];
-            sendSms($phone, "Doğrulama kodunuz: $verificationCode");
-
-            // Yönlendirme
-            header("Location: verify.php");
-            exit;
+            $_SESSION['last_activity'] = time(); // Aktivite zamanını kaydet
+            
+            // SMS kontrolü yapılacak mı? Son 24 saatte doğrulama yapılmış mı?
+            $needSmsVerification = true;
+            
+            if (isset($_SESSION['sms_verified']) && $_SESSION['sms_verified'] && 
+                isset($_SESSION['last_sms_verification']) && 
+                (time() - $_SESSION['last_sms_verification'] < 86400)) {
+                // Son 24 saat içinde SMS doğrulaması yapılmış
+                $needSmsVerification = false;
+            }
+            
+            if ($needSmsVerification) {
+                // SMS doğrulaması gerekiyor
+                $phone = $user['telefon_no']; // Kullanıcı telefon numarası
+                $verificationCode = rand(100000, 999999); // 6 haneli doğrulama kodu
+                $_SESSION['verification_code'] = $verificationCode;
+                
+                // SMS gönder
+                sendSms($phone, "Doğrulama kodunuz: $verificationCode");
+                
+                // Yönlendirme
+                header("Location: verify.php");
+                exit;
+            } else {
+                // SMS doğrulamasına gerek yok, direkt dashboard'a yönlendir
+                header("Location: admin_dashboard.php");
+                exit;
+            }
         } else {
             // Yanlış şifre
             $_SESSION['login_attempts']++;

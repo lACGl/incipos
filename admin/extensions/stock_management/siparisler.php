@@ -3,9 +3,9 @@
 $start_time = microtime(true);
 
 // Header'ı dahil et
-include 'header.php';
-require_once 'db_connection.php';
-require_once 'helpers/stock_functions.php';
+include '../../header.php';
+require_once '../../db_connection.php';
+require_once '../../helpers/stock_functions.php';
 
 // Kullanıcı giriş kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
@@ -758,7 +758,7 @@ $execution_time = round($end_time - $start_time, 3);
             contentDiv.innerHTML = '<div class="flex justify-center"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div></div>';
             
             // AJAX ile sipariş detaylarını al
-            fetch('api/get_purchase_order_details.php?id=' + orderId)
+            fetch('../../api/get_purchase_order_details.php?id=' + orderId)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -973,7 +973,7 @@ $execution_time = round($end_time - $start_time, 3);
                     const { formData } = result.value;
                     
                     // Faturaya dönüştürme API'sini çağır
-                    fetch('api/convert_to_invoice.php', {
+                    fetch('../../api/convert_to_invoice.php', {
                         method: 'POST',
                         body: formData
                     })
@@ -1046,7 +1046,7 @@ $execution_time = round($end_time - $start_time, 3);
 			// Teklif formu oluşturma ve indirme fonksiyonu
 function generateQuotePDF(siparisId) {
     // PDF oluşturmak için API çağrısı yap
-    fetch('api/generate_quote_pdf.php?id=' + siparisId)
+    fetch('../../api/generate_quote_pdf.php?id=' + siparisId)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -1098,5 +1098,5 @@ if (typeof Swal === 'undefined') {
 $page_scripts = '';
 
 // Footer'ı dahil et
-include 'footer.php';
+include '../../footer.php';
 ?>

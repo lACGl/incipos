@@ -3,8 +3,8 @@
 $start_time = microtime(true);
 
 // Header'ı dahil et
-include 'header.php';
-require_once 'db_connection.php';
+include '../../header.php';
+require_once '../../db_connection.php';
 
 // Kullanıcı giriş kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
@@ -920,7 +920,7 @@ $execution_time = round($end_time - $start_time, 3);
                 searchTimeout = setTimeout(() => {
                     resultsContainer.innerHTML = '<div class="p-3 text-center text-gray-500">Aranıyor...</div>';
                     
-                    fetch('api/search_products_discount.php?q=' + encodeURIComponent(query))
+                    fetch('../../api/search_products_discount.php?q=' + encodeURIComponent(query))
                         .then(response => response.json())
                         .then(data => {
                             if (data.length === 0) {
@@ -1052,5 +1052,5 @@ $page_scripts = '
 ';
 
 // Footer'ı dahil et
-include 'footer.php';
+include '../../footer.php';
 ?> 	

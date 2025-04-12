@@ -265,20 +265,23 @@ try {
     // PDF'i sonlandır ve indir
     $pdf_file = 'teklif_formu_' . $siparis_id . '_' . date('Ymd') . '.pdf';
     
-    // PDF dizini kontrolü ve oluşturma - tam yol kullan
-    $pdf_dir = dirname(__DIR__) . '/depo/pdf';
+    // Kök dizini bul ve PDF dizinini oluştur
+    $root_path = dirname(dirname(__DIR__));
+    $pdf_dir = $root_path . '/files/pdf/orders';
+    
+    // Dizin yoksa oluştur
     if (!file_exists($pdf_dir)) {
         mkdir($pdf_dir, 0755, true);
     }
     
-    // Dosyayı tam yol kullanarak kaydet
+    // Dosya yolu
     $file_path = $pdf_dir . '/' . $pdf_file;
     $pdf->Output($file_path, 'F');
     
-    // Web tarayıcısı için erişilebilir yol
-    $web_path = 'depo/pdf/' . $pdf_file;
+    // Web erişimi için yol
+    $web_path = '../../../files/pdf/orders/' . $pdf_file;
     
-    // Başarılı yanıt döndür
+    // Başarılı yanıt
     echo json_encode([
         'success' => true,
         'message' => 'Teklif formu başarıyla oluşturuldu',

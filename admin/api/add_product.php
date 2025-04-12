@@ -60,24 +60,28 @@ try {
         throw new Exception('Bu barkod veya kod zaten kullanımda');
     }
 
+    // Resim yolunu barkod temelli olarak oluştur
+    $resim_yolu = 'files/img/products/' . $barkod . '_1.jpg';
+
     // Ürünü ekle
     $sql = "INSERT INTO urun_stok (
         kod, barkod, ad, web_id, yil,
         kdv_orani, alis_fiyati, satis_fiyati, indirimli_fiyat,
         stok_miktari, departman_id, birim_id, ana_grup_id, alt_grup_id,
-        kayit_tarihi, durum
+        kayit_tarihi, durum, resim_yolu
     ) VALUES (
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
-        NOW(), 'aktif'
+        NOW(), 'aktif', ?
     )";
 
     $stmt = $conn->prepare($sql);
     $stmt->execute([
         $kod, $barkod, $ad, $web_id, $yil,
         $kdv_orani, $alis_fiyati, $satis_fiyati, $indirimli_fiyat,
-        $stok_miktari, $departman_id, $birim_id, $ana_grup_id, $alt_grup_id
+        $stok_miktari, $departman_id, $birim_id, $ana_grup_id, $alt_grup_id,
+        $resim_yolu
     ]);
 
     $urun_id = $conn->lastInsertId();
@@ -115,7 +119,8 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Ürün başarıyla eklendi',
-        'urun_id' => $urun_id
+        'urun_id' => $urun_id,
+        'resim_yolu' => $resim_yolu
     ]);
 
 } catch (Exception $e) {

@@ -24,7 +24,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>İnciPos Admin</title>
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="/incipos/admin/assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 </head>
@@ -113,21 +113,21 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
                 <!-- Ana Menü -->
                 <nav class="hidden md:flex space-x-4">
-                    <a href="admin_dashboard.php" class="<?php echo $current_page == 'admin_dashboard.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/incipos/admin/admin_dashboard.php" class="<?php echo $current_page == 'admin_dashboard.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Dashboard
                     </a>
-                    <a href="stock_list.php" class="<?php echo $current_page == 'stock_list.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/incipos/admin/stock_list.php" class="<?php echo $current_page == 'stock_list.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Stok Listesi
                     </a>
-                    <a href="purchase_invoices.php" class="<?php echo $current_page == 'purchase_invoices.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/incipos/admin/purchase_invoices.php" class="<?php echo $current_page == 'purchase_invoices.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Alış Faturaları
                     </a>
-                    <a href="customers.php" class="<?php echo $current_page == 'customers.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/incipos/admin/customers.php" class="<?php echo $current_page == 'customers.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Müşteriler
-                    </a><a href="reports.php" class="<?php echo $current_page == 'reports.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    </a><a href="/incipos/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Raporlar
                     </a>
-					</a><a href="settings.php" class="<?php echo $current_page == 'settings.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+					</a><a href="/incipos/admin/settings.php" class="<?php echo $current_page == 'settings.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Ayarlar
                     </a>
                 </nav>

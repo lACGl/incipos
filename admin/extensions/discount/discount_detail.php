@@ -4,8 +4,8 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // Header ve veritabanı bağlantısını dahil et
-include 'header.php';
-require_once 'db_connection.php';
+include '../../header.php';
+require_once '../../db_connection.php';
 
 // Kullanıcı giriş kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
@@ -462,7 +462,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         console.log("Ürün aranıyor:", query);
         searchResults.innerHTML = '<div class="p-3 text-gray-500 text-center">Aranıyor...</div>';
         
-        fetch('api/search_products_discount.php?q=' + encodeURIComponent(query))
+        fetch('../../api/search_products_discount.php?q=' + encodeURIComponent(query))
             .then(response => {
                 console.log("API yanıtı:", response);
                 return response.json();
@@ -595,5 +595,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <?php
 // Footer'ı dahil et
-include 'footer.php';
+include '../../footer.php';
 ?>

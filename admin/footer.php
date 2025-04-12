@@ -19,7 +19,7 @@
 
     <!-- Genel JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script type="module" src="assets/js/main.js"></script>
+    <script type="module" src="/incipos/admin/assets/js/main.js"></script>
     <script>
         // Kullanıcı menüsü toggle
         document.getElementById('user-menu-button')?.addEventListener('click', function() {

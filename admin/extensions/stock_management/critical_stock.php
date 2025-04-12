@@ -1,13 +1,12 @@
 <?php
-// Mevcut sayfanın ilk kısmı aynı kalacak, sadece en çok satılan ürünleri çeken ek bir sorgu ekleyeceğiz
 
 // Sayfa yüklenme süresini hesapla
 $start_time = microtime(true);
 
 // Header'ı dahil et
-include 'header.php';
-require_once 'db_connection.php';
-require_once 'stock_functions.php';
+include '../../header.php';
+require_once '../../db_connection.php';
+require_once '../../helpers/stock_functions.php';
 
 // Kullanıcı giriş kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
@@ -892,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (showBasketBtn) {
         showBasketBtn.addEventListener('click', function() {
             // Sepet içeriğini güncelle
-            fetch('api/get_basket.php')
+            fetch('../../api/get_basket.php')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1152,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Sayfa yüklendiğinde sepet sayısını güncelle
-    fetch('api/get_basket.php')
+    fetch('../../api/get_basket.php')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -1180,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // AJAX ile sepete ekleme isteği
-        fetch('api/add_to_basket.php', {
+        fetch('../../api/add_to_basket.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1352,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (clearBasketBtn) {
             clearBasketBtn.addEventListener('click', function() {
                 // API ile sepeti temizle
-                fetch('api/clear_basket.php')
+                fetch('../../api/clear_basket.php')
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -1396,7 +1395,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const productId = this.getAttribute('data-id');
                 
                 // API ile ürünü sepetten kaldır
-                fetch(`api/remove_from_basket.php?id=${productId}`)
+                fetch(`../../api/remove_from_basket.php?id=${productId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {

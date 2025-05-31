@@ -270,6 +270,7 @@ function editStore(storeId) {
             document.getElementById('edit_store_name').value = data.ad;
             document.getElementById('edit_store_address').value = data.adres || '';
             document.getElementById('edit_store_phone').value = data.telefon || '';
+            document.getElementById('edit_store_mobile').value = data.cep_telefon || ''; // Yeni eklenen cep telefonu alanı
             
             // Modalı göster
             const modal = document.getElementById('editStoreModal');

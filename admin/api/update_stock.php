@@ -1,8 +1,9 @@
 <?php
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 error_reporting(0);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
-session_start();
 require_once '../db_connection.php';
 require_once '../helpers/stock_functions.php';  
 
@@ -225,8 +226,9 @@ try {
         ]);
     }
 
-    // Ana stok tablosunu güncelle - updateTotalStock fonksiyonunu kullanarak
-    updateTotalStock($id, $conn);
+    // Ana stok tablosunu güncelle - updateProductTotalStock fonksiyonunu kullanarak
+    // ÖNEMLİ: updateTotalStock fonksiyonu yerine updateProductTotalStock fonksiyonunu kullan
+    updateProductTotalStock($id, $conn);
     
     // Güncel stok miktarını al (UI gösterimi için)
     $stmt = $conn->prepare("SELECT stok_miktari FROM urun_stok WHERE id = ?");
@@ -257,6 +259,6 @@ try {
     error_log('Kritik hata: ' . $t->getMessage());
     echo json_encode([
         'success' => false,
-        'message' => 'Sistem hatası oluştu'
+        'message' => 'Sistem hatası oluştu: ' . $t->getMessage()
     ]);
 }

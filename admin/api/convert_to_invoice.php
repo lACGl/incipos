@@ -1,6 +1,7 @@
 <?php
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 // Siparişleri faturaya dönüştürmek için API
-session_start();
 require_once '../db_connection.php';
 require_once '../helpers/stock_functions.php';
 

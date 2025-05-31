@@ -1,0 +1,350 @@
+<?php
+/**
+ * Session Manager
+ * Oturum yönetimi ve yetkilendirme için güvenli yardımcı fonksiyonlar
+ */
+
+// Oturum süresi (12 saat = 43200 saniye)
+define('SESSION_LIFETIME', 43200);
+
+/**
+ * Geriye dönük uyumluluk için session_start() fonksiyonu yerine geçer
+ * Mevcut kod tabanında değişiklik yapmadan güvenli oturum yönetimi sağlar
+ */
+function session_start() {
+    // Eğer oturum zaten başlatılmışsa tekrar başlatma
+    if (session_status() == PHP_SESSION_ACTIVE) {
+        return true;
+    }
+    
+    // Session kaçırma saldırılarına karşı koruma
+    ini_set('session.use_only_cookies', 1);
+    
+    // Daha güvenli session ayarları
+    $session_params = session_get_cookie_params();
+    session_set_cookie_params(
+        $session_params["lifetime"], 
+        $session_params["path"], 
+        $session_params["domain"], 
+        isset($_SERVER['HTTPS']), // HTTPS varsa true, yoksa false 
+        true      // JavaScript erişimini engelle (HttpOnly)
+    );
+    
+    // Orijinal session_start fonksiyonunu çağır
+    $result = \session_start();
+    
+    // Session fixation koruması - yeni oturumlarda session ID'yi yenile
+    if (!isset($_SESSION['initialized'])) {
+        session_regenerate_id(true);
+        $_SESSION['initialized'] = true;
+    }
+    
+    return $result;
+}
+
+/**
+ * CSRF token oluşturma
+ * Form güvenliği için token oluşturur
+ * @return string CSRF token
+ */
+function generate_csrf_token() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * CSRF token doğrulama
+ * @param string $token Doğrulanacak token
+ * @return bool Doğrulama sonucu
+ */
+function verify_csrf_token($token) {
+    if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Kullanıcı oturum kontrolü yapar
+ * Yetkisiz erişim durumunda login sayfasına yönlendirir
+ * @return bool Oturum aktif mi?
+ */
+function checkUserSession() {
+    // Session süresi kontrolü 
+    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time'] > SESSION_LIFETIME)) {
+        // Oturum süresi dolmuşsa çıkış yapılıyor
+        logout();
+        return false;
+    }
+    
+    // Oturum açık değilse yönlendir
+    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+        header("Location: index.php");
+        exit();
+    }
+    
+    // Parmak izi kontrolü - session hijacking koruması
+    $current_fingerprint = md5(
+        $_SERVER['HTTP_USER_AGENT'] . 
+        (isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '') . 
+        $_SERVER['REMOTE_ADDR']
+    );
+    
+    if (!isset($_SESSION['fingerprint']) || $_SESSION['fingerprint'] !== $current_fingerprint) {
+        logout();
+        return false;
+    }
+    
+    // SMS doğrulaması gerekli mi kontrol et
+    if (!isset($_SESSION['sms_verified']) || $_SESSION['sms_verified'] !== true) {
+        // SMS doğrulamasını geçmemiş, verify.php'ye yönlendir
+        header("Location: verify.php");
+        exit();
+    }
+    
+    // Son aktivite zamanını güncelle - ama giriş zamanını değil
+    $_SESSION['last_activity'] = time();
+    
+    return true;
+}
+
+/**
+ * Kullanıcı giriş işlemi
+ * @param int $user_id Kullanıcı ID
+ * @param string $username Kullanıcı adı
+ */
+function loginUser($user_id, $username) {
+    // Oturumu temizle ve yeni ID oluştur (Session Fixation koruması)
+    session_regenerate_id(true);
+    
+    $_SESSION['logged_in'] = true;
+    $_SESSION['kullanici_adi'] = $username;
+    $_SESSION['user_id'] = $user_id;
+    $_SESSION['login_time'] = time(); // Giriş yapılan zaman
+    $_SESSION['last_activity'] = time();
+    
+    // Kullanıcı bilgisayarının parmak izini oluştur
+    $_SESSION['fingerprint'] = md5(
+        $_SERVER['HTTP_USER_AGENT'] . 
+        (isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '') . 
+        $_SERVER['REMOTE_ADDR']
+    );
+}
+
+/**
+ * Kullanıcı çıkış işlemini gerçekleştirir
+ */
+function logout() {
+    // Oturum değişkenlerini temizle
+    $_SESSION = array();
+    
+    // Session cookie'sini sil
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    
+    // Oturumu sonlandır
+    session_destroy();
+    
+    // Giriş sayfasına yönlendir
+    header("Location: index.php");
+    exit();
+}
+
+/**
+ * SMS doğrulaması tamamlandı olarak işaretle
+ */
+function markSmsVerified() {
+    $_SESSION['sms_verified'] = true;
+    $_SESSION['last_sms_verification'] = time();
+}
+
+/**
+ * Hassas veriyi şifrele
+ * @param string $data Şifrelenecek veri
+ * @return string Şifrelenmiş veri
+ */
+function encrypt_sensitive_data($data) {
+    $key = 'incipos_secure_key'; // Gerçek uygulamada bu anahtarı güvenli bir şekilde saklayın
+    return openssl_encrypt($data, 'AES-256-CBC', $key, 0, substr(md5($key), 0, 16));
+}
+
+/**
+ * Şifrelenmiş veriyi çöz
+ * @param string $encrypted_data Şifrelenmiş veri
+ * @return string Orijinal veri
+ */
+function decrypt_sensitive_data($encrypted_data) {
+    $key = 'incipos_secure_key'; // Gerçek uygulamada bu anahtarı güvenli bir şekilde saklayın
+    return openssl_decrypt($encrypted_data, 'AES-256-CBC', $key, 0, substr(md5($key), 0, 16));
+}
+
+/**
+ * Giriş denemelerini logla (login_attempts tablosuna)
+ * @param PDO $conn Veritabanı bağlantısı
+ * @param int $userId Kullanıcı ID (Bulunamadıysa 0)
+ * @param string $username Denenen kullanıcı adı
+ * @param string $userType Kullanıcı tipi (admin/personel)
+ * @param bool $success Giriş başarılı mı
+ * @param string $notes Ek notlar
+ */
+function logLoginAttempt($conn, $userId, $username, $userType, $success, $notes = '') {
+    try {
+        $stmt = $conn->prepare("
+            INSERT INTO login_attempts 
+            (user_id, username_attempt, user_type, ip_adresi, user_agent, basarili, zaman, notes) 
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
+        ");
+        
+        $stmt->execute([
+            $userId,
+            $username,
+            $userType,
+            $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+            $success ? 1 : 0,
+            $notes
+        ]);
+    } catch (PDOException $e) {
+        error_log("Login attempt logging error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Kullanıcı giriş/aktivite log kayıt fonksiyonu
+ * @param PDO $conn Veritabanı bağlantısı
+ * @param int $kullaniciId Kullanıcı ID
+ * @param string $kullaniciTipi Kullanıcı tipi (admin/personel)
+ * @param string $islemTipi İşlem tipi (giris/cikis/dogrulama/basarisiz)
+ * @param string $detay İşlem detayları
+ */
+function logUserActivity($conn, $kullaniciId, $kullaniciTipi, $islemTipi, $detay = null) {
+    try {
+        $stmt = $conn->prepare("
+            INSERT INTO kullanici_giris_log 
+            (kullanici_id, kullanici_tipi, islem_tipi, ip_adresi, tarayici_bilgisi, detay) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->execute([
+            $kullaniciId,
+            $kullaniciTipi,
+            $islemTipi,
+            $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+            $detay
+        ]);
+    } catch (PDOException $e) {
+        error_log("Kullanıcı giriş log kaydı oluşturulurken hata: " . $e->getMessage());
+    }
+}
+
+/**
+ * SMS doğrulama durumunu güncelleme fonksiyonu
+ * @param PDO $conn Veritabanı bağlantısı
+ * @param int $kullaniciId Kullanıcı ID
+ * @param string $kullaniciTipi Kullanıcı tipi (admin/personel)
+ * @param string $durum Doğrulama durumu
+ */
+function updateSmsVerificationStatus($conn, $kullaniciId, $kullaniciTipi, $durum) {
+    try {
+        $stmt = $conn->prepare("
+            UPDATE sms_dogrulama_log 
+            SET durum = ?, dogrulama_tarihi = NOW()
+            WHERE kullanici_id = ? AND kullanici_tipi = ? 
+            ORDER BY id DESC LIMIT 1
+        ");
+        
+        $stmt->execute([
+            $durum,
+            $kullaniciId,
+            $kullaniciTipi
+        ]);
+    } catch (PDOException $e) {
+        error_log("SMS doğrulama log kaydı güncellenirken hata: " . $e->getMessage());
+    }
+}
+
+/**
+ * Çok fazla başarısız giriş denemesi sonrası IP adresini yasaklar
+ * @param PDO $conn Veritabanı bağlantısı
+ * @param string $ip_adresi Yasaklanacak IP adresi
+ * @param string $username Yasaklanacak kullanıcı adı
+ * @param int $sure_dakika Yasak süresi (dakika cinsinden)
+ */
+function banIP($conn, $ip_adresi, $username = null, $sure_dakika = 60) {
+    try {
+        $stmt = $conn->prepare("
+            INSERT INTO login_ban 
+            (ip_adresi, username_attempt, ban_baslangic, ban_bitis, sebep) 
+            VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? MINUTE), 'Çok fazla başarısız giriş denemesi')
+        ");
+        
+        $stmt->execute([
+            $ip_adresi,
+            $username,
+            $sure_dakika
+        ]);
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("IP ban kaydı oluşturulurken hata: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * IP adresinin yasaklı olup olmadığını kontrol eder
+ * @param PDO $conn Veritabanı bağlantısı
+ * @param string $ip_adresi Kontrol edilecek IP adresi
+ * @return bool/array Yasaklı ise yasak bilgilerini içeren dizi, değilse false
+ */
+function checkIPBanned($conn, $ip_adresi) {
+    try {
+        $stmt = $conn->prepare("
+            SELECT * FROM login_ban 
+            WHERE ip_adresi = ? AND ban_bitis > NOW() 
+            ORDER BY ban_bitis DESC LIMIT 1
+        ");
+        
+        $stmt->execute([$ip_adresi]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result) {
+            return $result;
+        }
+        
+        return false;
+    } catch (PDOException $e) {
+        error_log("IP ban kontrolü yapılırken hata: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Son X dakika içindeki başarısız giriş denemelerini sayar
+ * @param PDO $conn Veritabanı bağlantısı
+ * @param string $ip_adresi Kontrol edilecek IP adresi
+ * @param int $dakika Son kaç dakika içinde kontrol edilecek
+ * @return int Başarısız giriş denemesi sayısı
+ */
+function countFailedLoginAttempts($conn, $ip_adresi, $dakika = 10) {
+    try {
+        $stmt = $conn->prepare("
+            SELECT COUNT(*) FROM login_attempts 
+            WHERE ip_adresi = ? AND basarili = 0 AND zaman > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+        ");
+        
+        $stmt->execute([$ip_adresi, $dakika]);
+        return (int)$stmt->fetchColumn();
+    } catch (PDOException $e) {
+        error_log("Başarısız giriş denemesi sayımında hata: " . $e->getMessage());
+        return 0;
+    }
+}

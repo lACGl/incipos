@@ -1,19 +1,64 @@
 <?php
+session_start();
 require_once 'admin/db_connection.php';
 
-/* Kullanıcı giriş kontrolü
+// Kullanıcı giriş kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
-    header("Location: ../index.php");
+    header("Location: login.php");
     exit;
 }
-*/
 
-// Mağazaları getir
-$stmt = $conn->query("SELECT id, ad FROM magazalar ORDER BY ad");
+// Doğrulama kontrolü
+if (!isset($_SESSION['verified']) || !$_SESSION['verified']) {
+    header("Location: verify.php");
+    exit;
+}
+
+// Mağaza seçilmemiş ise mağaza seçim sayfasına yönlendir
+if (!isset($_SESSION['magaza_id'])) {
+    header("Location: select_store.php");
+    exit;
+}
+
+// Kullanıcı bilgilerini al
+$currentUserId = $_SESSION['user_id'];
+$currentMagazaId = $_SESSION['magaza_id'];
+$currentUserYetki = $_SESSION['yetki'];
+
+// Mağazaları getir - Yetkiye göre filtrele
+if ($currentUserYetki == 'kasiyer') {
+    // Kasiyer ise sadece atandığı mağazayı görsün (kendi mağazasını)
+    $stmt = $conn->prepare("
+        SELECT id, ad 
+        FROM magazalar m
+        WHERE id = ?
+        ORDER BY ad
+    ");
+    $stmt->execute([$currentMagazaId]);
+} else {
+    // Müdür veya üst yetki ise tüm mağazaları görsün
+    $stmt = $conn->query("SELECT id, ad FROM magazalar ORDER BY ad");
+}
 $magazalar = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Kasiyerleri getir
-$stmt = $conn->query("SELECT id, ad FROM personel WHERE yetki_seviyesi = 'kasiyer' AND durum = 'aktif' ORDER BY ad");
+// Kasiyerleri getir - Yetkiye göre filtrele
+if ($currentUserYetki == 'kasiyer') {
+    // Kasiyer ise sadece kendi mağazasındaki aktif personeli görsün
+    $stmt = $conn->prepare("
+        SELECT id, ad FROM personel 
+        WHERE magaza_id = ? AND durum = 'aktif'
+        ORDER BY ad
+    ");
+    $stmt->execute([$currentMagazaId]);
+} else {
+    // Müdür veya üst yetki ise tüm aktif personeli görsün
+    $stmt = $conn->prepare("
+        SELECT id, ad FROM personel 
+        WHERE durum = 'aktif'
+        ORDER BY ad
+    ");
+    $stmt->execute();
+}
 $kasiyerler = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -28,7 +73,23 @@ $kasiyerler = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-2">
+    <div style="padding-top:.2rem!important;" class="container mx-auto px-4 py-2">
+        <div class="container mx-auto px-4 py-1">
+    <!-- Mağaza bilgisi -->
+    <div class="bg-white rounded-lg shadow-md p-2 mb-2">
+        <div class="flex justify-between items-center">
+            <div>
+                <span class="text-gray-600">Mağaza:</span>
+                <span class="font-bold"><?php echo htmlspecialchars($_SESSION['magaza_adi']); ?> Şube</span>
+            </div>
+            <?php if (in_array($_SESSION['yetki'], ['mudur', 'mudur_yardimcisi'])): ?>
+                <a href="select_store.php" class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded">
+                    <i class="fas fa-exchange-alt mr-1"></i> Mağaza Değiştir
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
         <!-- POS HEADER -->
         <div class="bg-white rounded-lg shadow-md p-4 mb-4">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -97,11 +158,20 @@ $kasiyerler = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                         <div class="mb-2">
                             <label class="block text-sm font-medium text-gray-700">Mağaza</label>
-                            <select id="magaza" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                <?php foreach ($magazalar as $magaza): ?>
-                                    <option value="<?= $magaza['id'] ?>"><?= htmlspecialchars($magaza['ad']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?php if ($currentUserYetki == 'kasiyer'): ?>
+                                <select id="magaza" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-100" disabled>
+                                    <?php foreach ($magazalar as $magaza): ?>
+                                        <option value="<?= $magaza['id'] ?>" <?= ($magaza['id'] == $currentMagazaId) ? 'selected' : '' ?>><?= htmlspecialchars($magaza['ad']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <input type="hidden" name="magaza_id" value="<?= $currentMagazaId ?>">
+                            <?php else: ?>
+                                <select id="magaza" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <?php foreach ($magazalar as $magaza): ?>
+                                        <option value="<?= $magaza['id'] ?>" <?= ($magaza['id'] == $currentMagazaId) ? 'selected' : '' ?>><?= htmlspecialchars($magaza['ad']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1202,5 +1272,35 @@ $kasiyerler = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     <!-- Custom JavaScript -->
     <script src="admin/assets/js/pos-system.js"></script>
+    <script>
+$(document).ready(function() {
+    // Fiş numarası oluştur
+    fisNo = generateFisNo();
+    $('#fisNo').val(fisNo);
+    
+    // Mağaza seçimi
+    var magazaId = "<?php echo $currentMagazaId; ?>";
+    if (magazaId) {
+        $('#magaza').val(magazaId);
+        
+        // Mağaza değiştirilemesin (kasiyerler için)
+        <?php if ($_SESSION['yetki'] == 'kasiyer'): ?>
+        $('#magaza').prop('disabled', true);
+        $('#magaza').addClass('bg-gray-100');
+        <?php endif; ?>
+    }
+    
+    // Kasiyer seçimi
+    var userId = "<?php echo $currentUserId; ?>";
+    var userYetki = "<?php echo $currentUserYetki; ?>";
+    
+    if (userYetki === 'kasiyer') {
+        $('#kasiyer').val(userId);
+    }
+    
+    // Barkod input'una fokusla
+    $('#barkodInput').focus();
+});
+</script>
 </body>
 </html>

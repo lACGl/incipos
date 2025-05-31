@@ -1,0 +1,24 @@
+<?php
+// Oturumu başlat
+session_start();
+
+// Session yönetim fonksiyonlarını yükle
+require_once 'session_manager.php';
+
+// Tüm oturum değişkenlerini temizle
+$_SESSION = array();
+
+// Oturum çerezini sil
+if (isset($_COOKIE[session_name()])) {
+    setcookie(session_name(), '', time() - 42000, '/');
+}
+
+// Oturumu sonlandır
+session_destroy();
+
+// Anasayfaya yönlendir
+header("Location: index.php");
+exit;
+?>
+
+

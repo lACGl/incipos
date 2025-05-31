@@ -1,0 +1,220 @@
+{
+    "timestamp": "2025-05-08 08:29:40",
+    "prestashop_count": 5272,
+    "prestashop_barcode_count": 5143,
+    "webpos_count": 15835,
+    "success_count": 13,
+    "already_uptodate_count": 3831,
+    "skipped_count": 11991,
+    "error_count": 0,
+    "execution_time": 11.3100000000000004973799150320701301097869873046875,
+    "updates": [
+        {
+            "id": 12,
+            "barkod": "070330335134",
+            "ad": "ROLLER GLIDE PRO 0,5  SİYAH",
+            "old_web_id": null,
+            "new_web_id": 124,
+            "ps_name": "Bic Roller Glide Pro 0,5 Uç Siyah"
+        },
+        {
+            "id": 322,
+            "barkod": "3148951215122",
+            "ad": "CANSON 200 GR 35*50 RESİM KAĞIDI",
+            "old_web_id": null,
+            "new_web_id": 686,
+            "ps_name": "CANSON 200 GR 35*50 RESİM KAĞIDI"
+        },
+        {
+            "id": 688,
+            "barkod": "4005403486013",
+            "ad": "FABER-CASTELL FREE INK NEEDLE 0.5 MM MAVI",
+            "old_web_id": "5229",
+            "new_web_id": 3629,
+            "ps_name": "Faber-Castell Free Ink Needle 0.5 Mm Mavi Roller Kalem"
+        },
+        {
+            "id": 692,
+            "barkod": "4005405415219",
+            "ad": "FABER-CASTELL VİSİON 5415  KIRMIZI (1475)",
+            "old_web_id": null,
+            "new_web_id": 230,
+            "ps_name": "Faber-Castell 5415 Vision Roller Kalem"
+        },
+        {
+            "id": 1996,
+            "barkod": "7754111546218",
+            "ad": "FABER-CASTELL 2022 KIRMIZI TÜKENMEZ KALEM",
+            "old_web_id": null,
+            "new_web_id": 255,
+            "ps_name": "Faber-Castell 2022 Tükenmez Kalem"
+        },
+        {
+            "id": 2509,
+            "barkod": "8680679803045",
+            "ad": "LETS TEK RENK  OYUN HAMURU BEYAZ 150 GR.",
+            "old_web_id": null,
+            "new_web_id": 166,
+            "ps_name": "Lets Tek Renk Oyun Hamuru 150 Gr."
+        },
+        {
+            "id": 2639,
+            "barkod": "8680869448056",
+            "ad": "BOŞ",
+            "old_web_id": null,
+            "new_web_id": 3309,
+            "ps_name": "Serve Premium Kurşun Kalem Neon Renkler"
+        },
+        {
+            "id": 3092,
+            "barkod": "8681241076904",
+            "ad": "FABER-CASTELL VİSİON 5417 SİYAH ROLLER KALEM",
+            "old_web_id": null,
+            "new_web_id": 233,
+            "ps_name": "Faber-Castell 5417 Vision Roller Kalem"
+        },
+        {
+            "id": 3163,
+            "barkod": "8681241091389",
+            "ad": "FABER-CASTELL BAŞLIK KALEMİ KIRMIZI CANDYROLL ",
+            "old_web_id": null,
+            "new_web_id": 237,
+            "ps_name": "Faber-Castell Candyroll Kırmızı Başlık Kalemi"
+        },
+        {
+            "id": 6084,
+            "barkod": "8690826144952",
+            "ad": "FABER-CASTELL 1440 SİYAH TÜKENMEZ KALEM",
+            "old_web_id": null,
+            "new_web_id": 244,
+            "ps_name": "Faber-Castell 1440 0.8 Mm Tükenmez Kalem"
+        },
+        {
+            "id": 6312,
+            "barkod": "8690857008506",
+            "ad": "ARK KOLİ BANT MAKİNESİ",
+            "old_web_id": null,
+            "new_web_id": 6381,
+            "ps_name": "Ark Koli Bandı Kesme Makinesi"
+        },
+        {
+            "id": 8043,
+            "barkod": "8694340040103",
+            "ad": "TEMAT 7000 NO:24\/6 ZIMBA SİYAH",
+            "old_web_id": null,
+            "new_web_id": 2500,
+            "ps_name": "Temat 7000 No:24\/6 Zımba Makinesi Siyah"
+        },
+        {
+            "id": 11060,
+            "barkod": "8698740310521",
+            "ad": "KİKA 70*100 KRAFT KAĞIT 100'LÜ",
+            "old_web_id": null,
+            "new_web_id": 733,
+            "ps_name": "Kika Kraft Kağıdı 70X100 Cm"
+        }
+    ],
+    "no_matches_examples": [
+        {
+            "id": 1,
+            "barkod": "000000000066",
+            "ad": "KALIN MUKAVVA 70X100  16'LIK"
+        },
+        {
+            "id": 2,
+            "barkod": "000010",
+            "ad": "EMİNİŞ 10MM NATURAL-RENKLİ AHŞAP BONCUK 1KG 2300-2400 ADET"
+        },
+        {
+            "id": 3,
+            "barkod": "000014",
+            "ad": "EMİNİŞ 14 MM NATURAL-RENKLİ AHŞAP BONCUK 1KG 1050-110 ADET"
+        },
+        {
+            "id": 4,
+            "barkod": "000130410328",
+            "ad": "MUYA KOLİ BANT MAKİNESİ"
+        },
+        {
+            "id": 5,
+            "barkod": "021809*0980348",
+            "ad": "MUNİS KALEMLİ HATIRA DEFTERİ KUTULU"
+        },
+        {
+            "id": 7,
+            "barkod": "070330330979",
+            "ad": "BİC MARKING HIGHLIGHTER GRIP 12'Lİ KUTU MAVİ"
+        },
+        {
+            "id": 10,
+            "barkod": "070330331006",
+            "ad": "BİC MARKING HIGHLIGHTER GRIP 12'Lİ KUTU  PEMBE"
+        },
+        {
+            "id": 13,
+            "barkod": "070330335141",
+            "ad": "ROLLER GLIDE PRO 0,5  KIRMIZI"
+        },
+        {
+            "id": 14,
+            "barkod": "070330335165",
+            "ad": "BİC TRIUMPH ROLLER SİYAH 0,7MM SİYAH"
+        },
+        {
+            "id": 15,
+            "barkod": "070330345393",
+            "ad": "MARKING COLOR METALİK RENKLER GÜMÜŞ"
+        },
+        {
+            "id": 16,
+            "barkod": "070330345409",
+            "ad": "MARKING COLOR METALİK RENKLER ALTIN"
+        },
+        {
+            "id": 17,
+            "barkod": "070330352261",
+            "ad": "MARKING COLOR METALİK RENKLER PİNK TOPAZ\/PEMBE TOPAZ"
+        },
+        {
+            "id": 18,
+            "barkod": "070330352278",
+            "ad": "MARKING COLOR METALİK RENKLER AMETHYST"
+        },
+        {
+            "id": 19,
+            "barkod": "070330352285",
+            "ad": "MARKING COLOR METALİK RENKLER ALTIN SAFİR"
+        },
+        {
+            "id": 20,
+            "barkod": "070330352346",
+            "ad": "MARKING COLOR METALİK RENKLER YEŞİM TAŞI"
+        },
+        {
+            "id": 21,
+            "barkod": "070330352360",
+            "ad": "MARKING COLOR METALİK RENKLER BRONZ"
+        },
+        {
+            "id": 22,
+            "barkod": "070330421875",
+            "ad": "VELOCITY PRO VERSATİL KALEM 0.5 MM"
+        },
+        {
+            "id": 23,
+            "barkod": "070330421882",
+            "ad": "VELOCITY PRO VERSATİL KALEM 0.7 MM"
+        },
+        {
+            "id": 24,
+            "barkod": "070330512122",
+            "ad": "TIPP-EX MINI POCKET MOUSE ŞERİT DÜZELTİCİ"
+        },
+        {
+            "id": 25,
+            "barkod": "070330513952",
+            "ad": "TIPP-EX MICRO TAPE TWIST ŞERİT DÜZ. 10'LU KUTU KARIŞIK"
+        }
+    ],
+    "errors": []
+}

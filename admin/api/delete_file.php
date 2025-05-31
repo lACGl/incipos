@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once '../db_connection.php';
 
 // Yetki kontrolü
@@ -9,37 +10,50 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     exit;
 }
 
-// JSON veriyi al
+// Ana dizin (root) yolunu doğrudan belirle (incipos klasörünü de içerecek şekilde)
+$root_path = "C:/xampp/htdocs/incipos";
+
+// JSON veriyi al - Burada sözdizimi hatası olabilir
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
 
+// Path kontrolü
 if (!isset($data['path']) || empty($data['path'])) {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Geçersiz dosya yolu']);
     exit;
 }
 
-// Dosya yolunu temizle ve kontrol et
+// Gelen yolu hazırla
 $file_path = $data['path'];
+
+// Debug için
+// error_log("Original path: " . $file_path);
+
+// Path'i normalize et
 $file_path = ltrim($file_path, '/');
-$root_path = dirname(dirname(__DIR__));
-$full_path = $root_path . '/' . $file_path;
 
-// Güvenlik kontrolü - path traversal saldırılarına karşı koruma
-$canonicalPath = realpath($full_path);
-$rootPath = realpath($root_path);
-
-if ($canonicalPath === false || strpos($canonicalPath, $rootPath) !== 0) {
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Geçersiz dosya yolu']);
-    exit;
+// Path'in başındaki "incipos/" varsa kaldır
+if (strpos($file_path, 'incipos/') === 0) {
+    $file_path = substr($file_path, 8);
 }
 
-// Dosyayı sil
+// Tam dosya yolunu oluştur
+$full_path = $root_path . '/' . $file_path;
+
+// Debug için
+// error_log("Normalized path: " . $file_path);
+// error_log("Full path: " . $full_path);
+// error_log("Root path: " . $root_path);
+
+// Dosya varlığını ve güvenliği kontrol et
 if (file_exists($full_path) && is_file($full_path)) {
     try {
-        // Önce veritabanında bu resmi kullanan ürünleri kontrol et
-        $relative_path = str_replace($root_path . '/', '', $full_path);
+        // Veritabanında resim yolunu güncelle
+        $relative_path = $file_path; // Veritabanında saklanan relatif yol
+        
+        // Debug için
+        // error_log("Relative path in DB: " . $relative_path);
         
         // Resim yolunu boşalt
         $update_query = "UPDATE urun_stok SET resim_yolu = NULL WHERE resim_yolu = ?";
@@ -52,7 +66,7 @@ if (file_exists($full_path) && is_file($full_path)) {
             echo json_encode(['success' => true, 'message' => 'Dosya başarıyla silindi']);
         } else {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Dosya silinemedi']);
+            echo json_encode(['success' => false, 'message' => 'Dosya silinemedi. Yetki sorunu olabilir.']);
         }
     } catch (Exception $e) {
         header('Content-Type: application/json');
@@ -60,6 +74,15 @@ if (file_exists($full_path) && is_file($full_path)) {
     }
 } else {
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Dosya bulunamadı']);
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Dosya bulunamadı', 
+        'debug' => [
+            'path' => $file_path,
+            'full_path' => $full_path,
+            'exists' => file_exists($full_path) ? 'true' : 'false',
+            'is_file' => is_file($full_path) ? 'true' : 'false'
+        ]
+    ]);
 }
 ?>

@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once 'session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once 'db_connection.php';
 
 // Yetki kontrolü
@@ -82,10 +83,31 @@ function buildWhereClause($data) {
     $conditions = [];
     $params = [];
 
-    // Arama filtresi
+    // GELİŞMİŞ ARAMA FİLTRESİ - Kelime parçalama ile
     if ($search_term = trim($data['search_term'] ?? '')) {
-        $conditions[] = "(us.barkod LIKE :search_term OR us.ad LIKE :search_term OR us.kod LIKE :search_term)";
-        $params[':search_term'] = "%$search_term%";
+        // Arama terimini kelimelere ayır
+        $words = explode(' ', $search_term);
+        $words = array_filter($words, function($word) {
+            return strlen(trim($word)) >= 2; // En az 2 karakterli kelimeler
+        });
+        
+        if (!empty($words)) {
+            $search_conditions = [];
+            
+            foreach ($words as $index => $word) {
+                $word = trim($word);
+                $param_name = ":search_word_$index";
+                $params[$param_name] = "%$word%";
+                
+                // Her kelime barkod, ad veya kod içinde geçmeli
+                $search_conditions[] = "(us.barkod LIKE $param_name OR us.ad LIKE $param_name OR us.kod LIKE $param_name)";
+            }
+            
+            // TÜM KELİMELER geçmeli (AND mantığı)
+            if (!empty($search_conditions)) {
+                $conditions[] = "(" . implode(' AND ', $search_conditions) . ")";
+            }
+        }
     }
 
     // Departman filtresi
@@ -116,12 +138,28 @@ function buildWhereClause($data) {
 }
 
 function buildStockStatusCondition($status) {
-    return match ($status) {
-        'out' => "us.stok_miktari = 0",
-        'low' => "us.stok_miktari > 0 AND us.stok_miktari <= 10",
-        'normal' => "us.stok_miktari > 10",
-        default => "1=1"
-    };
+    switch ($status) {
+        case 'out':
+            return "us.stok_miktari = 0 OR (
+                    COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
+                    COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
+                ) = 0";
+        case 'low':
+            return "(
+                COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
+                COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
+            ) > 0 AND (
+                COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
+                COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
+            ) <= 10";
+        case 'normal':
+            return "(
+                COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
+                COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
+            ) > 10";
+        default:
+            return "1=1"; // Tümü seçildiğinde filtre uygulanmaz
+    }
 }
 
 function prepareColumns($columns) {
@@ -139,6 +177,24 @@ function prepareColumns($columns) {
 }
 
 function buildMainQuery($columns_str, $where_clause, $sort_column, $sort_order) {
+    // Geçerli sıralama sütunlarını kontrol et
+    $valid_sort_columns = ['id', 'kod', 'barkod', 'ad', 'web_id', 'alis_fiyati', 'satis_fiyati', 'indirimli_fiyat', 'stok_miktari'];
+    
+    // Geçerli bir sıralama sütunu değilse varsayılan olarak 'id' kullan
+    if (!in_array($sort_column, $valid_sort_columns)) {
+        $sort_column = 'id';
+    }
+    
+    // Sıralama için özel durumları kontrol et
+    $order_clause = "";
+    
+    if ($sort_column === 'stok_miktari') {
+        $order_by = "(COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
+                     COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)) $sort_order";
+    } else {
+        $order_by = "us.$sort_column $sort_order";
+    }
+    
     return "SELECT 
             $columns_str,
             d.ad as departman,
@@ -160,7 +216,7 @@ function buildMainQuery($columns_str, $where_clause, $sort_column, $sort_order) 
                 WHEN 'pasif' THEN 2 
                 ELSE 3 
             END, 
-            us.$sort_column $sort_order";
+            $order_by";
 }
 
 function executeQuery($conn, $query, $params) {
@@ -207,6 +263,15 @@ function generateTableHeader($visible_columns) {
         'alt_grup' => 'Alt Grup'
     ];
 
+    // Sıralama için sütun eşleme
+    $sort_functions = [
+        'web_id' => 'sortTableByWebId',
+        'alis_fiyati' => 'sortTableByAlisFiyati',
+        'satis_fiyati' => 'sortTableBySatisFiyati',
+        'indirimli_fiyat' => 'sortTableByIndirimliFiyat',
+        'stok_miktari' => 'sortTableByStok'
+    ];
+
     $header = '<tr><th class="w-4">
         <input type="checkbox" id="selectAll" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300"
                onclick="toggleAllCheckboxes(this)">
@@ -216,11 +281,14 @@ function generateTableHeader($visible_columns) {
         // Eşleştirme dizisinden Türkçe başlığı al, yoksa varsayılan değeri kullan
         $display_name = $column_display_names[$column] ?? ucfirst(str_replace('_', ' ', $column));
         
-        if ($column === 'stok_miktari') {
-            $header .= '<th style="cursor:pointer;" class="stok-header" onclick="sortTableByStock()">' 
+        // Sıralama yapılabilecek sütunları kontrol et
+        if (array_key_exists($column, $sort_functions)) {
+            $sort_function = $sort_functions[$column];
+            $header .= '<th style="cursor:pointer;" class="' . $column . '-header" onclick="' . $sort_function . '()">' 
                 . htmlspecialchars($display_name) 
                 . ' <span class="sort-icon">↕</span></th>';
         }
+        // Departman ve Ana Grup için özel filtreleme ekle
         else if ($column === 'departman_id') {
             $header .= '<th style="cursor:pointer;" class="stok-header" onclick="filterByDepartment()">'
                 . 'Departman'

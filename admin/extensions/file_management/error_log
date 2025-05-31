@@ -1,0 +1,5 @@
+[29-May-2025 18:29:10 UTC] PHP Warning:  require_once(session_manager.php): Failed to open stream: No such file or directory in /home/incikir2/public_html/pos.incikirtasiye.com/admin/extensions/file_management/file_management.php on line 2
+[29-May-2025 18:29:10 UTC] PHP Fatal error:  Uncaught Error: Failed opening required 'session_manager.php' (include_path='.:/opt/cpanel/ea-php82/root/usr/share/pear') in /home/incikir2/public_html/pos.incikirtasiye.com/admin/extensions/file_management/file_management.php:2
+Stack trace:
+#0 {main}
+  thrown in /home/incikir2/public_html/pos.incikirtasiye.com/admin/extensions/file_management/file_management.php on line 2

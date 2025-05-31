@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once '../db_connection.php';
 
 // Yetki kontrolü
@@ -17,7 +18,7 @@ if (!isset($_GET['path']) || empty($_GET['path'])) {
 }
 
 $folder_path = $_GET['path'];
-$root_path = dirname(dirname(__DIR__));
+$root_path = "C:/xampp/htdocs/incipos";
 
 // Ana dizini belirle
 if (strpos($folder_path, 'img/') === 0) {
@@ -28,6 +29,10 @@ if (strpos($folder_path, 'img/') === 0) {
     $full_path = $root_path . '/files/img';
 } elseif ($folder_path === 'pdf') {
     $full_path = $root_path . '/files/pdf';
+} elseif ($folder_path === 'files') {
+    $full_path = $root_path . '/files';
+} elseif (strpos($folder_path, 'files/') === 0) {
+    $full_path = $root_path . '/' . $folder_path;
 } else {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Geçersiz klasör yolu']);
@@ -47,7 +52,7 @@ if ($canonicalPath === false || strpos($canonicalPath, $rootPath) !== 0) {
 // Klasör yoksa veya klasör değilse
 if (!file_exists($full_path) || !is_dir($full_path)) {
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Klasör bulunamadı']);
+    echo json_encode(['success' => false, 'message' => 'Klasör bulunamadı: ' . $full_path]);
     exit;
 }
 
@@ -113,6 +118,7 @@ header('Content-Type: application/json');
 echo json_encode([
     'success' => true,
     'path' => $folder_path,
+    'full_path' => $full_path,
     'total_files' => $total_files,
     'total_folders' => $total_folders,
     'total_size' => $total_size,

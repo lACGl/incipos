@@ -1,6 +1,8 @@
 <?php
-// Session management logic
+// Önce session yönetim fonksiyonlarını yükle
 require_once 'session_manager.php';
+// Güvenli oturumu başlat
+secure_session_start();
 
 // Session kontrolü - Yetkisiz erişimleri engelle
 checkUserSession();
@@ -13,8 +15,24 @@ $stmt = $conn->prepare("SELECT * FROM admin_user WHERE id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// Kullanıcı bulunmadıysa veya silindiyse çıkış yap
+if (!$user) {
+    logout();
+    exit;
+}
+
+// Son aktivite zamanını kontrol et ve güncelle (inaktif kullanıcıları çıkarmak için)
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 1800)) {
+    // 30 dakika inaktif kalmışsa çıkış yap
+    logout();
+    exit;
+}
+$_SESSION['last_activity'] = time();
+
 // Aktif sayfayı belirle
 $current_page = basename($_SERVER['PHP_SELF']);
+
+$start_time = microtime(true);
 ?>
 
 <!DOCTYPE html>
@@ -24,9 +42,27 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>İnciPos Admin</title>
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-    <link rel="stylesheet" href="/incipos/admin/assets/css/style.css">
+    <link rel="stylesheet" href="/admin/assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script>
+        // Sayfa yüklenmeye başladığı zamanı kaydet (sayfa başında)
+        window.pageStartTime = Date.now();
+        
+        // CSRF Token doğrulama fonksiyonu - AJAX istekleri için
+        function getCSRFToken() {
+            return '<?php echo generateCSRFToken(); ?>';
+        }
+        
+        // AJAX isteklerinde CSRF Token kullanımı için
+        function fetchWithCSRF(url, options = {}) {
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['X-CSRF-Token'] = getCSRFToken();
+            return fetch(url, options);
+        }
+    </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
     <div class="flex-grow flex flex-col">
@@ -44,90 +80,39 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </svg>
             </button>
         </div>
-
-        <form id="settingsForm" class="space-y-4">
-            <div class="flex gap-2 mb-4">
-                <button type="button" onclick="addNewStore()" class="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600">
-                    + Yeni Mağaza
-                </button>
-                <button type="button" onclick="addNewWarehouse()" class="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600">
-                    + Yeni Depo
-                </button>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Varsayılan Stok Lokasyonu
-                </label>
-                <div class="relative">
-                    <select name="varsayilan_stok_lokasyonu" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">
-                        <optgroup label="Depolar">
-                            <?php
-                            // Depoları getir
-                            $stmt = $conn->query("SELECT id, ad FROM depolar WHERE durum = 'aktif' ORDER BY ad");
-                            while ($depo = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                echo sprintf(
-                                    '<option value="depo_%d">%s</option>',
-                                    $depo['id'],
-                                    htmlspecialchars($depo['ad'])
-                                );
-                            }
-                            ?>
-                        </optgroup>
-                        <optgroup label="Mağazalar">
-                            <?php
-                            // Mağazaları getir
-                            $stmt = $conn->query("SELECT id, ad FROM magazalar ORDER BY ad");
-                            while ($magaza = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                echo sprintf(
-                                    '<option value="magaza_%d">%s</option>',
-                                    $magaza['id'],
-                                    htmlspecialchars($magaza['ad'])
-                                );
-                            }
-                            ?>
-                        </optgroup>
-                    </select>
-                </div>
-                <p class="mt-2 text-sm text-gray-500">
-                    Ürün girişlerinde varsayılan olarak hangi lokasyona stok eklenecek?
-                </p>
-            </div>
-
-            <div class="flex justify-end pt-4">
-                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
-                    Kaydet
-                </button>
-            </div>
-        </form>
+        <!-- Formların içine CSRF token eklenmeli -->
+        <input type="hidden" id="settings_csrf_token" value="<?php echo generateCSRFToken(); ?>">
     </div>
 </div>
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center h-16">
                 <!-- Logo ve Başlık -->
                 <div class="flex items-center">
-                    <a href="admin_dashboard.php" class="flex items-center">
+                    <a href="#" class="flex items-center">
                         <span class="text-xl font-bold text-gray-800">İnciPos</span>
                     </a>
                 </div>
 
                 <!-- Ana Menü -->
                 <nav class="hidden md:flex space-x-4">
-                    <a href="/incipos/admin/admin_dashboard.php" class="<?php echo $current_page == 'admin_dashboard.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="https://pos.incikirtasiye.com/admin/admin_dashboard.php" class="<?php echo $current_page == 'admin_dashboard.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Dashboard
                     </a>
-                    <a href="/incipos/admin/stock_list.php" class="<?php echo $current_page == 'stock_list.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/admin/stock_list.php" class="<?php echo $current_page == 'stock_list.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Stok Listesi
                     </a>
-                    <a href="/incipos/admin/purchase_invoices.php" class="<?php echo $current_page == 'purchase_invoices.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/admin/purchase_invoices.php" class="<?php echo $current_page == 'purchase_invoices.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Alış Faturaları
                     </a>
-                    <a href="/incipos/admin/customers.php" class="<?php echo $current_page == 'customers.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/admin/sales_invoices.php" class="<?php echo $current_page == 'sales_invoices.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                        Satış Faturaları
+                    </a>
+                    <a href="/admin/customers.php" class="<?php echo $current_page == 'customers.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Müşteriler
-                    </a><a href="/incipos/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+                    </a><a href="/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Raporlar
                     </a>
-					</a><a href="/incipos/admin/settings.php" class="<?php echo $current_page == 'settings.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
+					</a><a href="/admin/settings.php" class="<?php echo $current_page == 'settings.php' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:text-gray-900'; ?> px-3 py-2 rounded-md text-sm font-medium">
                         Ayarlar
                     </a>
                 </nav>
@@ -140,7 +125,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                 <span class="sr-only">Menüyü aç</span>
                                 <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
                                     <span class="text-sm font-medium text-gray-600">
-                                        <?php echo substr($user['kullanici_adi'], 0, 1); ?>
+                                        <?php echo substr(htmlspecialchars($user['kullanici_adi']), 0, 1); ?>
                                     </span>
                                 </div>
                             </button>
@@ -151,7 +136,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             <div class="px-4 py-2 text-xs text-gray-500">
                                 <?php echo htmlspecialchars($user['kullanici_adi']); ?>
                             </div>
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onclick="showSettings()">Ayarlar</a>
                             <a href="logout.php" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Çıkış Yap</a>
                         </div>
                     </div>
@@ -162,3 +146,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- Ana içerik için padding -->
     <div style="" class="pt-24">
+    
+    <!-- CSRF Token için gizli alan (AJAX istekleri için) -->
+    <input type="hidden" id="global_csrf_token" value="<?php echo generateCSRFToken(); ?>">

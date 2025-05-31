@@ -1,6 +1,7 @@
 <?php
+require_once '../session_manager.php'; // Otomatik eklendi
 // Sepete ürün eklemek için API
-session_start();
+secure_session_start();
 header('Content-Type: application/json');
 
 // Yetki kontrolü

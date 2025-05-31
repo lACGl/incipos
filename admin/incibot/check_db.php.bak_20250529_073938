@@ -1,0 +1,84 @@
+<?php
+/**
+ * Veritabanı Kontrol Aracı
+ * Bu dosya, veritabanı bağlantısını ve tabloları kontrol eder
+ */
+
+// Hata raporlama
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Oturum ve yetki kontrolü
+session_start();
+include '../session_manager.php';
+
+// Veritabanı bağlantısı
+require_once '../db_connection.php';
+require_once 'db_proxy.php';
+
+header('Content-Type: application/json; charset=utf-8');
+
+try {
+    // DB Proxy ile veritabanı yapısını kontrol et
+    global $conn;
+    $db_proxy = new DBProxy($conn);
+    $result = $db_proxy->checkDatabaseStructure();
+    
+    // Ayrıca sistem_ayarlari tablosundan Claude API anahtarını kontrol et
+    $api_key_info = [
+        'exists' => false,
+        'key_preview' => null,
+        'last_updated' => null
+    ];
+    
+    if ($result['success'] && in_array('sistem_ayarlari', $result['tables'])) {
+        try {
+            $isPDO = ($conn instanceof PDO);
+            
+            if ($isPDO) {
+                $stmt = $conn->prepare("SELECT deger, guncelleme_tarihi FROM sistem_ayarlari WHERE anahtar = 'claude_api_key'");
+                $stmt->execute();
+                $api_key_result = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($api_key_result && !empty($api_key_result['deger'])) {
+                    $api_key_info = [
+                        'exists' => true,
+                        'key_preview' => substr($api_key_result['deger'], 0, 5) . '...',
+                        'last_updated' => $api_key_result['guncelleme_tarihi'] ?? 'Unknown'
+                    ];
+                }
+            } else {
+                $api_key_query = "SELECT deger, guncelleme_tarihi FROM sistem_ayarlari WHERE anahtar = 'claude_api_key'";
+                $api_key_result_set = $conn->query($api_key_query);
+                
+                if ($api_key_result_set && $api_key_result_set->num_rows > 0) {
+                    $api_key_data = $api_key_result_set->fetch_assoc();
+                    if (!empty($api_key_data['deger'])) {
+                        $api_key_info = [
+                            'exists' => true,
+                            'key_preview' => substr($api_key_data['deger'], 0, 5) . '...',
+                            'last_updated' => $api_key_data['guncelleme_tarihi'] ?? 'Unknown'
+                        ];
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            $api_key_info['error'] = $e->getMessage();
+        }
+    }
+    
+    // Sonuçları döndür
+    echo json_encode([
+        'success' => true,
+        'db_test' => $result,
+        'api_key' => $api_key_info
+    ]);
+    
+} catch (Exception $e) {
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+}
+?>

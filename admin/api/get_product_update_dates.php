@@ -1,0 +1,71 @@
+<?php
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
+require_once '../db_connection.php';
+
+header('Content-Type: application/json');
+
+try {
+    // Yetki kontrolü
+    if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+        throw new Exception('Yetkisiz erişim');
+    }
+
+    // Ürün ID kontrolü
+    if (!isset($_GET['urun_id']) || empty($_GET['urun_id'])) {
+        throw new Exception('Ürün ID belirtilmedi');
+    }
+
+    $urun_id = intval($_GET['urun_id']);
+
+    // Satış fiyatı için son güncelleme tarihini getir
+    $satisFiyatSQL = "SELECT tarih FROM urun_fiyat_gecmisi 
+                      WHERE urun_id = ? AND islem_tipi = 'satis_fiyati_guncelleme' 
+                      ORDER BY tarih DESC LIMIT 1";
+    
+    $stmt = $conn->prepare($satisFiyatSQL);
+    $stmt->execute([$urun_id]);
+    $satisFiyatiTarih = $stmt->fetchColumn();
+
+    // Alış fiyatı için son güncelleme tarihini getir
+    $alisFiyatSQL = "SELECT tarih FROM urun_fiyat_gecmisi 
+                     WHERE urun_id = ? AND islem_tipi = 'alis' 
+                     ORDER BY tarih DESC LIMIT 1";
+    
+    $stmt = $conn->prepare($alisFiyatSQL);
+    $stmt->execute([$urun_id]);
+    $alisFiyatiTarih = $stmt->fetchColumn();
+
+    // Ürün fiyat bilgilerini getir
+    $urunSQL = "SELECT alis_fiyati, satis_fiyati, kayit_tarihi 
+                FROM urun_stok WHERE id = ?";
+    
+    $stmt = $conn->prepare($urunSQL);
+    $stmt->execute([$urun_id]);
+    $urunBilgisi = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Eğer fiyat geçmişinde tarih yoksa, ürünün kayıt tarihini kullan
+    if (!$satisFiyatiTarih && isset($urunBilgisi['kayit_tarihi'])) {
+        $satisFiyatiTarih = $urunBilgisi['kayit_tarihi'];
+    }
+    
+    if (!$alisFiyatiTarih && isset($urunBilgisi['kayit_tarihi'])) {
+        $alisFiyatiTarih = $urunBilgisi['kayit_tarihi'];
+    }
+
+    // Sonuçları döndür
+    echo json_encode([
+        'success' => true,
+        'satis_fiyati_tarih' => $satisFiyatiTarih,
+        'alis_fiyati_tarih' => $alisFiyatiTarih,
+        'alis_fiyati' => $urunBilgisi['alis_fiyati'] ?? null,
+        'satis_fiyati' => $urunBilgisi['satis_fiyati'] ?? null
+    ]);
+
+} catch (Exception $e) {
+    // Hata durumunda
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
+}

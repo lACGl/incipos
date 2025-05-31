@@ -1,5 +1,4 @@
 <?php
-
 // Sayfa yüklenme süresini hesapla
 $start_time = microtime(true);
 
@@ -12,6 +11,14 @@ require_once '../../helpers/stock_functions.php';
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     header("Location: index.php");
     exit;
+}
+
+// MySQL SQL modunu geçici olarak değiştir (GROUP BY sorunları için)
+try {
+    $conn->exec("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
+} catch (PDOException $e) {
+    // Hata durumunda sessizce devam et
+    error_log("SQL mode setting error: " . $e->getMessage());
 }
 
 // Kritik stok seviyesini ayarlardan al (varsayılan: 10)
@@ -31,165 +38,280 @@ $order_by = isset($_GET['order_by']) ? $_GET['order_by'] : 'stok_miktari';
 $order_direction = isset($_GET['order_direction']) ? $_GET['order_direction'] : 'ASC';
 $date_range = isset($_GET['date_range']) ? $_GET['date_range'] : '30'; // Varsayılan 30 gün
 
+// Sayfalama için parametreler
+$page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+$items_per_page = 10; // Sayfa başına ürün sayısı
+$offset = ($page - 1) * $items_per_page;
+
 // En çok satılan ürünleri almak için sorgu
 $sales_days = intval($date_range);
 if ($sales_days <= 0) $sales_days = 30; // Güvenlik kontrolü
 
-$top_selling_query = "SELECT 
-                        us.id,
-                        us.barkod,
-                        us.kod,
-                        us.ad,
-                        us.alis_fiyati,
-                        us.satis_fiyati,
-                        COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-                        COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0) as stok_miktari,
-                        d.ad as departman,
-                        ag.ad as ana_grup,
-                        alg.ad as alt_grup,
-                        b.ad as birim,
-                        SUM(sfd.miktar) as total_sold,
-                        COUNT(DISTINCT sf.id) as order_count,
-                        (SELECT t.ad FROM tedarikciler t 
-                         INNER JOIN alis_fatura_detay afd ON afd.urun_id = us.id 
-                         INNER JOIN alis_faturalari af ON afd.fatura_id = af.id 
-                         WHERE af.tedarikci = t.id 
-                         ORDER BY af.fatura_tarihi DESC LIMIT 1) as son_tedarikci,
-                        (SELECT tedarikci FROM alis_faturalari WHERE id = 
-                            (SELECT fatura_id FROM alis_fatura_detay WHERE urun_id = us.id ORDER BY id DESC LIMIT 1)
-                        ) as tedarikci_id,
-                        (SELECT MAX(af.fatura_tarihi) FROM alis_faturalari af 
-                         INNER JOIN alis_fatura_detay afd ON af.id = afd.fatura_id 
-                         WHERE afd.urun_id = us.id) as son_alis_tarihi
-                      FROM satis_fatura_detay sfd
-                      JOIN satis_faturalari sf ON sfd.fatura_id = sf.id
-                      JOIN urun_stok us ON sfd.urun_id = us.id
-                      LEFT JOIN departmanlar d ON us.departman_id = d.id
-                      LEFT JOIN ana_gruplar ag ON us.ana_grup_id = ag.id
-                      LEFT JOIN alt_gruplar alg ON us.alt_grup_id = alg.id
-                      LEFT JOIN birimler b ON us.birim_id = b.id
-                      WHERE sf.fatura_tarihi >= DATE_SUB(CURDATE(), INTERVAL {$sales_days} DAY)
-                      AND sf.islem_turu = 'satis'
-                      AND us.durum = 'aktif'";
+try {
+    // Daha basit bir sorgu ile en çok satanları al
+    $top_selling_query = "SELECT 
+                            urun_stok.id,
+                            urun_stok.barkod,
+                            urun_stok.kod,
+                            urun_stok.ad,
+                            urun_stok.alis_fiyati,
+                            urun_stok.satis_fiyati,
+                            urun_stok.stok_miktari,
+                            d.ad as departman,
+                            ag.ad as ana_grup,
+                            alg.ad as alt_grup,
+                            b.ad as birim,
+                            SUM(sfd.miktar) as total_sold,
+                            COUNT(DISTINCT sf.id) as order_count
+                          FROM urun_stok
+                          JOIN satis_fatura_detay sfd ON urun_stok.id = sfd.urun_id
+                          JOIN satis_faturalari sf ON sfd.fatura_id = sf.id
+                          LEFT JOIN departmanlar d ON urun_stok.departman_id = d.id
+                          LEFT JOIN ana_gruplar ag ON urun_stok.ana_grup_id = ag.id
+                          LEFT JOIN alt_gruplar alg ON urun_stok.alt_grup_id = alg.id
+                          LEFT JOIN birimler b ON urun_stok.birim_id = b.id
+                          WHERE sf.fatura_tarihi >= DATE_SUB(CURDATE(), INTERVAL {$sales_days} DAY)
+                            AND sf.islem_turu = 'satis'
+                            AND urun_stok.durum = 'aktif'";
 
-// Departman filtresi uygulanıyor
-if ($department_filter > 0) {
-    $top_selling_query .= " AND us.departman_id = $department_filter";
+    // Departman filtresi uygulanıyor
+    if ($department_filter > 0) {
+        $top_selling_query .= " AND urun_stok.departman_id = $department_filter";
+    }
+
+    $top_selling_query .= " GROUP BY urun_stok.id, urun_stok.ad, urun_stok.barkod, urun_stok.kod, 
+                                      urun_stok.alis_fiyati, urun_stok.satis_fiyati, urun_stok.stok_miktari,
+                                      d.ad, ag.ad, alg.ad, b.ad
+                             ORDER BY total_sold DESC
+                             LIMIT 20";
+
+    $stmt = $conn->prepare($top_selling_query);
+    $stmt->execute();
+    $top_selling_products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Stok miktarlarını hesapla
+    foreach ($top_selling_products as &$product) {
+        // Depodan stok miktarı
+        $depo_stok_query = "SELECT COALESCE(SUM(stok_miktari), 0) as depo_stok 
+                            FROM depo_stok 
+                            WHERE urun_id = :urun_id";
+        $stmt = $conn->prepare($depo_stok_query);
+        $stmt->bindParam(':urun_id', $product['id']);
+        $stmt->execute();
+        $depo_stok = $stmt->fetchColumn();
+
+        // Mağazadan stok miktarı
+        $magaza_stok_query = "SELECT COALESCE(SUM(stok_miktari), 0) as magaza_stok 
+                              FROM magaza_stok 
+                              WHERE barkod = :barkod";
+        $stmt = $conn->prepare($magaza_stok_query);
+        $stmt->bindParam(':barkod', $product['barkod']);
+        $stmt->execute();
+        $magaza_stok = $stmt->fetchColumn();
+
+        // Ürünün kendi stok miktarı
+        $urun_stok = $product['stok_miktari'] ?? 0;
+
+        // Toplam stok miktarı
+        $product['stok_miktari'] = $depo_stok + $magaza_stok + $urun_stok;
+    }
+} catch (PDOException $e) {
+    $top_selling_products = []; // Hata durumunda boş array
+    error_log("Top selling query error: " . $e->getMessage());
 }
 
-$top_selling_query .= " GROUP BY us.id
-                        ORDER BY total_sold DESC
-                        LIMIT 20";
+// Toplam kayıt sayısını al
+try {
+    $count_query = "SELECT COUNT(*) FROM urun_stok us WHERE us.durum = 'aktif'";
 
-$stmt = $conn->prepare($top_selling_query);
-$stmt->execute();
-$top_selling_products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Filtreleri count sorgusuna ekle
+    if ($stock_status == 'critical') {
+        $count_query .= " AND us.stok_miktari <= $critical_level AND us.stok_miktari > 0";
+    } elseif ($stock_status == 'out') {
+        $count_query .= " AND us.stok_miktari = 0";
+    } elseif ($stock_status == 'low') {
+        $count_query .= " AND us.stok_miktari <= " . ($critical_level * 2) . " AND us.stok_miktari > $critical_level";
+    }
 
-// Kritik stok ürünlerini alma kısmı...
-// Mevcut sayfanın aynı sorgusu ile devam eder
+    if ($department_filter > 0) {
+        $count_query .= " AND us.departman_id = $department_filter";
+    }
 
-$query = "SELECT 
-            us.id,
-            us.barkod,
-            us.kod,
-            us.ad,
-            us.alis_fiyati,
-            us.satis_fiyati,
-            COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-            COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0) as stok_miktari,
-            d.ad as departman,
-            ag.ad as ana_grup,
-            alg.ad as alt_grup,
-            b.ad as birim,
-            (SELECT t.ad FROM tedarikciler t 
-             INNER JOIN alis_fatura_detay afd ON afd.urun_id = us.id 
-             INNER JOIN alis_faturalari af ON afd.fatura_id = af.id 
-             WHERE af.tedarikci = t.id 
-             ORDER BY af.fatura_tarihi DESC LIMIT 1) as son_tedarikci,
-            (SELECT tedarikci FROM alis_faturalari WHERE id = 
-                (SELECT fatura_id FROM alis_fatura_detay WHERE urun_id = us.id ORDER BY id DESC LIMIT 1)
-            ) as tedarikci_id,
-            (SELECT MAX(af.fatura_tarihi) FROM alis_faturalari af 
-             INNER JOIN alis_fatura_detay afd ON af.id = afd.fatura_id 
-             WHERE afd.urun_id = us.id) as son_alis_tarihi,
-            (SELECT AVG(afd.birim_fiyat) FROM alis_fatura_detay afd 
-             WHERE afd.urun_id = us.id
-             ORDER BY afd.id DESC LIMIT 3) as ortalama_alis_fiyati
-          FROM urun_stok us
-          LEFT JOIN departmanlar d ON us.departman_id = d.id
-          LEFT JOIN ana_gruplar ag ON us.ana_grup_id = ag.id
-          LEFT JOIN alt_gruplar alg ON us.alt_grup_id = alg.id
-          LEFT JOIN birimler b ON us.birim_id = b.id
-          WHERE us.durum = 'aktif'";
+    if ($supplier_filter > 0) {
+        $count_query .= " AND EXISTS (
+            SELECT 1 FROM alis_fatura_detay afd 
+            JOIN alis_faturalari af ON afd.fatura_id = af.id
+            WHERE afd.urun_id = us.id AND af.tedarikci = $supplier_filter
+        )";
+    }
 
-// Stok durumu filtresi uygulanıyor
-if ($stock_status == 'critical') {
-    $query .= " AND (
-        COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-        COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
-    ) <= $critical_level AND (
-        COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-        COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
-    ) > 0";
-} elseif ($stock_status == 'out') {
-    $query .= " AND (
-        COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-        COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
-    ) = 0";
-} elseif ($stock_status == 'low') {
-    $query .= " AND (
-        COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-        COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
-    ) <= " . ($critical_level * 2) . " AND (
-        COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-        COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
-    ) > $critical_level";
+    $stmt = $conn->prepare($count_query);
+    $stmt->execute();
+    $total_items = $stmt->fetchColumn();
+    $total_pages = ceil($total_items / $items_per_page);
+    
+    // Geçerli sayfa kontrolü
+    if ($page > $total_pages && $total_pages > 0) {
+        $page = $total_pages;
+        $offset = ($page - 1) * $items_per_page;
+    }
+} catch (PDOException $e) {
+    $total_items = 0;
+    $total_pages = 1;
+    error_log("Count query error: " . $e->getMessage());
 }
 
-// Departman filtresi uygulanıyor
-if ($department_filter > 0) {
-    $query .= " AND us.departman_id = $department_filter";
+try {
+    // Kritik stok ürünleri sorgusu
+    $query = "SELECT 
+                us.id,
+                us.barkod,
+                us.kod,
+                us.ad,
+                us.alis_fiyati,
+                us.satis_fiyati,
+                us.stok_miktari as urun_stok,
+                d.ad as departman,
+                ag.ad as ana_grup,
+                alg.ad as alt_grup,
+                b.ad as birim
+              FROM urun_stok us
+              LEFT JOIN departmanlar d ON us.departman_id = d.id
+              LEFT JOIN ana_gruplar ag ON us.ana_grup_id = ag.id
+              LEFT JOIN alt_gruplar alg ON us.alt_grup_id = alg.id
+              LEFT JOIN birimler b ON us.birim_id = b.id
+              WHERE us.durum = 'aktif'";
+
+    // Stok durumu filtresi uygulanıyor
+    if ($stock_status == 'critical') {
+        $query .= " AND us.stok_miktari <= $critical_level AND us.stok_miktari > 0";
+    } elseif ($stock_status == 'out') {
+        $query .= " AND us.stok_miktari = 0";
+    } elseif ($stock_status == 'low') {
+        $query .= " AND us.stok_miktari <= " . ($critical_level * 2) . " AND us.stok_miktari > $critical_level";
+    }
+
+    // Departman filtresi uygulanıyor
+    if ($department_filter > 0) {
+        $query .= " AND us.departman_id = $department_filter";
+    }
+
+    // Tedarikçi filtresi uygulanıyor
+    if ($supplier_filter > 0) {
+        $query .= " AND EXISTS (
+            SELECT 1 FROM alis_fatura_detay afd 
+            JOIN alis_faturalari af ON afd.fatura_id = af.id
+            WHERE afd.urun_id = us.id AND af.tedarikci = $supplier_filter
+        )";
+    }
+
+    // Sıralama uygulanıyor
+    $query .= " ORDER BY ";
+    if ($order_by == 'stok_miktari') {
+        $query .= "us.stok_miktari";
+    } elseif ($order_by == 'alis_fiyati') {
+        $query .= "us.alis_fiyati";
+    } elseif ($order_by == 'son_alis_tarihi') {
+        $query .= "(SELECT MAX(af.fatura_tarihi) FROM alis_faturalari af 
+                 INNER JOIN alis_fatura_detay afd ON af.id = afd.fatura_id 
+                 WHERE afd.urun_id = us.id)";
+    } else {
+        $query .= "us.ad";
+    }
+    $query .= " $order_direction";
+    
+$query .= " LIMIT $offset, $items_per_page";
+
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Ürünlerin ilave bilgilerini al
+    foreach ($products as &$product) {
+        // Depodan stok miktarı
+        $depo_stok_query = "SELECT COALESCE(SUM(stok_miktari), 0) as depo_stok 
+                            FROM depo_stok 
+                            WHERE urun_id = :urun_id";
+        $stmt = $conn->prepare($depo_stok_query);
+        $stmt->bindParam(':urun_id', $product['id']);
+        $stmt->execute();
+        $depo_stok = $stmt->fetchColumn();
+
+        // Mağazadan stok miktarı
+        $magaza_stok_query = "SELECT COALESCE(SUM(stok_miktari), 0) as magaza_stok 
+                              FROM magaza_stok 
+                              WHERE barkod = :barkod";
+        $stmt = $conn->prepare($magaza_stok_query);
+        $stmt->bindParam(':barkod', $product['barkod']);
+        $stmt->execute();
+        $magaza_stok = $stmt->fetchColumn();
+
+        // Toplam stok miktarı
+        $product['stok_miktari'] = $depo_stok + $magaza_stok + $product['urun_stok'];
+
+        // Son tedarikçi
+        $tedarikci_query = "SELECT t.ad
+                          FROM tedarikciler t
+                          JOIN alis_faturalari af ON t.id = af.tedarikci
+                          JOIN alis_fatura_detay afd ON af.id = afd.fatura_id
+                          WHERE afd.urun_id = :urun_id
+                          ORDER BY af.fatura_tarihi DESC
+                          LIMIT 1";
+        $stmt = $conn->prepare($tedarikci_query);
+        $stmt->bindParam(':urun_id', $product['id']);
+        $stmt->execute();
+        $product['son_tedarikci'] = $stmt->fetchColumn();
+
+        // Tedarikçi ID
+        $tedarikci_id_query = "SELECT af.tedarikci
+                             FROM alis_faturalari af
+                             JOIN alis_fatura_detay afd ON af.id = afd.fatura_id
+                             WHERE afd.urun_id = :urun_id
+                             ORDER BY af.fatura_tarihi DESC
+                             LIMIT 1";
+        $stmt = $conn->prepare($tedarikci_id_query);
+        $stmt->bindParam(':urun_id', $product['id']);
+        $stmt->execute();
+        $product['tedarikci_id'] = $stmt->fetchColumn();
+
+        // Son alış tarihi
+        $son_alis_query = "SELECT MAX(af.fatura_tarihi)
+                         FROM alis_faturalari af
+                         JOIN alis_fatura_detay afd ON af.id = afd.fatura_id
+                         WHERE afd.urun_id = :urun_id";
+        $stmt = $conn->prepare($son_alis_query);
+        $stmt->bindParam(':urun_id', $product['id']);
+        $stmt->execute();
+        $product['son_alis_tarihi'] = $stmt->fetchColumn();
+
+        // Ortalama alış fiyatı
+        $ortalama_fiyat_query = "SELECT AVG(afd.birim_fiyat)
+                              FROM alis_fatura_detay afd
+                              WHERE afd.urun_id = :urun_id
+                              ORDER BY afd.id DESC
+                              LIMIT 3";
+        $stmt = $conn->prepare($ortalama_fiyat_query);
+        $stmt->bindParam(':urun_id', $product['id']);
+        $stmt->execute();
+        $product['ortalama_alis_fiyati'] = $stmt->fetchColumn();
+    }
+} catch (PDOException $e) {
+    $products = []; // Hata durumunda boş array
+    error_log("Products query error: " . $e->getMessage());
 }
 
-// Tedarikçi filtresi uygulanıyor
-if ($supplier_filter > 0) {
-    $query .= " AND EXISTS (
-        SELECT 1 FROM alis_fatura_detay afd 
-        JOIN alis_faturalari af ON afd.fatura_id = af.id
-        WHERE afd.urun_id = us.id AND af.tedarikci = $supplier_filter
-    )";
+// Tedarikçileri ve departmanları al
+try {
+    $supplier_query = "SELECT id, ad FROM tedarikciler ORDER BY ad";
+    $suppliers = $conn->query($supplier_query)->fetchAll(PDO::FETCH_ASSOC);
+
+    $department_query = "SELECT id, ad FROM departmanlar ORDER BY ad";
+    $departments = $conn->query($department_query)->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $suppliers = [];
+    $departments = [];
+    error_log("Reference data query error: " . $e->getMessage());
 }
-
-// Sıralama uygulanıyor
-$query .= " ORDER BY ";
-if ($order_by == 'stok_miktari') {
-    $query .= "(
-        COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) +
-        COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0)
-    )";
-} elseif ($order_by == 'alis_fiyati') {
-    $query .= "us.alis_fiyati";
-} elseif ($order_by == 'son_alis_tarihi') {
-    $query .= "(SELECT MAX(af.fatura_tarihi) FROM alis_faturalari af 
-             INNER JOIN alis_fatura_detay afd ON af.id = afd.fatura_id 
-             WHERE afd.urun_id = us.id)";
-} else {
-    $query .= "us.ad";
-}
-$query .= " $order_direction";
-
-// Sorguyu çalıştır
-$stmt = $conn->prepare($query);
-$stmt->execute();
-$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Tedarikçileri al
-$supplier_query = "SELECT id, ad FROM tedarikciler ORDER BY ad";
-$suppliers = $conn->query($supplier_query)->fetchAll(PDO::FETCH_ASSOC);
-
-// Departmanları al
-$department_query = "SELECT id, ad FROM departmanlar ORDER BY ad";
-$departments = $conn->query($department_query)->fetchAll(PDO::FETCH_ASSOC);
 
 // Sepette kaç ürün olduğunu sorgula
 $order_basket_count = 0;
@@ -200,59 +322,64 @@ if (isset($_SESSION['purchase_order_basket']) && is_array($_SESSION['purchase_or
 // Sipariş oluşturma işlemi
 if (isset($_POST['create_order'])) {
     if (!empty($_SESSION['purchase_order_basket'])) {
-        $supplier_id = $_POST['supplier_id'];
-        $notes = $_POST['notes'];
-        
-        // Siparişi kaydet
-        $order_query = "INSERT INTO siparisler (
-            tedarikci_id, 
-            tarih, 
-            durum, 
-            notlar, 
-            kullanici_id
-        ) VALUES (
-            :tedarikci_id,
-            NOW(),
-            'beklemede',
-            :notlar,
-            :kullanici_id
-        )";
-        
-        $stmt = $conn->prepare($order_query);
-        $stmt->bindParam(':tedarikci_id', $supplier_id);
-        $stmt->bindParam(':notlar', $notes);
-        $stmt->bindParam(':kullanici_id', $_SESSION['user_id']);
-        $stmt->execute();
-        
-        $order_id = $conn->lastInsertId();
-        
-        // Sipariş detaylarını kaydet
-        foreach ($_SESSION['purchase_order_basket'] as $product) {
-            $detail_query = "INSERT INTO siparis_detay (
-                siparis_id,
-                urun_id,
-                miktar,
-                birim_fiyat
+        try {
+            $supplier_id = $_POST['supplier_id'];
+            $notes = $_POST['notes'];
+            
+            // Siparişi kaydet
+            $order_query = "INSERT INTO siparisler (
+                tedarikci_id, 
+                tarih, 
+                durum, 
+                notlar, 
+                kullanici_id
             ) VALUES (
-                :siparis_id,
-                :urun_id,
-                :miktar,
-                :birim_fiyat
+                :tedarikci_id,
+                NOW(),
+                'beklemede',
+                :notlar,
+                :kullanici_id
             )";
             
-            $stmt = $conn->prepare($detail_query);
-            $stmt->bindParam(':siparis_id', $order_id);
-            $stmt->bindParam(':urun_id', $product['id']);
-            $stmt->bindParam(':miktar', $product['quantity']);
-            $stmt->bindParam(':birim_fiyat', $product['price']);
+            $stmt = $conn->prepare($order_query);
+            $stmt->bindParam(':tedarikci_id', $supplier_id);
+            $stmt->bindParam(':notlar', $notes);
+            $stmt->bindParam(':kullanici_id', $_SESSION['user_id']);
             $stmt->execute();
+            
+            $order_id = $conn->lastInsertId();
+            
+            // Sipariş detaylarını kaydet
+            foreach ($_SESSION['purchase_order_basket'] as $product) {
+                $detail_query = "INSERT INTO siparis_detay (
+                    siparis_id,
+                    urun_id,
+                    miktar,
+                    birim_fiyat
+                ) VALUES (
+                    :siparis_id,
+                    :urun_id,
+                    :miktar,
+                    :birim_fiyat
+                )";
+                
+                $stmt = $conn->prepare($detail_query);
+                $stmt->bindParam(':siparis_id', $order_id);
+                $stmt->bindParam(':urun_id', $product['id']);
+                $stmt->bindParam(':miktar', $product['quantity']);
+                $stmt->bindParam(':birim_fiyat', $product['price']);
+                $stmt->execute();
+            }
+            
+            // Sepeti temizle
+            unset($_SESSION['purchase_order_basket']);
+            
+            // Başarı mesajı
+            $success_message = "Sipariş başarıyla oluşturuldu. Sipariş No: " . $order_id;
+        } catch (PDOException $e) {
+            $error_message = "Sipariş oluşturma sırasında bir hata oluştu: " . $e->getMessage();
+            error_log("Order creation error: " . $e->getMessage());
         }
-        
-        // Sepeti temizle
-        unset($_SESSION['purchase_order_basket']);
-        
-        // Başarı mesajı
-        $success_message = "Sipariş başarıyla oluşturuldu. Sipariş No: " . $order_id;
     } else {
         $error_message = "Sepet boş! Sipariş oluşturulamadı.";
     }
@@ -520,91 +647,90 @@ $execution_time = round($end_time - $start_time, 3);
                 <span class="text-sm text-gray-500">Satış verileri baz alınarak önerilen ürünler</span>
             </div>
             
-								<?php if (empty($top_selling_products)): ?>
-									<div class="text-center p-4 bg-gray-50 rounded-md">
-										<p class="text-gray-500">Bu kriterlere göre satış verisi bulunamadı.</p>
-									</div>
-								<?php else: ?>
-									<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-						<?php foreach ($top_selling_products as $index => $product): ?>
-							<div class="bg-white border rounded-lg shadow-sm overflow-hidden product-card relative">
-								<?php if ($index < 5): ?>
-									<span class="recommendation-badge">
-										<?php echo $index === 0 ? 'En Çok Satan' : 'Top ' . ($index + 1); ?>
-									</span>
-								<?php endif; ?>
-								
-								<div class="p-4">
-									<h3 class="text-sm font-medium text-gray-900 truncate mb-1" title="<?php echo htmlspecialchars($product['ad']); ?>">
-										<?php echo htmlspecialchars($product['ad']); ?>
-									</h3>
-									<p class="text-xs text-gray-500 mb-2">
-										<?php echo htmlspecialchars($product['departman'] ?? 'Belirtilmemiş'); ?> 
-										<?php if (!empty($product['ana_grup'])): ?>
-											- <?php echo htmlspecialchars($product['ana_grup']); ?>
-										<?php endif; ?>
-									</p>
-									
-									<div class="flex justify-between items-center mb-2">
-										<div>
-											<span class="text-xs text-gray-500">Stok:</span>
-											<span class="<?php echo $product['stok_miktari'] <= $critical_level ? 'text-red-600 font-bold' : 'text-green-600'; ?>">
-												<?php echo number_format($product['stok_miktari'], 0, ',', '.'); ?>
-											</span>
-										</div>
-										<div>
-											<span class="text-xs text-gray-500">Satılan:</span>
-											<span class="text-blue-600 font-medium">
-												<?php echo number_format($product['total_sold'], 0, ',', '.'); ?>
-											</span>
-										</div>
-									</div>
-									
-									<!-- Fiyat bilgileri -->
-									<div class="grid grid-cols-2 gap-2 mb-3">
-										<div class="text-center bg-gray-50 p-1 rounded">
-											<span class="text-xs text-gray-500 block">Alış Fiyatı:</span>
-											<span class="text-sm font-medium text-gray-800">
-												₺<?php echo number_format($product['alis_fiyati'], 2, ',', '.'); ?>
-											</span>
-										</div>
-										<div class="text-center bg-gray-50 p-1 rounded">
-											<span class="text-xs text-gray-500 block">Satış Fiyatı:</span>
-											<span class="text-sm font-medium text-green-600">
-												₺<?php echo number_format($product['satis_fiyati'], 2, ',', '.'); ?>
-											</span>
-										</div>
-									</div>
-									
-									<div class="mt-3 flex space-x-2">
-										<!-- Hızlı Sepete Ekleme Butonu -->
-										<button class="quick-add-btn w-1/2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-md text-sm"
-												data-id="<?php echo $product['id']; ?>"
-												data-name="<?php echo htmlspecialchars($product['ad']); ?>"
-												data-price="<?php echo $product['alis_fiyati']; ?>"
-												data-sales-price="<?php echo $product['satis_fiyati']; ?>">
-											<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-											</svg>
-											Ekle
-										</button>
-										
-										<!-- Detaylı Ekleme Butonu -->
-										<button class="add-to-order-btn w-1/2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-sm"
-												data-id="<?php echo $product['id']; ?>"
-												data-name="<?php echo htmlspecialchars($product['ad']); ?>"
-												data-price="<?php echo $product['alis_fiyati']; ?>"
-												data-sales-price="<?php echo $product['satis_fiyati']; ?>">
-											<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-											</svg>
-											Detaylı
-										</button>
-									</div>
-								</div>
-							</div>
-						<?php endforeach; ?>
-					</div>
+            <?php if (empty($top_selling_products)): ?>
+                <div class="text-center p-4 bg-gray-50 rounded-md">
+                    <p class="text-gray-500">Bu kriterlere göre satış verisi bulunamadı.</p>
+                </div>
+            <?php else: ?>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <?php foreach ($top_selling_products as $index => $product): ?>
+                        <div class="bg-white border rounded-lg shadow-sm overflow-hidden product-card relative">
+                            <?php if ($index < 5): ?>
+                                <span class="recommendation-badge">
+                                    <?php echo $index === 0 ? 'En Çok Satan' : 'Top ' . ($index + 1); ?>
+                                </span>
+                            <?php endif; ?>
+                            
+                            <div class="p-4">
+                                <h3 class="text-sm font-medium text-gray-900 truncate mb-1" title="<?php echo htmlspecialchars($product['ad']); ?>">
+                                    <?php echo htmlspecialchars($product['ad']); ?>
+                                </h3>
+                                <p class="text-xs text-gray-500 mb-2">
+                                    <?php echo htmlspecialchars($product['departman'] ?? 'Belirtilmemiş'); ?> 
+                                    <?php if (!empty($product['ana_grup'])): ?>
+                                        - <?php echo htmlspecialchars($product['ana_grup']); ?>
+                                    <?php endif; ?>
+                                </p>
+                                
+                                <div class="flex justify-between items-center mb-2">
+                                    <div>
+                                        <span class="text-xs text-gray-500">Stok:</span>
+                                        <span class="<?php echo $product['stok_miktari'] <= $critical_level ? 'text-red-600 font-bold' : 'text-green-600'; ?>">
+                                            <?php echo number_format($product['stok_miktari'], 0, ',', '.'); ?>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-gray-500">Satılan:</span>
+                                        <span class="text-blue-600 font-medium">
+                                            <?php echo number_format($product['total_sold'], 0, ',', '.'); ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Fiyat bilgileri -->
+                                <div class="grid grid-cols-2 gap-2 mb-3">
+                                    <div class="text-center bg-gray-50 p-1 rounded">
+                                        <span class="text-xs text-gray-500 block">Alış Fiyatı:</span>
+                                        <span class="text-sm font-medium text-gray-800">
+                                            ₺<?php echo number_format($product['alis_fiyati'], 2, ',', '.'); ?>
+                                        </span>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded">
+                                        <span class="text-xs text-gray-500 block">Satış Fiyatı:</span>
+                                        <span class="text-sm font-medium text-green-600">
+                                            ₺<?php echo number_format($product['satis_fiyati'], 2, ',', '.'); ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3 flex space-x-2">
+                                    <!-- Hızlı Sepete Ekleme Butonu -->
+                                    <button class="quick-add-btn w-1/2 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-md text-sm"
+                                            data-id="<?php echo $product['id']; ?>"
+                                            data-name="<?php echo htmlspecialchars($product['ad']); ?>"
+                                            data-price="<?php echo $product['alis_fiyati']; ?>"
+                                            data-sales-price="<?php echo $product['satis_fiyati']; ?>">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        </svg>
+                                        Ekle
+                                    </button>
+                                    
+                                    <!-- Detaylı Ekleme Butonu -->
+                                    <button class="add-to-order-btn w-1/2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-sm"
+                                            data-id="<?php echo $product['id']; ?>"
+                                            data-name="<?php echo htmlspecialchars($product['ad']); ?>"
+                                            data-price="<?php echo $product['alis_fiyati']; ?>"
+                                            data-sales-price="<?php echo $product['satis_fiyati']; ?>">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Detaylı
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -724,43 +850,78 @@ $execution_time = round($end_time - $start_time, 3);
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     <button class="add-to-order-btn bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm mr-2"
-											data-id="<?php echo $product['id']; ?>"
-											data-name="<?php echo htmlspecialchars($product['ad']); ?>"
-											data-price="<?php echo $product['alis_fiyati']; ?>"
-											data-sales-price="<?php echo $product['satis_fiyati']; ?>">
-										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-										</svg>
-										Ekle
-									</button>
+                                            data-id="<?php echo $product['id']; ?>"
+                                            data-name="<?php echo htmlspecialchars($product['ad']); ?>"
+                                            data-price="<?php echo $product['alis_fiyati']; ?>"
+                                            data-sales-price="<?php echo $product['satis_fiyati']; ?>">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Ekle
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
             </table>
+            <!-- Sayfalama -->
+<?php if ($total_pages > 1): ?>
+<div class="flex justify-center mt-4">
+    <div class="inline-flex rounded-md shadow-sm">
+        <?php if ($page > 1): ?>
+            <a href="?page=1&stock_status=<?php echo $stock_status; ?>&department=<?php echo $department_filter; ?>&supplier=<?php echo $supplier_filter; ?>&date_range=<?php echo $date_range; ?>&order_by=<?php echo $order_by; ?>&order_direction=<?php echo $order_direction; ?>" class="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-l-md">
+                İlk
+            </a>
+            <a href="?page=<?php echo $page-1; ?>&stock_status=<?php echo $stock_status; ?>&department=<?php echo $department_filter; ?>&supplier=<?php echo $supplier_filter; ?>&date_range=<?php echo $date_range; ?>&order_by=<?php echo $order_by; ?>&order_direction=<?php echo $order_direction; ?>" class="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Önceki
+            </a>
+        <?php endif; ?>
+        
+        <?php
+        // Sayfa numaralarını göster
+        $start_page = max(1, $page - 2);
+        $end_page = min($total_pages, $page + 2);
+        
+        for ($i = $start_page; $i <= $end_page; $i++) {
+            $active_class = ($i == $page) ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-700 hover:bg-gray-50';
+            echo '<a href="?page=' . $i . '&stock_status=' . $stock_status . '&department=' . $department_filter . '&supplier=' . $supplier_filter . '&date_range=' . $date_range . '&order_by=' . $order_by . '&order_direction=' . $order_direction . '" class="py-2 px-4 border border-gray-300 ' . $active_class . ' text-sm font-medium">' . $i . '</a>';
+        }
+        ?>
+        
+        <?php if ($page < $total_pages): ?>
+            <a href="?page=<?php echo $page+1; ?>&stock_status=<?php echo $stock_status; ?>&department=<?php echo $department_filter; ?>&supplier=<?php echo $supplier_filter; ?>&date_range=<?php echo $date_range; ?>&order_by=<?php echo $order_by; ?>&order_direction=<?php echo $order_direction; ?>" class="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Sonraki
+            </a>
+            <a href="?page=<?php echo $total_pages; ?>&stock_status=<?php echo $stock_status; ?>&department=<?php echo $department_filter; ?>&supplier=<?php echo $supplier_filter; ?>&date_range=<?php echo $date_range; ?>&order_by=<?php echo $order_by; ?>&order_direction=<?php echo $order_direction; ?>" class="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-r-md">
+                Son
+            </a>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
         </div>
     </div>
 
     <!-- Sepet Modal -->
-<div id="basketModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl">
-        <div class="flex justify-between items-center px-6 py-4 border-b">
-            <h3 class="text-lg font-semibold">Sipariş Sepeti</h3>
-            <button id="closeBasketBtn" class="text-gray-500 hover:text-gray-700">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        <div id="basketModalContent">
-            <!-- Sepet içeriği JavaScript ile dinamik olarak güncellenecek -->
-            <div class="flex justify-center p-6">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+    <div id="basketModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl">
+            <div class="flex justify-between items-center px-6 py-4 border-b">
+                <h3 class="text-lg font-semibold">Sipariş Sepeti</h3>
+                <button id="closeBasketBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="basketModalContent">
+                <!-- Sepet içeriği JavaScript ile dinamik olarak güncellenecek -->
+                <div class="flex justify-center p-6">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     <!-- Sipariş Oluşturma Modal -->
     <div id="createOrderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
@@ -803,625 +964,641 @@ $execution_time = round($end_time - $start_time, 3);
         </div>
     </div>
 
-		<!-- Ürün Ekleme Modal -->
-		<div id="addProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div class="flex justify-between items-center px-6 py-4 border-b">
-            <h3 class="text-lg font-semibold">Ürünü Sepete Ekle</h3>
-            <button id="closeAddProductBtn" class="text-gray-500 hover:text-gray-700">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        <form name="add_to_basket" method="POST" class="p-6">
-            <input type="hidden" id="product_id" name="product_id">
-            <input type="hidden" id="product_name" name="product_name">
-            <input type="hidden" id="sales_price" name="sales_price" value="0">
-            
-            <div class="mb-4">
-                <label for="product_display" class="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
-                <input type="text" id="product_display" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 bg-gray-100 rounded-md" readonly>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Alış Fiyatı (₺)</label>
-                    <input type="number" id="price" name="price" step="0.01" min="0" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" required>
-                </div>
-                
-                <div>
-                    <label for="display_sales_price" class="block text-sm font-medium text-gray-700 mb-1">Satış Fiyatı (₺)</label>
-                    <input type="number" id="display_sales_price" step="0.01" min="0" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
-                </div>
-            </div>
-            
-            <div class="mb-4">
-                <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Miktar</label>
-                <input type="number" id="quantity" name="quantity" min="1" value="1" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" required>
-            </div>
-            
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Toplam Tutar</label>
-                <div id="total_amount" class="text-lg font-bold text-green-600">₺0,00</div>
-            </div>
-            
-            <div class="mb-4 p-3 bg-gray-50 rounded-md">
-                <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-700">Alış Tutarı:</span>
-                    <span id="purchase_total" class="font-medium">₺0,00</span>
-                </div>
-                <div class="flex items-center justify-between text-sm mt-1">
-                    <span class="text-gray-700">Satış Tutarı:</span>
-                    <span id="sales_total" class="font-medium text-green-600">₺0,00</span>
-                </div>
-                <div class="flex items-center justify-between text-sm mt-1 pt-1 border-t">
-                    <span class="text-gray-700 font-medium">Kâr Marjı:</span>
-                    <span id="profit_margin" class="font-medium text-blue-600">%0</span>
-                </div>
-            </div>
-            
-            <div class="flex justify-end">
-                <button type="button" id="cancelAddProductBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md mr-2">
-                    İptal
-                </button>
-                <button type="submit" name="add_to_basket" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
-                    Sepete Ekle
+    <!-- Ürün Ekleme Modal -->
+    <div id="addProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div class="flex justify-between items-center px-6 py-4 border-b">
+                <h3 class="text-lg font-semibold">Ürünü Sepete Ekle</h3>
+                <button id="closeAddProductBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </button>
             </div>
-        </form>
-    </div>
-</div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Modaller ve Butonlar
-    const basketModal = document.getElementById('basketModal');
-    const showBasketBtn = document.getElementById('showBasketBtn');
-    const closeBasketBtn = document.getElementById('closeBasketBtn');
-    const closeBasketBtn2 = document.getElementById('closeBasketBtn2');
-    const createOrderModal = document.getElementById('createOrderModal');
-    const createOrderBtn = document.getElementById('createOrderBtn');
-    const closeOrderModalBtn = document.getElementById('closeOrderModalBtn');
-    const cancelOrderBtn = document.getElementById('cancelOrderBtn');
-    const addProductModal = document.getElementById('addProductModal');
-    const closeAddProductBtn = document.getElementById('closeAddProductBtn');
-    const cancelAddProductBtn = document.getElementById('cancelAddProductBtn');
-    
-    // Sepet Modalı Event Listener'ları
-    if (showBasketBtn) {
-        showBasketBtn.addEventListener('click', function() {
-            // Sepet içeriğini güncelle
-            fetch('../../api/get_basket.php')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateBasketContent(data.basket);
-                    }
-                });
-            
-            basketModal.classList.remove('hidden');
-        });
-    }
-    
-    if (closeBasketBtn) {
-        closeBasketBtn.addEventListener('click', function() {
-            basketModal.classList.add('hidden');
-        });
-    }
-    
-    if (closeBasketBtn2) {
-        closeBasketBtn2.addEventListener('click', function() {
-            basketModal.classList.add('hidden');
-        });
-    }
-    
-    // Sipariş Oluşturma Modalı Event Listener'ları
-    if (createOrderBtn) {
-        createOrderBtn.addEventListener('click', function() {
-            basketModal.classList.add('hidden');
-            createOrderModal.classList.remove('hidden');
-        });
-    }
-    
-    if (closeOrderModalBtn) {
-        closeOrderModalBtn.addEventListener('click', function() {
-            createOrderModal.classList.add('hidden');
-            basketModal.classList.remove('hidden');
-        });
-    }
-    
-    if (cancelOrderBtn) {
-        cancelOrderBtn.addEventListener('click', function() {
-            createOrderModal.classList.add('hidden');
-            basketModal.classList.remove('hidden');
-        });
-    }
-    
-    // Ürün Ekleme Modalı Event Listener'ları
-    const addToOrderBtns = document.querySelectorAll('.add-to-order-btn');
-    addToOrderBtns.forEach(button => {
-        button.addEventListener('click', function() {
-            const productId = this.getAttribute('data-id');
-            const productName = this.getAttribute('data-name');
-            const productPrice = this.getAttribute('data-price');
-            const salesPrice = this.getAttribute('data-sales-price') || this.closest('tr')?.querySelector('.sales-price')?.textContent || '0';
-            
-            console.log("Ürün Ekle Butonuna Tıklandı:", { 
-                productId, 
-                productName, 
-                productPrice, 
-                salesPrice 
-            });
-            
-            document.getElementById('product_id').value = productId;
-            document.getElementById('product_name').value = productName;
-            document.getElementById('product_display').value = productName;
-            document.getElementById('price').value = productPrice;
-            
-            // Satış fiyatını da ekle
-            if (document.getElementById('sales_price')) {
-                document.getElementById('sales_price').value = salesPrice.replace('₺', '').replace(',', '.').trim();
-            }
-            
-            if (document.getElementById('display_sales_price')) {
-                document.getElementById('display_sales_price').value = salesPrice.replace('₺', '').replace(',', '.').trim();
-            }
-            
-            document.getElementById('quantity').value = 1;
-            
-            // Hesaplamaları güncelle
-            if (typeof updateCalculations === 'function') {
-                updateCalculations();
-            } else if (typeof updateTotalAmount === 'function') {
-                updateTotalAmount();
-            }
-            
-            addProductModal.classList.remove('hidden');
-        });
-    });
-    
-    if (closeAddProductBtn) {
-        closeAddProductBtn.addEventListener('click', function() {
-            addProductModal.classList.add('hidden');
-        });
-    }
-    
-    if (cancelAddProductBtn) {
-        cancelAddProductBtn.addEventListener('click', function() {
-            addProductModal.classList.add('hidden');
-        });
-    }
-    
-    // Fiyat ve Miktar Hesaplama
-    const priceInput = document.getElementById('price');
-    const quantityInput = document.getElementById('quantity');
-    const totalAmountDiv = document.getElementById('total_amount');
-    const salesPriceInput = document.getElementById('sales_price');
-    const displaySalesPriceInput = document.getElementById('display_sales_price');
-    const purchaseTotalSpan = document.getElementById('purchase_total');
-    const salesTotalSpan = document.getElementById('sales_total');
-    const profitMarginSpan = document.getElementById('profit_margin');
-    
-    // Kapsamlı hesaplama fonksiyonu
-    function updateCalculations() {
-        if (priceInput && quantityInput && totalAmountDiv) {
-            const price = parseFloat(priceInput.value) || 0;
-            const quantity = parseInt(quantityInput.value) || 0;
-            const salesPrice = parseFloat(salesPriceInput ? salesPriceInput.value : 0) || 0;
-            
-            console.log("Hesaplama için değerler:", { price, quantity, salesPrice });
-            
-            // Alış toplamı
-            const purchaseTotal = price * quantity;
-            totalAmountDiv.textContent = '₺' + purchaseTotal.toLocaleString('tr-TR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-            
-            // Alış tutarı
-            if (purchaseTotalSpan) {
-                purchaseTotalSpan.textContent = '₺' + purchaseTotal.toLocaleString('tr-TR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-            }
-            
-            // Satış fiyatı ve toplamı
-            if (salesPriceInput && displaySalesPriceInput) {
-                displaySalesPriceInput.value = salesPriceInput.value;
-            }
-            
-            if (salesTotalSpan && salesPriceInput) {
-                const salesTotal = salesPrice * quantity;
-                salesTotalSpan.textContent = '₺' + salesTotal.toLocaleString('tr-TR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
+            <form name="add_to_basket" method="POST" class="p-6">
+                <input type="hidden" id="product_id" name="product_id">
+                <input type="hidden" id="product_name" name="product_name">
+                <input type="hidden" id="sales_price" name="sales_price" value="0">
                 
-                // Kâr marjı hesaplama
-                if (profitMarginSpan && purchaseTotal > 0) {
-                    const profit = salesTotal - purchaseTotal;
-                    const margin = (profit / purchaseTotal) * 100;
-                    profitMarginSpan.textContent = '%' + margin.toFixed(2);
+                <div class="mb-4">
+                    <label for="product_display" class="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
+                    <input type="text" id="product_display" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 bg-gray-100 rounded-md" readonly>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Alış Fiyatı (₺)</label>
+                        <input type="number" id="price" name="price" step="0.01" min="0" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" required>
+                    </div>
                     
-                    // Kâr marjına göre renk değiştirme
-                    if (margin < 0) {
-                        profitMarginSpan.className = 'font-medium text-red-600';
-                    } else if (margin < 10) {
-                        profitMarginSpan.className = 'font-medium text-yellow-600';
-                    } else {
-                        profitMarginSpan.className = 'font-medium text-green-600';
-                    }
-                }
-            }
-        }
-    }
+                    <div>
+                        <label for="display_sales_price" class="block text-sm font-medium text-gray-700 mb-1">Satış Fiyatı (₺)</label>
+                        <input type="number" id="display_sales_price" step="0.01" min="0" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Miktar</label>
+                    <input type="number" id="quantity" name="quantity" min="1" value="1" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Toplam Tutar</label>
+                    <div id="total_amount" class="text-lg font-bold text-green-600">₺0,00</div>
+                </div>
+                
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-700">Alış Tutarı:</span>
+                        <span id="purchase_total" class="font-medium">₺0,00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm mt-1">
+                        <span class="text-gray-700">Satış Tutarı:</span>
+                        <span id="sales_total" class="font-medium text-green-600">₺0,00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm mt-1 pt-1 border-t">
+                        <span class="text-gray-700 font-medium">Kâr Marjı:</span>
+                        <span id="profit_margin" class="font-medium text-blue-600">%0</span>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="button" id="cancelAddProductBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md mr-2">
+                        İptal
+                    </button>
+                    <button type="submit" name="add_to_basket" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
+                        Sepete Ekle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     
-    // Eski fonksiyon - geriye dönük uyumluluk için
-    function updateTotalAmount() {
-        if (priceInput && quantityInput && totalAmountDiv) {
-            const price = parseFloat(priceInput.value) || 0;
-            const quantity = parseInt(quantityInput.value) || 0;
-            const total = price * quantity;
-            
-            totalAmountDiv.textContent = '₺' + total.toLocaleString('tr-TR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Modaller ve Butonlar
+        const basketModal = document.getElementById('basketModal');
+        const showBasketBtn = document.getElementById('showBasketBtn');
+        const closeBasketBtn = document.getElementById('closeBasketBtn');
+        const closeBasketBtn2 = document.getElementById('closeBasketBtn2');
+        const createOrderModal = document.getElementById('createOrderModal');
+        const createOrderBtn = document.getElementById('createOrderBtn');
+        const closeOrderModalBtn = document.getElementById('closeOrderModalBtn');
+        const cancelOrderBtn = document.getElementById('cancelOrderBtn');
+        const addProductModal = document.getElementById('addProductModal');
+        const closeAddProductBtn = document.getElementById('closeAddProductBtn');
+        const cancelAddProductBtn = document.getElementById('cancelAddProductBtn');
+        
+        // Sepet Modalı Event Listener'ları
+        if (showBasketBtn) {
+            showBasketBtn.addEventListener('click', function() {
+                // Sepet içeriğini güncelle
+                fetch('../../api/get_basket.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateBasketContent(data.basket);
+                        }
+                    });
+                
+                basketModal.classList.remove('hidden');
             });
-            
-            // Yeni hesaplama fonksiyonu varsa çağır
-            if (typeof updateCalculations === 'function' && updateCalculations !== updateTotalAmount) {
-                updateCalculations();
-            }
         }
-    }
-    
-    // Fiyat ve miktar değişim event listener'ları
-    if (priceInput) {
-        priceInput.addEventListener('input', function() {
-            if (typeof updateCalculations === 'function') {
-                updateCalculations();
-            } else {
-                updateTotalAmount();
-            }
-        });
-    }
-    
-    if (quantityInput) {
-        quantityInput.addEventListener('input', function() {
-            if (typeof updateCalculations === 'function') {
-                updateCalculations();
-            } else {
-                updateTotalAmount();
-            }
-        });
-    }
-    
-    if (salesPriceInput) {
-        salesPriceInput.addEventListener('input', function() {
-            if (typeof updateCalculations === 'function') {
-                updateCalculations();
-            }
-        });
-    }
-    
-    // Hızlı Ekle Butonları
-    const quickAddButtons = document.querySelectorAll('.quick-add-btn');
-    quickAddButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const productId = this.getAttribute('data-id');
-            const productName = this.getAttribute('data-name');
-            const productPrice = this.getAttribute('data-price');
-            const salesPrice = this.getAttribute('data-sales-price') || '0';
-            
-            console.log("Hızlı Ekle Butonuna Tıklandı:", { 
-                productId, 
-                productName, 
-                productPrice, 
-                salesPrice 
+        
+        if (closeBasketBtn) {
+            closeBasketBtn.addEventListener('click', function() {
+                basketModal.classList.add('hidden');
             });
-            
-            // Varsayılan miktar 1
-            const quantity = 1;
-            
-            // Sepete ekle
-            quickAddToBasket(productId, productName, productPrice, quantity, salesPrice);
-        });
-    });
-    
-    // Form submit olayı
-    const addToBasketForm = document.querySelector('form[name="add_to_basket"]');
-    if (addToBasketForm) {
-        addToBasketForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const productId = document.getElementById('product_id').value;
-            const productName = document.getElementById('product_name').value;
-            const price = document.getElementById('price').value;
-            const quantity = document.getElementById('quantity').value;
-            const salesPrice = document.getElementById('sales_price')?.value || '0';
-            
-            quickAddToBasket(productId, productName, price, quantity, salesPrice);
-            
-            // Modalı kapat
-            if (addProductModal) {
-                addProductModal.classList.add('hidden');
-            }
-        });
-    }
-    
-    // Sayfa yüklendiğinde sepet sayısını güncelle
-    fetch('../../api/get_basket.php')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const basketCount = document.querySelector('#basketCount');
-                if (basketCount) {
-                    basketCount.textContent = data.basket_count;
-                    if (data.basket_count > 0) {
-                        basketCount.classList.remove('hidden');
-                        basketCount.parentElement.classList.remove('hidden');
-                    } else {
-                        basketCount.classList.add('hidden');
-                    }
+        }
+        
+        if (closeBasketBtn2) {
+            closeBasketBtn2.addEventListener('click', function() {
+                basketModal.classList.add('hidden');
+            });
+        }
+        
+        // Sipariş Oluşturma Modalı Event Listener'ları
+        if (createOrderBtn) {
+            createOrderBtn.addEventListener('click', function() {
+                basketModal.classList.add('hidden');
+                createOrderModal.classList.remove('hidden');
+            });
+        }
+        
+        if (closeOrderModalBtn) {
+            closeOrderModalBtn.addEventListener('click', function() {
+                createOrderModal.classList.add('hidden');
+                basketModal.classList.remove('hidden');
+            });
+        }
+        
+        if (cancelOrderBtn) {
+            cancelOrderBtn.addEventListener('click', function() {
+                createOrderModal.classList.add('hidden');
+                basketModal.classList.remove('hidden');
+            });
+        }
+        
+        // Ürün Ekleme Modalı Event Listener'ları
+        const addToOrderBtns = document.querySelectorAll('.add-to-order-btn');
+        addToOrderBtns.forEach(button => {
+            button.addEventListener('click', function() {
+                const productName = this.getAttribute('data-name');
+                const productPrice = this.getAttribute('data-price');
+                const salesPrice = this.getAttribute('data-sales-price') || this.closest('tr')?.querySelector('.sales-price')?.textContent || '0';
+                
+                console.log("Ürün Ekle Butonuna Tıklandı:", { 
+                    productId, 
+                    productName, 
+                    productPrice, 
+                    salesPrice 
+                });
+                
+                document.getElementById('product_id').value = productId;
+                document.getElementById('product_name').value = productName;
+                document.getElementById('product_display').value = productName;
+                document.getElementById('price').value = productPrice;
+                
+                // Satış fiyatını da ekle
+                if (document.getElementById('sales_price')) {
+                    document.getElementById('sales_price').value = salesPrice.replace('₺', '').replace(',', '.').trim();
                 }
-            }
-        });
-    
-    // Sepete hızlı ekleme fonksiyonu
-    function quickAddToBasket(productId, productName, productPrice, quantity, salesPrice) {
-        console.log("Sepete eklenecek veriler:", {
-            product_id: productId,
-            product_name: productName,
-            price: productPrice,
-            sales_price: salesPrice,
-            quantity: quantity
+                
+                if (document.getElementById('display_sales_price')) {
+                    document.getElementById('display_sales_price').value = salesPrice.replace('₺', '').replace(',', '.').trim();
+                }
+                
+                document.getElementById('quantity').value = 1;
+                
+                // Hesaplamaları güncelle
+                if (typeof updateCalculations === 'function') {
+                    updateCalculations();
+                } else if (typeof updateTotalAmount === 'function') {
+                    updateTotalAmount();
+                }
+                
+                addProductModal.classList.remove('hidden');
+            });
         });
         
-        // AJAX ile sepete ekleme isteği
-        fetch('../../api/add_to_basket.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        if (closeAddProductBtn) {
+            closeAddProductBtn.addEventListener('click', function() {
+                addProductModal.classList.add('hidden');
+            });
+        }
+        
+        if (cancelAddProductBtn) {
+            cancelAddProductBtn.addEventListener('click', function() {
+                addProductModal.classList.add('hidden');
+            });
+        }
+        
+        // Fiyat ve Miktar Hesaplama
+        const priceInput = document.getElementById('price');
+        const quantityInput = document.getElementById('quantity');
+        const totalAmountDiv = document.getElementById('total_amount');
+        const salesPriceInput = document.getElementById('sales_price');
+        const displaySalesPriceInput = document.getElementById('display_sales_price');
+        const purchaseTotalSpan = document.getElementById('purchase_total');
+        const salesTotalSpan = document.getElementById('sales_total');
+        const profitMarginSpan = document.getElementById('profit_margin');
+        
+        // Kapsamlı hesaplama fonksiyonu
+        function updateCalculations() {
+            if (priceInput && quantityInput && totalAmountDiv) {
+                const price = parseFloat(priceInput.value) || 0;
+                const quantity = parseInt(quantityInput.value) || 0;
+                const salesPrice = parseFloat(salesPriceInput ? salesPriceInput.value : 0) || 0;
+                
+                console.log("Hesaplama için değerler:", { price, quantity, salesPrice });
+                
+                // Alış toplamı
+                const purchaseTotal = price * quantity;
+                totalAmountDiv.textContent = '₺' + purchaseTotal.toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+                
+                // Alış tutarı
+                if (purchaseTotalSpan) {
+                    purchaseTotalSpan.textContent = '₺' + purchaseTotal.toLocaleString('tr-TR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
+                
+                // Satış fiyatı ve toplamı
+                if (salesPriceInput && displaySalesPriceInput) {
+                    displaySalesPriceInput.value = salesPriceInput.value;
+                }
+                
+                if (salesTotalSpan && salesPriceInput) {
+                    const salesTotal = salesPrice * quantity;
+                    salesTotalSpan.textContent = '₺' + salesTotal.toLocaleString('tr-TR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                    
+                    // Kâr marjı hesaplama
+                    if (profitMarginSpan && purchaseTotal > 0) {
+                        const profit = salesTotal - purchaseTotal;
+                        const margin = (profit / purchaseTotal) * 100;
+                        profitMarginSpan.textContent = '%' + margin.toFixed(2);
+                        
+                        // Kâr marjına göre renk değiştirme
+                        if (margin < 0) {
+                            profitMarginSpan.className = 'font-medium text-red-600';
+                        } else if (margin < 10) {
+                            profitMarginSpan.className = 'font-medium text-yellow-600';
+                        } else {
+                            profitMarginSpan.className = 'font-medium text-green-600';
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Basit toplam hesaplama fonksiyonu
+        function updateTotalAmount() {
+            if (priceInput && quantityInput && totalAmountDiv) {
+                const price = parseFloat(priceInput.value) || 0;
+                const quantity = parseInt(quantityInput.value) || 0;
+                const total = price * quantity;
+                
+                totalAmountDiv.textContent = '₺' + total.toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+                
+                // Yeni hesaplama fonksiyonu varsa çağır
+                if (typeof updateCalculations === 'function' && updateCalculations !== updateTotalAmount) {
+                    updateCalculations();
+                }
+            }
+        }
+        
+        // Fiyat ve miktar değişim event listener'ları
+        if (priceInput) {
+            priceInput.addEventListener('input', function() {
+                if (typeof updateCalculations === 'function') {
+                    updateCalculations();
+                } else {
+                    updateTotalAmount();
+                }
+            });
+        }
+        
+        if (quantityInput) {
+            quantityInput.addEventListener('input', function() {
+                if (typeof updateCalculations === 'function') {
+                    updateCalculations();
+                } else {
+                    updateTotalAmount();
+                }
+            });
+        }
+        
+        if (displaySalesPriceInput) {
+            displaySalesPriceInput.addEventListener('input', function() {
+                // Satış fiyatını ana inputa da yansıt
+                if (salesPriceInput) {
+                    salesPriceInput.value = displaySalesPriceInput.value;
+                }
+                
+                if (typeof updateCalculations === 'function') {
+                    updateCalculations();
+                }
+            });
+        }
+        
+        // Hızlı Ekle Butonları
+        const quickAddButtons = document.querySelectorAll('.quick-add-btn');
+        quickAddButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const productId = this.getAttribute('data-id');
+                const productName = this.getAttribute('data-name');
+                const productPrice = this.getAttribute('data-price');
+                const salesPrice = this.getAttribute('data-sales-price') || '0';
+                
+                console.log("Hızlı Ekle Butonuna Tıklandı:", { 
+                    productId, 
+                    productName, 
+                    productPrice, 
+                    salesPrice 
+                });
+                
+                // Varsayılan miktar 1
+                const quantity = 1;
+                
+                // Sepete ekle
+                quickAddToBasket(productId, productName, productPrice, quantity, salesPrice);
+            });
+        });
+        
+        // Form submit olayı
+        const addToBasketForm = document.querySelector('form[name="add_to_basket"]');
+        if (addToBasketForm) {
+            addToBasketForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const productId = document.getElementById('product_id').value;
+                const productName = document.getElementById('product_name').value;
+                const price = document.getElementById('price').value;
+                const quantity = document.getElementById('quantity').value;
+                const salesPrice = document.getElementById('sales_price')?.value || 
+                                  document.getElementById('display_sales_price')?.value || '0';
+                
+                quickAddToBasket(productId, productName, price, quantity, salesPrice);
+                
+                // Modalı kapat
+                if (addProductModal) {
+                    addProductModal.classList.add('hidden');
+                }
+            });
+        }
+        
+        // Sayfa yüklendiğinde sepet sayısını güncelle
+        fetch('../../api/get_basket.php')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const basketCount = document.querySelector('#basketCount');
+                    if (basketCount) {
+                        basketCount.textContent = data.basket_count;
+                        if (data.basket_count > 0) {
+                            basketCount.classList.remove('hidden');
+                            basketCount.parentElement.classList.remove('hidden');
+                        } else {
+                            basketCount.classList.add('hidden');
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Sepet sayısı alma hatası:', error);
+            });
+        
+        // Sepete hızlı ekleme fonksiyonu
+        function quickAddToBasket(productId, productName, productPrice, quantity, salesPrice) {
+            console.log("Sepete eklenecek veriler:", {
                 product_id: productId,
                 product_name: productName,
                 price: productPrice,
                 sales_price: salesPrice,
                 quantity: quantity
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log("API yanıtı:", data);
+            });
             
-            if (data.success) {
-                // Sepet sayısını güncelle
-                const basketCount = document.querySelector('#basketCount');
-                if (basketCount) {
-                    basketCount.textContent = data.basket_count;
-                    basketCount.classList.remove('hidden');
-                    basketCount.parentElement.classList.remove('hidden');
-                }
+            // AJAX ile sepete ekleme isteği
+            fetch('../../api/add_to_basket.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    product_name: productName,
+                    price: productPrice,
+                    sales_price: salesPrice,
+                    quantity: quantity
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("API yanıtı:", data);
                 
-                // Sepet içeriğini dinamik olarak güncelle
-                updateBasketContent(data.basket);
-                
-                // Başarı mesajı göster
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Ürün Eklendi!',
-                        text: productName + ' sepete eklendi.',
-                        icon: 'success',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
+                if (data.success) {
+                    // Sepet sayısını güncelle
+                    const basketCount = document.querySelector('#basketCount');
+                    if (basketCount) {
+                        basketCount.textContent = data.basket_count;
+                        basketCount.classList.remove('hidden');
+                        basketCount.parentElement.classList.remove('hidden');
+                    }
+                    
+                    // Sepet içeriğini dinamik olarak güncelle
+                    updateBasketContent(data.basket);
+                    
+                    // Başarı mesajı göster
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Ürün Eklendi!',
+                            text: productName + ' sepete eklendi.',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert(productName + ' sepete eklendi.');
+                    }
                 } else {
-                    alert(productName + ' sepete eklendi.');
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Hata!',
+                            text: data.message || 'Ürün sepete eklenirken bir hata oluştu.',
+                            icon: 'error'
+                        });
+                    } else {
+                        alert('Hata: ' + (data.message || 'Ürün sepete eklenirken bir hata oluştu.'));
+                    }
                 }
-            } else {
+            })
+            .catch(error => {
+                console.error('Sepete ekleme hatası:', error);
+                
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Hata!',
-                        text: data.message || 'Ürün sepete eklenirken bir hata oluştu.',
+                        text: 'Bir hata oluştu. Lütfen tekrar deneyin.',
                         icon: 'error'
                     });
                 } else {
-                    alert('Hata: ' + (data.message || 'Ürün sepete eklenirken bir hata oluştu.'));
+                    alert('Hata: Bir hata oluştu. Lütfen tekrar deneyin.');
                 }
-            }
-        })
-        .catch(error => {
-            console.error('Sepete ekleme hatası:', error);
-            
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    title: 'Hata!',
-                    text: 'Bir hata oluştu. Lütfen tekrar deneyin.',
-                    icon: 'error'
-                });
-            } else {
-                alert('Hata: Bir hata oluştu. Lütfen tekrar deneyin.');
-            }
-        });
-    }
-    
-    // Sepet içeriğini dinamik olarak güncelleme fonksiyonu
-    function updateBasketContent(basketItems) {
-        const basketContent = document.querySelector('#basketModalContent');
-        if (!basketContent) return;
-        
-        if (!basketItems || basketItems.length === 0) {
-            // Sepet boşsa
-            basketContent.innerHTML = `
-                <div class="p-6 text-center">
-                    <p class="text-gray-500 mb-4">Sepetinizde ürün bulunmamaktadır.</p>
-                    <button id="closeBasketBtn2" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
-                        Alışverişe Devam Et
-                    </button>
-                </div>
-            `;
-            
-            // Buton için event listener ekle
-            const closeBtn = basketContent.querySelector('#closeBasketBtn2');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', function() {
-                    document.getElementById('basketModal').classList.add('hidden');
-                });
-            }
-            
-            return;
+            });
         }
         
-        // Sepet dolu ise içerik oluştur
-        let totalAmount = 0;
-        let tableHTML = `
-            <div class="p-6">
-                <table class="min-w-full divide-y divide-gray-200 mb-4">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ürün</th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Miktar</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Son Alış Fiyatı</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam</th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-        `;
-        
-        // Sepet öğelerini tabloya ekle
-        basketItems.forEach(item => {
-            const itemTotal = item.quantity * item.price;
-            totalAmount += itemTotal;
+        // Sepet içeriğini dinamik olarak güncelleme fonksiyonu
+        function updateBasketContent(basketItems) {
+            const basketContent = document.querySelector('#basketModalContent');
+            if (!basketContent) return;
             
-            tableHTML += `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        ${item.name}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        ${item.quantity.toLocaleString('tr-TR')}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
-                        ₺${parseFloat(item.price).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right font-medium">
-                        ₺${itemTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <a href="javascript:void(0)" class="remove-item text-red-600 hover:text-red-900" data-id="${item.id}">Kaldır</a>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        // Toplam tutarı ve butonları ekle
-        tableHTML += `
-                    </tbody>
-                    <tfoot>
-                        <tr class="bg-gray-50">
-                            <td colspan="3" class="px-6 py-4 whitespace-nowrap text-right font-medium">Toplam:</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right font-bold">
-                                ₺${totalAmount.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                            </td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
-                </table>
+            if (!basketItems || basketItems.length === 0) {
+                // Sepet boşsa
+                basketContent.innerHTML = `
+                    <div class="p-6 text-center">
+                        <p class="text-gray-500 mb-4">Sepetinizde ürün bulunmamaktadır.</p>
+                        <button id="closeBasketBtn2" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                            Alışverişe Devam Et
+                        </button>
+                    </div>
+                `;
                 
-                <div class="flex justify-between">
-                    <a href="javascript:void(0)" id="clearBasketBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md">
-                        Sepeti Temizle
-                    </a>
-                    
-                    <button id="createOrderBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
-                        Sipariş Oluştur
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        // HTML'i güncelle
-        basketContent.innerHTML = tableHTML;
-        
-        // Event listener'ları ekle
-        const clearBasketBtn = basketContent.querySelector('#clearBasketBtn');
-        if (clearBasketBtn) {
-            clearBasketBtn.addEventListener('click', function() {
-                // API ile sepeti temizle
-                fetch('../../api/clear_basket.php')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Sepeti boş olarak güncelle
-                            updateBasketContent([]);
-                            // Sepet sayacını güncelle
-                            const basketCount = document.querySelector('#basketCount');
-                            if (basketCount) {
-                                basketCount.textContent = "0";
-                                basketCount.classList.add('hidden');
-                            }
-                            
-                            // Başarı mesajı göster
-                            if (typeof Swal !== 'undefined') {
-                                Swal.fire({
-                                    title: 'Sepet Temizlendi',
-                                    icon: 'success',
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-                            }
-                        }
+                // Buton için event listener ekle
+                const closeBtn = basketContent.querySelector('#closeBasketBtn2');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        document.getElementById('basketModal').classList.add('hidden');
                     });
-            });
-        }
-        
-        // Sipariş oluşturma butonuna event listener ekle
-        const createOrderBtn = basketContent.querySelector('#createOrderBtn');
-        if (createOrderBtn) {
-            createOrderBtn.addEventListener('click', function() {
-                // Sepet modalını gizle, sipariş modalını göster
-                document.getElementById('basketModal').classList.add('hidden');
-                document.getElementById('createOrderModal').classList.remove('hidden');
-            });
-        }
-        
-        // Ürün kaldırma butonlarına event listener ekle
-        const removeButtons = basketContent.querySelectorAll('.remove-item');
-        removeButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const productId = this.getAttribute('data-id');
+                }
                 
-                // API ile ürünü sepetten kaldır
-                fetch(`../../api/remove_from_basket.php?id=${productId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Güncel sepet verilerini al ve sepeti güncelle
-                            updateBasketContent(data.basket);
-                            
-                            // Sepet sayacını güncelle
-                            const basketCount = document.querySelector('#basketCount');
-                            if (basketCount) {
-                                basketCount.textContent = data.basket_count;
-                                if (data.basket_count === 0) {
+                return;
+            }
+            
+            // Sepet dolu ise içerik oluştur
+            let totalAmount = 0;
+            let tableHTML = `
+                <div class="p-6">
+                    <table class="min-w-full divide-y divide-gray-200 mb-4">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ürün</th>
+                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Miktar</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Son Alış Fiyatı</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam</th>
+                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+            `;
+            
+            // Sepet öğelerini tabloya ekle
+            basketItems.forEach(item => {
+                const itemTotal = item.quantity * item.price;
+                totalAmount += itemTotal;
+                
+                tableHTML += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            ${item.name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            ${item.quantity.toLocaleString('tr-TR')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            ₺${parseFloat(item.price).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-medium">
+                            ₺${itemTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <a href="javascript:void(0)" class="remove-item text-red-600 hover:text-red-900" data-id="${item.id}">Kaldır</a>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            // Toplam tutarı ve butonları ekle
+            tableHTML += `
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-gray-50">
+                                <td colspan="3" class="px-6 py-4 whitespace-nowrap text-right font-medium">Toplam:</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right font-bold">
+                                    ₺${totalAmount.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <div class="flex justify-between">
+                        <a href="javascript:void(0)" id="clearBasketBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md">
+                            Sepeti Temizle
+                        </a>
+                        
+                        <button id="createOrderBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
+                            Sipariş Oluştur
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // HTML'i güncelle
+            basketContent.innerHTML = tableHTML;
+            
+            // Event listener'ları ekle
+            const clearBasketBtn = basketContent.querySelector('#clearBasketBtn');
+            if (clearBasketBtn) {
+                clearBasketBtn.addEventListener('click', function() {
+                    // API ile sepeti temizle
+                    fetch('../../api/clear_basket.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Sepeti boş olarak güncelle
+                                updateBasketContent([]);
+                                // Sepet sayacını güncelle
+                                const basketCount = document.querySelector('#basketCount');
+                                if (basketCount) {
+                                    basketCount.textContent = "0";
                                     basketCount.classList.add('hidden');
                                 }
+                                
+                                // Başarı mesajı göster
+                                if (typeof Swal !== 'undefined') {
+                                    Swal.fire({
+                                        title: 'Sepet Temizlendi',
+                                        icon: 'success',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                }
                             }
-                        }
-                    });
+                        })
+                        .catch(error => {
+                            console.error('Sepet temizleme hatası:', error);
+                        });
+                });
+            }
+            
+            // Sipariş oluşturma butonuna event listener ekle
+            const createOrderBtn = basketContent.querySelector('#createOrderBtn');
+            if (createOrderBtn) {
+                createOrderBtn.addEventListener('click', function() {
+                    // Sepet modalını gizle, sipariş modalını göster
+                    document.getElementById('basketModal').classList.add('hidden');
+                    document.getElementById('createOrderModal').classList.remove('hidden');
+                });
+            }
+            
+            // Ürün kaldırma butonlarına event listener ekle
+            const removeButtons = basketContent.querySelectorAll('.remove-item');
+            removeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.getAttribute('data-id');
+                    
+                    // API ile ürünü sepetten kaldır
+                    fetch(`../../api/remove_from_basket.php?id=${productId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Güncel sepet verilerini al ve sepeti güncelle
+                                updateBasketContent(data.basket);
+                                
+                                // Sepet sayacını güncelle
+                                const basketCount = document.querySelector('#basketCount');
+                                if (basketCount) {
+                                    basketCount.textContent = data.basket_count;
+                                    if (data.basket_count === 0) {
+                                        basketCount.classList.add('hidden');
+                                    }
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ürün kaldırma hatası:', error);
+                        });
+                });
             });
-        });
-    }
-});
-</script>
-<?php if (isset($redirect_after_clear)): ?>
-<script>
-    // URL'den clear_basket parametresini temizle
-    window.history.replaceState({}, document.title, "critical_stock.php");
-</script>
-<?php endif; ?>
+        }
+    });
+    </script>
+    
+    <?php if (isset($redirect_after_clear)): ?>
+    <script>
+        // URL'den clear_basket parametresini temizle
+        window.history.replaceState({}, document.title, "critical_stock.php");
+    </script>
+    <?php endif; ?>
 </body>
 </html>

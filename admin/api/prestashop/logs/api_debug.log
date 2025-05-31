@@ -1,9 +1,0 @@
-[2025-04-05 16:37:14] [INFO] PrestashopAPI başlatıldı - 2025-04-05 16:37:14
-[2025-04-05 16:37:14] [INFO] API isteği gönderiliyor: /api/products/22?display=full&output_format=JSON
-[2025-04-05 16:37:14] [INFO] API yanıtı: HTTP 0
-[2025-04-05 16:37:14] [ERROR] cURL hatası: URL rejected: No host part in the URL
-[2025-04-05 16:37:14] [ERROR] API isteği başarısız: URL rejected: No host part in the URL
-[2025-04-05 16:37:14] [INFO] API isteği gönderiliyor: /api/stock_availables?filter[id_product]=22&display=full&output_format=JSON
-[2025-04-05 16:37:14] [INFO] API yanıtı: HTTP 0
-[2025-04-05 16:37:14] [ERROR] cURL hatası: URL rejected: No host part in the URL
-[2025-04-05 16:37:14] [ERROR] API isteği başarısız: URL rejected: No host part in the URL

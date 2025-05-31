@@ -21,18 +21,47 @@ let reportTotalPages = 1;
 let reportSalesData = [];
 
 
+
 // Sayfa yüklendiğinde
 $(document).ready(function() {
     // Fiş numarası oluştur
     fisNo = generateFisNo();
     $('#fisNo').val(fisNo);
 	
-	    // Kasiyer ve mağaza seçimlerini boş olarak ayarla
-    $('#kasiyer').val('');
-    $('#magaza').val('');
+    // Oturum bilgilerine göre mağaza ve kasiyer seçimi
+    const magazaId = "<?php echo $currentMagazaId; ?>";
+    const userId = "<?php echo $currentUserId; ?>";
+    
+    // Mağaza seçimi yap
+    if (magazaId) {
+        $('#magaza').val(magazaId);
+    }
+    
+    // Kasiyer seçimi yap - oturum açan kullanıcıyı seç
+    if (userId) {
+        $('#kasiyer').val(userId);
+    }
     
     // Barkod input'una fokusla
     $('#barkodInput').focus();
+    
+        // Sepet tablosunun olduğu div'i bul ve yüksekliğini ayarla
+    const sepetContainer = $('#sepetListesi').closest('.overflow-x-auto');
+    sepetContainer.css({
+        'max-height': '350px',
+        'overflow-y': 'auto',
+        'overflow-x': 'auto',
+        'margin-bottom': '20px'
+    });
+    
+    // Tablo başlıklarının sabit kalmasını sağla
+    const tableHeaders = $('#sepetListesi').find('thead tr');
+    tableHeaders.css({
+        'position': 'sticky',
+        'top': '0',
+        'background-color': 'white',
+        'z-index': '1'
+    });
     
     // Event listener'ları başlat
     initEventListeners();
@@ -137,6 +166,22 @@ function initEventListeners() {
             getUrunById(urunId);
         }
     });
+    
+// Stok detay butonu için event listener ekle
+$(document).on('click', '.btn-stok-detay', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const productId = $(this).data('product-id');
+    
+    // Ürün bilgilerini al
+    if (window.searchedProducts && window.searchedProducts[productId]) {
+        const product = window.searchedProducts[productId];
+        showStokDetayModal(product);
+    } else {
+        showToast('Ürün bilgileri bulunamadı', 'error');
+    }
+});
 	
 	
 	// Sayfa yüklendiğinde çalışacak kod
@@ -161,31 +206,38 @@ $(document).ready(function() {
         `)
         .appendTo("head");
     
-    // Orijinal addToCart fonksiyonunu yedekle
-    var originalAddToCart = window.addToCart;
-    
-    // addToCart fonksiyonunu yeniden tanımla
-    window.addToCart = function(urun) {
-        console.log("Ürün tekrarı kontrolü ile addToCart çağrıldı:", urun.ad);
-        
-        // Ürün sepette var mı kontrol et
-        var existingIndex = sepet.findIndex(function(item) { 
-            return item.id === urun.id; 
-        });
-        
-        if (existingIndex !== -1) {
-            // Ürün sepette varsa uyarı göster
-            showToast(urun.ad + ' zaten sepette bulunuyor!', 'warning');
+        // Orijinal addToCart fonksiyonunu yedekle
+        var originalAddToCart = window.addToCart;
             
-            // Sepet satırını vurgula
-            highlightCartRow(existingIndex);
+        // addToCart fonksiyonunu yeniden tanımla
+        window.addToCart = function(urun) {
+            console.log("Ürün tekrarı kontrolü ile addToCart çağrıldı:", urun.ad);
             
-            return;
-        }
-        
-        // Ürün sepette yoksa orijinal fonksiyonu çağır
-        originalAddToCart(urun);
-    };
+            // Ürün sepette var mı kontrol et
+            var existingIndex = sepet.findIndex(function(item) { 
+                return item.id === urun.id; 
+            });
+            
+            if (existingIndex !== -1) {
+                // Ürün sepette varsa miktarını artır
+                sepet[existingIndex].miktar += 1;
+                sepet[existingIndex].toplam = calculateItemTotal(sepet[existingIndex]);
+                
+                // UI ve toplamları güncelle
+                updateSepetUI();
+                updateSepetTotals();
+                
+                // Satırı vurgula (isteğe bağlı)
+                highlightCartRow(existingIndex);
+                
+                // Bildirim göster
+                showToast(urun.ad + ' miktarı artırıldı', 'success');
+                return;
+            }
+            
+            // Ürün sepette yoksa orijinal fonksiyonu çağır
+            originalAddToCart(urun);
+        };
     
     console.log("Basit ürün tekrarı kontrolü yüklendi!");
 });
@@ -936,57 +988,6 @@ function getUrunByIdFixed(id) {
         }
     });
 }
-
-// Düzeltilmiş renderProductShortcuts fonksiyonu
-function renderProductShortcutsFixed(shortcuts) {
-    console.log("DÜZELTİLMİŞ renderProductShortcuts çağrıldı, ürün sayısı:", shortcuts.length);
-    
-    // Kısayol container'ını temizle
-    const container = $('#urunKisayolContainer');
-    container.empty();
-    
-    // Hiç kısayol yoksa bilgi mesajı göster
-    if (shortcuts.length === 0) {
-        container.html(`
-            <div class="col-span-full text-center py-2">
-                <div class="text-sm text-gray-500">Kısayol ürünü bulunmamaktadır.</div>
-                <div class="text-xs text-gray-400 mt-1">Ayarlar → Kısayollar menüsünden ekleyebilirsiniz.</div>
-            </div>
-        `);
-        return;
-    }
-    
-    // Kısayol butonlarını oluştur
-    for (let i = 0; i < Math.max(shortcuts.length, 12); i++) {
-        // Bu pozisyonda bir kısayol var mı bul
-        const shortcut = shortcuts.find(s => s.position === i);
-        
-        // HTML oluştur
-        if (shortcut && shortcut.product) {
-            container.append(`
-                <button class="urun-kisayol bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 px-3 rounded text-sm" data-id="${shortcut.product_id}">
-                    <div class="font-medium truncate">${shortcut.product.ad}</div>
-                    <div class="text-xs">${formatPrice(shortcut.product.satis_fiyati)}</div>
-                </button>
-            `);
-        } else if (i < 12) { // Sadece ilk 12 pozisyon için boş buton göster
-            // Boş buton
-            container.append(`
-                <button class="bg-gray-100 text-gray-400 py-2 px-3 rounded text-sm" disabled>
-                    <i class="fas fa-plus-circle"></i>
-                </button>
-            `);
-        }
-    }
-    
-    console.log("Kısayol butonları oluşturuldu.");
-}
-
-// Hemen kısayolları yeniden yükle
-setTimeout(function() {
-    console.log("Kısayollar yeniden yükleniyor...");
-    window.loadKisayolUrunler();
-}, 1000);
 
 /**
  * Sepet satırını vurgulama
@@ -1953,21 +1954,81 @@ function addNewCustomer(formData) {
  * Stok arama fonksiyonu - İndirimli fiyatları doğru gösteren güncelleme 
  */
 function searchProducts(term) {
-    $.ajax({
+    // Önceki AJAX isteğini iptal et (varsa)
+    if (window.searchXhr && window.searchXhr.readyState !== 4) {
+        window.searchXhr.abort();
+    }
+    
+    // Yükleniyor göstergesi
+    $('#stokListesi').html(`
+        <tr>
+            <td colspan="5" class="py-4 text-center">
+                <i class="fas fa-spinner fa-spin text-blue-500 text-xl mb-2"></i>
+                <div class="text-gray-500">Ürünler aranıyor...</div>
+            </td>
+        </tr>
+    `);
+    
+    // AJAX isteği
+    window.searchXhr = $.ajax({
         url: 'admin/api/search_product.php',
         type: 'GET',
         data: { term: term },
         dataType: 'json',
+        timeout: 15000, // 15 saniye timeout
         success: function(response) {
-            if (response.success && response.products) {
-                // İndirimler için stok listesini daha sonra hemen kontrol et
-                checkDiscountsForProducts(response.products);
+            console.log("Arama yanıtı:", response); // Debug için
+            
+            if (response.success && response.products && response.products.length > 0) {
+                try {
+                    // Ürünleri global değişkende sakla (daha sonra referans için)
+                    window.searchedProducts = {};
+                    response.products.forEach(function(product) {
+                        window.searchedProducts[product.id] = product;
+                    });
+                    
+                    // Ürün listesini render et
+                    renderProductList(response.products);
+                    
+                } catch (err) {
+                    console.error("Ürün render hatası:", err);
+                    $('#stokListesi').html(`
+                        <tr>
+                            <td colspan="5" class="py-4 text-center text-red-500">
+                                Sonuçlar gösterilirken bir hata oluştu: ${err.message}
+                            </td>
+                        </tr>
+                    `);
+                }
             } else {
-                $('#stokListesi').html('<tr><td colspan="5" class="px-3 py-3 text-center text-gray-500">Ürün bulunamadı</td></tr>');
+                $('#stokListesi').html(`
+                    <tr>
+                        <td colspan="5" class="py-4 text-center text-gray-500">
+                            <i class="fas fa-search text-gray-400 text-xl mb-2"></i>
+                            <div>Arama kriterine uygun ürün bulunamadı</div>
+                            <div class="text-xs text-gray-400 mt-1">Arama terimi: "${term}"</div>
+                        </td>
+                    </tr>
+                `);
             }
         },
-        error: function() {
-            showToast('Ürün arama sırasında bir hata oluştu', 'error');
+        error: function(xhr, status, error) {
+            // Kullanıcı tarafından iptal edilen istekleri görmezden gel
+            if (status === 'abort') {
+                return;
+            }
+            
+            console.error("Ürün arama hatası:", status, error);
+            
+            $('#stokListesi').html(`
+                <tr>
+                    <td colspan="5" class="py-4 text-center text-red-500">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-2"></i>
+                        <div>Ürün arama sırasında bir hata oluştu</div>
+                        <div class="text-xs mt-1">${error || status}</div>
+                    </td>
+                </tr>
+            `);
         }
     });
 }
@@ -2013,17 +2074,22 @@ function checkDiscountsForProducts(products) {
 }
 
 /**
- * Ürün listesini render et - İndirimli fiyat gösterimi ile
+ * Ürün listesini render et - Stok detay butonu eklendi
  * @param {Array} products - Ürünler listesi
  */
-function renderProductList(products) {
+ function renderProductList(products) {
     let html = '';
     
     if (products.length === 0) {
         html = '<tr><td colspan="5" class="px-3 py-3 text-center text-gray-500">Ürün bulunamadı</td></tr>';
     } else {
         products.forEach(product => {
-            const hasDiscount = product.has_discount || (product.indirimli_fiyat !== null);
+            // Stok miktarını doğru şekilde al
+            const stokMiktari = product.stok_miktari || product.toplam_stok || 0;
+            
+            // İndirim var mı kontrol et
+            const hasDiscount = product.has_discount || 
+                              (product.indirimli_fiyat && parseFloat(product.indirimli_fiyat) < parseFloat(product.satis_fiyati));
             
             html += `
             <tr class="urun-sec-row hover:bg-blue-50 cursor-pointer ${hasDiscount ? 'bg-green-50' : ''}" data-id="${product.id}">
@@ -2032,13 +2098,17 @@ function renderProductList(products) {
                     <div class="font-medium">${product.ad}</div>
                     <div class="text-xs text-gray-500">${product.kod || ''}</div>
                 </td>
-                <td class="px-3 py-2 text-center">${product.stok_miktari || 0}</td>
+                <td class="px-3 py-2 text-center">
+                    ${stokMiktari}
+                    <button class="btn-stok-detay ml-2 text-blue-500 hover:text-blue-700" data-product-id="${product.id}">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </td>
                 <td class="px-3 py-2 text-right">
                     ${hasDiscount ? 
-                        `<div class="line-through text-gray-500">${formatPrice(product.satis_fiyati)}</div>
-                         <div class="text-green-600 font-semibold">${formatPrice(product.indirimli_fiyat)}</div>` :
-                        formatPrice(product.satis_fiyati)
-                    }
+                      `<div class="line-through text-gray-500">${formatPrice(product.satis_fiyati)}</div>
+                       <div class="text-green-600 font-semibold">${formatPrice(product.indirimli_fiyat)}</div>` : 
+                      formatPrice(product.satis_fiyati)}
                 </td>
                 <td class="px-3 py-2 text-center">
                     <button class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded text-xs" onclick="getUrunById(${product.id})">
@@ -2050,8 +2120,455 @@ function renderProductList(products) {
     }
     
     $('#stokListesi').html(html);
+    
+    // Event listener'ları yeniden bağla (önce eski dinleyicileri kaldır)
+    $(document).off('click', '.btn-stok-detay');
+    $(document).on('click', '.btn-stok-detay', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const productId = $(this).data('product-id');
+        
+        // Ürün bilgilerini global değişkenden al
+        if (window.searchedProducts && window.searchedProducts[productId]) {
+            const product = window.searchedProducts[productId];
+            showStokDetayModal(product);
+        } else {
+            showToast('Ürün bilgileri bulunamadı', 'error');
+        }
+    });
+    
+    // Satır tıklama için event listener (satır tıklandığında ürün seçme)
+    $(document).off('dblclick', '.urun-sec-row');
+    $(document).on('dblclick', '.urun-sec-row', function() {
+        const urunId = $(this).data('id');
+        if (urunId) {
+            getUrunById(urunId);
+            closeAllModals();
+        }
+    });
 }
 
+/**
+ * Stok detay modalını göster
+ * @param {Array} stoklar - Mağaza stok bilgileri
+ * @param {string} urunAdi - Ürün adı (başlık için)
+ */
+ /**
+ * Stok detay modalını göster - Tarih bilgileri ve renkli fiyat geçmişi ile
+ * Mevcut get_price_history.php API'sini kullanarak optimize edilmiş versiyon
+ * @param {Object} product - Ürün bilgileri
+ */
+function showStokDetayModal(product) {
+    // Eski modalı temizle (varsa)
+    $('#stokDetayModal').remove();
+    
+    // Güncel tarihi al (varsayılan olarak)
+    const currentDate = new Date().toLocaleDateString('tr-TR');
+    
+    // İndirim tarihleri varsa biçimlendir
+    let indirimTarihleri = '';
+    if (product.indirim_baslangic_tarihi && product.indirim_bitis_tarihi) {
+        const baslangic = new Date(product.indirim_baslangic_tarihi).toLocaleDateString('tr-TR');
+        const bitis = new Date(product.indirim_bitis_tarihi).toLocaleDateString('tr-TR');
+        indirimTarihleri = `${baslangic} - ${bitis}`;
+    }
+    
+    // Stok detay modal HTML'i
+    let modalHTML = `
+    <div id="stokDetayModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50" data-product-id="${product.id}">
+        <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-2/3 lg:w-1/2 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-lg font-bold">Stok Detayları: ${product.ad || 'Ürün'}</h3>
+                <button class="modal-close text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                        <div class="text-sm text-blue-700">Barkod</div>
+                        <div class="font-medium">${product.barkod || 'Belirtilmemiş'}</div>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                        <div class="text-sm text-blue-700">Ürün Kodu</div>
+                        <div class="font-medium">${product.kod || 'Belirtilmemiş'}</div>
+                    </div>
+                </div>
+                
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                        <div class="text-sm text-blue-700">Satış Fiyatı</div>
+                        <div class="font-medium">${formatPrice(product.satis_fiyati)}</div>
+                        <div class="text-xs text-gray-500" id="satisFiyatiTarih">Son güncelleme: ${currentDate}</div>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded border border-green-100">
+                        <div class="text-sm text-green-700">İndirimli Fiyat</div>
+                        <div class="font-medium">${product.indirimli_fiyat && parseFloat(product.indirimli_fiyat) < parseFloat(product.satis_fiyati) ? 
+                            `<span class="text-green-600">${formatPrice(product.indirimli_fiyat)}</span>` : 
+                            '<span class="text-gray-500">Yok</span>'}</div>
+                        <div class="text-xs text-gray-500" id="indirimliTarihler">
+                            ${indirimTarihleri ? `İndirim: ${indirimTarihleri}` : ''}
+                        </div>
+                        <div class="text-xs text-gray-500" id="indirimFiyatiTarih">
+                            ${product.indirimli_fiyat ? `Son güncelleme: ${currentDate}` : ''}
+                        </div>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded border border-orange-100">
+                        <div class="text-sm text-orange-700">Alış Fiyatı</div>
+                        <div class="font-medium text-orange-600">${formatPrice(product.alis_fiyati)}</div>
+                        <div class="text-xs text-gray-500" id="alisFiyatiTarih">Son güncelleme: ${currentDate}</div>
+                    </div>
+                </div>
+                
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div class="bg-indigo-50 p-3 rounded border border-indigo-100">
+                        <div class="text-sm text-indigo-700">Toplam Stok</div>
+                        <div class="font-bold text-xl">${product.toplam_stok || 0}</div>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                        <div class="text-sm text-blue-700">Mağaza Stokları</div>
+                        <div class="font-medium">${product.magaza_toplam_stok || 0}</div>
+                    </div>
+                    <div class="bg-purple-50 p-3 rounded border border-purple-100">
+                        <div class="text-sm text-purple-700">Depo Stokları</div>
+                        <div class="font-medium">${product.depo_toplam_stok || 0}</div>
+                    </div>
+                </div>
+                
+                <!-- Sekme Menüsü -->
+                <div class="mb-4">
+                    <div class="flex border-b">
+                        <button class="tab-button active px-4 py-2 font-medium" data-tab="stokTab">
+                            Stok Bilgileri
+                        </button>
+                        <button class="tab-button px-4 py-2 font-medium" data-tab="fiyatGecmisiTab">
+                            Fiyat Geçmişi
+                        </button>
+                    </div>
+                    
+                    <!-- Stok Bilgileri Tab -->
+                    <div id="stokTab" class="tab-content py-3">
+                        <!-- Mağaza Stokları -->
+                        <div class="mb-4">
+                            <h4 class="font-bold text-gray-700 mb-2">Mağaza Stokları</h4>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-blue-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-blue-700 uppercase">Mağaza</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-blue-700 uppercase">Stok Miktarı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+    
+    // Mağaza stok bilgilerini ekle
+    if (product.magaza_stoklar && product.magaza_stoklar.length > 0) {
+        product.magaza_stoklar.forEach(stok => {
+            modalHTML += `
+            <tr>
+                <td class="px-3 py-2">${stok.magaza_adi || '-'}</td>
+                <td class="px-3 py-2 text-right font-medium">${stok.stok_miktari || 0}</td>
+            </tr>`;
+        });
+    } else {
+        modalHTML += `
+        <tr>
+            <td colspan="2" class="px-3 py-3 text-center text-gray-500">
+                Bu ürün için mağaza stok bilgisi bulunamadı
+            </td>
+        </tr>`;
+    }
+    
+    modalHTML += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+            
+                        <!-- Depo Stokları -->
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-2">Depo Stokları</h4>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-green-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-green-700 uppercase">Depo</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-green-700 uppercase">Stok Miktarı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+    
+    // Depo stok bilgilerini ekle
+    if (product.depo_stoklar && product.depo_stoklar.length > 0) {
+        product.depo_stoklar.forEach(stok => {
+            modalHTML += `
+            <tr>
+                <td class="px-3 py-2">${stok.depo_adi || '-'}</td>
+                <td class="px-3 py-2 text-right font-medium">${stok.stok_miktari || 0}</td>
+            </tr>`;
+        });
+    } else {
+        modalHTML += `
+        <tr>
+            <td colspan="2" class="px-3 py-3 text-center text-gray-500">
+                Bu ürün için depo stok bilgisi bulunamadı
+            </td>
+        </tr>`;
+    }
+    
+    modalHTML += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Fiyat Geçmişi Tab -->
+                    <div id="fiyatGecmisiTab" class="tab-content py-3 hidden">
+                        <div id="fiyatGecmisiLoading" class="py-8 text-center">
+                            <i class="fas fa-spinner fa-spin text-blue-500 text-xl"></i>
+                            <p class="mt-2 text-gray-500">Fiyat geçmişi yükleniyor...</p>
+                        </div>
+                        
+                        <div id="fiyatGecmisiContent">
+                            <!-- JavaScript ile doldurulacak -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex justify-end">
+                    <button class="modal-close bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                        Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+    
+    // Modal'ı sayfaya ekle
+    $('body').append(modalHTML);
+    
+    // Hemen fiyat geçmişini getir ve hem modal içinde göster hem de tarihleri güncelle
+    loadFiyatGecmisiVeTarihler(product.id);
+    
+    // Modal kapatma butonu
+    $('#stokDetayModal .modal-close').on('click', function() {
+        $('#stokDetayModal').remove();
+    });
+    
+    // Tab seçimi için event listener
+    $('.tab-button').on('click', function() {
+        $('.tab-button').removeClass('active');
+        $(this).addClass('active');
+        
+        const tabId = $(this).data('tab');
+        $('.tab-content').addClass('hidden');
+        $(`#${tabId}`).removeClass('hidden');
+    });
+}
+
+/**
+ * Fiyat geçmişini yükle ve en son tarih bilgilerini de al
+ * @param {number} urunId - Ürün ID
+ */
+function loadFiyatGecmisiVeTarihler(urunId) {
+    $.ajax({
+        url: 'admin/api/get_price_history.php',
+        type: 'GET',
+        data: { id: urunId },
+        dataType: 'json',
+        success: function(response) {
+            $('#fiyatGecmisiLoading').hide();
+            
+            if (response.success && response.price_history && response.price_history.length > 0) {
+                // Fiyat geçmişini göster
+                renderFiyatGecmisi(response.price_history);
+                
+                // Son fiyat tarihlerini ayarla
+                updateLastPriceDates(response.price_history);
+            } else {
+                $('#fiyatGecmisiContent').html(`
+                    <div class="py-4 text-center text-gray-500">
+                        <i class="fas fa-info-circle text-gray-400 text-xl mb-2"></i>
+                        <p>Bu ürün için fiyat geçmişi bulunamadı.</p>
+                    </div>
+                `);
+            }
+        },
+        error: function() {
+            $('#fiyatGecmisiLoading').hide();
+            $('#fiyatGecmisiContent').html(`
+                <div class="py-4 text-center text-red-500">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-2"></i>
+                    <p>Fiyat geçmişi bilgileri alınırken bir hata oluştu.</p>
+                </div>
+            `);
+        }
+    });
+}
+
+/**
+ * Fiyat geçmişi verisinden son tarih bilgilerini çıkarıp gösterir
+ * @param {Array} priceHistory - Fiyat geçmişi listesi
+ */
+function updateLastPriceDates(priceHistory) {
+    // Eğer fiyat geçmişi boşsa veya yoksa
+    if (!priceHistory || priceHistory.length === 0) {
+        // Tarih alanlarında "Kayıt yok" göster
+        $('#satisFiyatiTarih').text('Son güncelleme kaydı yok');
+        $('#alisFiyatiTarih').text('Son güncelleme kaydı yok');
+        $('#indirimFiyatiTarih').text('Son güncelleme kaydı yok');
+        return;
+    }
+    
+    let lastSalesPriceDate = null;
+    let lastPurchasePriceDate = null;
+    let lastDiscountPriceDate = null;
+    
+    // Fiyat geçmişinde en son tarihleri bul
+    priceHistory.forEach(item => {
+        if (item.islem_tipi.includes('Satış') && !lastSalesPriceDate) {
+            lastSalesPriceDate = new Date(item.tarih);
+        }
+        
+        if (item.islem_tipi.includes('Alış') && !lastPurchasePriceDate) {
+            lastPurchasePriceDate = new Date(item.tarih);
+        }
+        
+        if (item.islem_tipi.includes('İndirimli') && !lastDiscountPriceDate) {
+            lastDiscountPriceDate = new Date(item.tarih);
+        }
+    });
+    
+    // Tarihleri güncelle (varsa)
+    if (lastSalesPriceDate) {
+        $('#satisFiyatiTarih').text(`Son güncelleme: ${lastSalesPriceDate.toLocaleDateString('tr-TR')}`);
+    } else {
+        $('#satisFiyatiTarih').text('Son güncelleme kaydı yok');
+    }
+    
+    if (lastPurchasePriceDate) {
+        $('#alisFiyatiTarih').text(`Son güncelleme: ${lastPurchasePriceDate.toLocaleDateString('tr-TR')}`);
+    } else {
+        $('#alisFiyatiTarih').text('Son güncelleme kaydı yok');
+    }
+    
+    if (lastDiscountPriceDate) {
+        $('#indirimFiyatiTarih').text(`Son güncelleme: ${lastDiscountPriceDate.toLocaleDateString('tr-TR')}`);
+    } else {
+        $('#indirimFiyatiTarih').text('Son güncelleme kaydı yok');
+    }
+}
+
+/**
+ * Fiyat geçmişini tabloya render et
+ * @param {Array} gecmis - Fiyat geçmişi listesi
+ * @param {string} targetElementId - Hedef element ID
+ */
+function renderFiyatGecmisi(priceHistory) {
+    let html = `
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Tarih</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">İşlem</th>
+                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 uppercase">Eski Fiyat</th>
+                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 uppercase">Yeni Fiyat</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    priceHistory.forEach(item => {
+        const tarih = new Date(item.tarih).toLocaleString('tr-TR');
+        
+        // İşlem tipine göre satırın arkaplan rengini belirle
+        let rowClass = '';
+        
+        if (item.islem_tipi.includes('Alış')) {
+            rowClass = 'bg-orange-50';
+        } else if (item.islem_tipi.includes('Satış')) {
+            rowClass = 'bg-blue-50';
+        } else if (item.islem_tipi.includes('İndirimli')) {
+            rowClass = 'bg-green-50';
+        }
+        
+        html += `
+        <tr class="${rowClass}">
+            <td class="px-3 py-2">${tarih}</td>
+            <td class="px-3 py-2">${item.islem_tipi}</td>
+            <td class="px-3 py-2 text-right">${item.eski_fiyat ? formatPrice(item.eski_fiyat) : '-'}</td>
+            <td class="px-3 py-2 text-right font-medium">${formatPrice(item.yeni_fiyat)}</td>
+        </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    </div>
+    `;
+    
+    $('#fiyatGecmisiContent').html(html);
+}
+
+/**
+ * Son güncelleme tarihlerini getir
+ * @param {number} urunId - Ürün ID
+ */
+function getLastUpdateDates(urunId) {
+    $.ajax({
+        url: 'admin/api/get_product_update_dates.php',
+        type: 'GET',
+        data: { urun_id: urunId },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                // Satış fiyatı son güncelleme tarihi
+                if (response.satis_fiyati_tarih) {
+                    const tarih = new Date(response.satis_fiyati_tarih).toLocaleString('tr-TR');
+                    $('#satisFiyatiGuncellemeTarihi').text(`Son güncelleme: ${tarih}`);
+                } else {
+                    $('#satisFiyatiGuncellemeTarihi').text('Güncelleme tarihi kaydedilmemiş');
+                }
+                
+                // Alış fiyatı son güncelleme tarihi
+                if (response.alis_fiyati_tarih) {
+                    const tarih = new Date(response.alis_fiyati_tarih).toLocaleString('tr-TR');
+                    $('#alisFiyatiGuncellemeTarihi').text(`Son güncelleme: ${tarih}`);
+                } else {
+                    $('#alisFiyatiGuncellemeTarihi').text('Güncelleme tarihi kaydedilmemiş');
+                }
+            } else {
+                $('#satisFiyatiGuncellemeTarihi, #alisFiyatiGuncellemeTarihi').text('Tarih bilgisi alınamadı');
+            }
+        },
+        error: function() {
+            $('#satisFiyatiGuncellemeTarihi, #alisFiyatiGuncellemeTarihi').text('Tarih bilgisi alınamadı');
+        }
+    });
+}
+
+/**
+ * Kar marjını hesapla (%)
+ * @param {number} alisFiyati - Alış fiyatı
+ * @param {number} satisFiyati - Satış fiyatı
+ * @returns {string} - Kar marjı (%)
+ */
+function calculateProfit(alisFiyati, satisFiyati) {
+    alisFiyati = parseFloat(alisFiyati) || 0;
+    satisFiyati = parseFloat(satisFiyati) || 0;
+    
+    if (alisFiyati <= 0) return "N/A";
+    
+    const kar = satisFiyati - alisFiyati;
+    const karYuzdesi = (kar / alisFiyati) * 100;
+    
+    return karYuzdesi.toFixed(2);
+}
+ 
 /**
  * Kısayol ürünleri yükle
  */

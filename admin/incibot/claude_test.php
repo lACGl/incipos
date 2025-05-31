@@ -1,0 +1,280 @@
+<?php
+/**
+ * Claude API Test Sayfası
+ * Bu dosya, Claude API entegrasyonunun doğru çalışıp çalışmadığını test eder
+ */
+
+// Hata raporlama
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Oturum ve yetki kontrolü
+secure_session_start();
+include '../session_manager.php';
+
+// Sayfa başlığı ve üst içerik
+$page_title = "Claude API Test";
+include '../header.php';
+
+// Claude API'yi dahil et
+require_once 'claude_api.php';
+require_once 'db_proxy.php';
+
+// Test sonucunu sakla
+$test_result = null;
+$api_key = null;
+$error_message = null;
+$db_test_result = null;
+
+// Veritabanı bağlantı testi
+try {
+    global $conn;
+    
+    // DB Proxy ile veritabanı yapısını kontrol et
+    $db_proxy = new DBProxy($conn);
+    $db_test_result = $db_proxy->checkDatabaseStructure();
+    
+} catch (Exception $e) {
+    $error_message = "Veritabanı kontrolü sırasında hata oluştu: " . $e->getMessage();
+}
+
+// Form gönderildi mi kontrol et
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // API anahtarı girildi mi?
+    if (isset($_POST['api_key']) && !empty($_POST['api_key'])) {
+        $api_key = trim($_POST['api_key']);
+        
+        // Anahtarı veritabanına kaydet?
+        if (isset($_POST['save_key']) && $_POST['save_key'] == 1) {
+            try {
+                global $conn;
+                $isPDO = ($conn instanceof PDO);
+                
+                if ($isPDO) {
+                    // Anahtarın veritabanında olup olmadığını kontrol et
+                    $check_stmt = $conn->prepare("SELECT COUNT(*) as count FROM sistem_ayarlari WHERE anahtar = :key");
+                    $key_name = 'claude_api_key';
+                    $check_stmt->bindParam(':key', $key_name);
+                    $check_stmt->execute();
+                    $row = $check_stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($row['count'] > 0) {
+                        // Güncelle
+                        $update_stmt = $conn->prepare("UPDATE sistem_ayarlari SET deger = :value WHERE anahtar = :key");
+                        $update_stmt->bindParam(':value', $api_key);
+                        $update_stmt->bindParam(':key', $key_name);
+                        $update_stmt->execute();
+                        error_log("Claude API anahtarı veritabanında güncellendi.");
+                    } else {
+                        // Ekle
+                        $insert_stmt = $conn->prepare("INSERT INTO sistem_ayarlari (anahtar, deger, aciklama) VALUES (:key, :value, :desc)");
+                        $desc = 'Claude API Anahtarı';
+                        $insert_stmt->bindParam(':key', $key_name);
+                        $insert_stmt->bindParam(':value', $api_key);
+                        $insert_stmt->bindParam(':desc', $desc);
+                        $insert_stmt->execute();
+                        error_log("Claude API anahtarı veritabanına eklendi.");
+                    }
+                } else {
+                    // MySQLi için
+                    $key_name = 'claude_api_key';
+                    $api_key_escaped = $conn->real_escape_string($api_key);
+                    $check_query = "SELECT COUNT(*) as count FROM sistem_ayarlari WHERE anahtar = '$key_name'";
+                    $result = $conn->query($check_query);
+                    $row = $result->fetch_assoc();
+                    
+                    if ($row['count'] > 0) {
+                        $conn->query("UPDATE sistem_ayarlari SET deger = '$api_key_escaped' WHERE anahtar = '$key_name'");
+                        error_log("Claude API anahtarı veritabanında güncellendi (MySQLi).");
+                    } else {
+                        $conn->query("INSERT INTO sistem_ayarlari (anahtar, deger, aciklama) VALUES ('$key_name', '$api_key_escaped', 'Claude API Anahtarı')");
+                        error_log("Claude API anahtarı veritabanına eklendi (MySQLi).");
+                    }
+                }
+            } catch (Exception $e) {
+                $error_message = "API anahtarı kaydedilirken hata oluştu: " . $e->getMessage();
+                error_log($error_message);
+            }
+        }
+        
+        // Test mesajı
+        $test_message = isset($_POST['test_message']) && !empty($_POST['test_message']) 
+            ? $_POST['test_message'] 
+            : "Merhaba, bu bir test mesajıdır. İnci Kırtasiye POS sistemi için çalışıyorsun. Kısaca kendini tanıt.";
+        
+        // API'yi test et
+        try {
+            global $conn;
+            $claude = new ClaudeAPI($conn, $api_key);
+            $test_result = $claude->sendMessage($test_message);
+            error_log("Claude API test sonucu: " . json_encode($test_result));
+        } catch (Exception $e) {
+            $error_message = "API testi sırasında hata oluştu: " . $e->getMessage();
+            error_log($error_message);
+        }
+    } else {
+        $error_message = "API anahtarı gereklidir!";
+        error_log($error_message);
+    }
+}
+
+// Veritabanından mevcut API anahtarını al
+$saved_api_key = '';
+try {
+    global $conn;
+    $isPDO = ($conn instanceof PDO);
+    
+    if ($isPDO) {
+        $key_name = 'claude_api_key';
+        $stmt = $conn->prepare("SELECT deger FROM sistem_ayarlari WHERE anahtar = :key");
+        $stmt->bindParam(':key', $key_name);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result) {
+            $saved_api_key = $result['deger'];
+            error_log("Kayıtlı Claude API anahtarı bulundu: " . substr($saved_api_key, 0, 5) . "...");
+        } else {
+            error_log("Kayıtlı Claude API anahtarı bulunamadı.");
+        }
+    } else {
+        $key_name = 'claude_api_key';
+        $result = $conn->query("SELECT deger FROM sistem_ayarlari WHERE anahtar = '$key_name'");
+        
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $saved_api_key = $row['deger'];
+            error_log("Kayıtlı Claude API anahtarı bulundu (MySQLi): " . substr($saved_api_key, 0, 5) . "...");
+        } else {
+            error_log("Kayıtlı Claude API anahtarı bulunamadı (MySQLi).");
+        }
+    }
+} catch (Exception $e) {
+    $error_message = "API anahtarı okunurken hata oluştu: " . $e->getMessage();
+    error_log($error_message);
+}
+?>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-purple text-white">
+                    <h5 class="mb-0">Claude AI API Test Sayfası</h5>
+                </div>
+                <div class="card-body">
+                    <?php if ($error_message): ?>
+                        <div class="alert alert-danger">
+                            <?php echo htmlspecialchars($error_message); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <!-- Veritabanı Test Sonuçları -->
+                    <?php if ($db_test_result): ?>
+                    <div class="card mb-4">
+                        <div class="card-header <?php echo $db_test_result['success'] ? 'bg-success' : 'bg-danger'; ?> text-white">
+                            Veritabanı Bağlantı Testi
+                        </div>
+                        <div class="card-body">
+                            <?php if ($db_test_result['success']): ?>
+                                <p><strong>Veritabanı bağlantısı:</strong> Başarılı</p>
+                                
+                                <p><strong>Bulunan tablolar:</strong> <?php echo count($db_test_result['tables']); ?></p>
+                                
+                                <?php if ($db_test_result['all_required_present']): ?>
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle"></i> Tüm gerekli tablolar mevcut.
+                                    </div>
+                                <?php else: ?>
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> Bazı gerekli tablolar eksik:
+                                        <ul>
+                                            <?php foreach ($db_test_result['missing_tables'] as $table): ?>
+                                                <li><?php echo htmlspecialchars($table); ?></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-times-circle"></i> Veritabanı bağlantı hatası: 
+                                    <?php echo htmlspecialchars($db_test_result['error']); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <form method="post" action="">
+                        <div class="form-group">
+                            <label for="api_key">Claude API Anahtarı</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="api_key" 
+                                name="api_key" 
+                                value="<?php echo isset($saved_api_key) ? htmlspecialchars($saved_api_key) : ''; ?>" 
+                                placeholder="sk-ant-api03-..." 
+                                required
+                            >
+                            <small class="form-text text-muted">
+                                Claude API anahtarınızı <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a>'dan alabilirsiniz.
+                            </small>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="save_key" name="save_key" value="1" checked>
+                            <label class="form-check-label" for="save_key">API anahtarını veritabanına kaydet</label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="test_message">Test Mesajı</label>
+                            <textarea 
+                                class="form-control" 
+                                id="test_message" 
+                                name="test_message" 
+                                rows="3"
+                            >Merhaba, bu bir test mesajıdır. İnci Kırtasiye POS sistemi için çalışıyorsun. Kısaca kendini tanıt.</textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">API'yi Test Et</button>
+                        
+                        <?php if (isset($saved_api_key) && !empty($saved_api_key)): ?>
+                            <a href="claude_chat.php" class="btn btn-success ml-2">Sohbet Sayfasına Git</a>
+                        <?php endif; ?>
+                    </form>
+                    
+                    <?php if ($test_result): ?>
+                        <div class="mt-4">
+                            <h5>Test Sonucu:</h5>
+                            <div class="card">
+                                <div class="card-header <?php echo $test_result['success'] ? 'bg-success' : 'bg-danger'; ?> text-white">
+                                    <?php echo $test_result['success'] ? 'Başarılı!' : 'Hata!'; ?>
+                                </div>
+                                <div class="card-body">
+                                    <?php if ($test_result['success']): ?>
+                                        <p><?php echo nl2br(htmlspecialchars($test_result['response'])); ?></p>
+                                    <?php else: ?>
+                                        <p>Hata: <?php echo htmlspecialchars($test_result['error']); ?></p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-purple {
+    background-color: #6f42c1;
+}
+</style>
+
+<?php
+// Sayfa alt kısmını dahil et
+include '../footer.php';
+?>

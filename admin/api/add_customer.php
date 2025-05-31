@@ -1,19 +1,17 @@
 <?php
-session_start();
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once '../db_connection.php';
-
 // Yetki kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim']);
     exit;
 }
-
 try {
     // POST verileri kontrolü
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Geçersiz istek metodu');
     }
-
     // Zorunlu alanları kontrol et
     $required_fields = ['ad', 'soyad', 'telefon'];
     foreach ($required_fields as $field) {
@@ -21,69 +19,68 @@ try {
             throw new Exception($field . ' alanı zorunludur');
         }
     }
-
     // Telefon numarası formatını kontrol et (sadece rakamlardan oluşmalı)
     $telefon = preg_replace('/[^0-9]/', '', $_POST['telefon']);
     if (strlen($telefon) !== 10 && strlen($telefon) !== 11) {
         throw new Exception('Geçerli bir telefon numarası giriniz (10 veya 11 haneli)');
     }
-
     // Telefon numarası benzersiz mi kontrol et
     $stmt = $conn->prepare("SELECT id FROM musteriler WHERE telefon = ?");
     $stmt->execute([$telefon]);
     if ($stmt->fetch()) {
         throw new Exception('Bu telefon numarası ile kayıtlı bir müşteri zaten var');
     }
-
+    
     // Barkod/müşteri kart numarası kontrol et
-    $barkod = !empty($_POST['barkod']) ? $_POST['barkod'] : null;
-
+    $barkod = !empty($_POST['barkod']) ? $_POST['barkod'] : $telefon; // Boş ise telefon numarasını kullan
+    
     // Barkod belirtilmişse benzersiz olduğunu kontrol et
-    if ($barkod) {
+    if ($barkod != $telefon) { // Telefon numarası kullanılmıyorsa kontrol et
         $stmt = $conn->prepare("SELECT id FROM musteriler WHERE barkod = ?");
         $stmt->execute([$barkod]);
         if ($stmt->fetch()) {
             throw new Exception('Bu barkod/kart numarası ile kayıtlı bir müşteri zaten var');
         }
-    } else {
-        // Benzersiz bir barkod oluştur (Örn: M+timestamp+random)
-        $barkod = 'M' . time() . rand(1000, 9999);
     }
-
+    
     // Diğer alanları al
     $ad = trim($_POST['ad']);
     $soyad = trim($_POST['soyad']);
     $email = !empty($_POST['email']) ? trim($_POST['email']) : null;
-    $adres = !empty($_POST['adres']) ? trim($_POST['adres']) : null;
     $sms_aktif = isset($_POST['sms_aktif']) ? 1 : 0;
-
+    
+    // Varsayılan puan oranını puan_ayarlari tablosundan al
+    $stmt = $conn->prepare("SELECT puan_oran FROM puan_ayarlari WHERE musteri_turu = 'standart' LIMIT 1");
+    $stmt->execute();
+    $puan_ayari = $stmt->fetch(PDO::FETCH_ASSOC);
+    $puan_oran = $puan_ayari ? $puan_ayari['puan_oran'] : 1.00; // Eğer ayar yoksa varsayılan 1.00 kullan
+    
     // Veritabanına ekle
     $conn->beginTransaction();
-
+    
     // Müşteri tablosuna ekle
     $stmt = $conn->prepare("
-        INSERT INTO musteriler (ad, soyad, telefon, email, adres, barkod, sms_aktif, kayit_tarihi, durum) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'aktif')
+        INSERT INTO musteriler (ad, soyad, telefon, email, barkod, sms_aktif, kayit_tarihi, durum) 
+        VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
     ");
-    $stmt->execute([$ad, $soyad, $telefon, $email, $adres, $barkod, $sms_aktif]);
+    $stmt->execute([$ad, $soyad, $telefon, $email, $barkod, $sms_aktif, 'aktif']);
     $musteri_id = $conn->lastInsertId();
-
+    
     // Müşteri puanları tablosuna varsayılan kayıt ekle
     $stmt = $conn->prepare("
         INSERT INTO musteri_puanlar (musteri_id, puan_bakiye, puan_oran, musteri_turu) 
-        VALUES (?, 0.00, 1.00, 'standart')
+        VALUES (?, 0.00, ?, 'standart')
     ");
-    $stmt->execute([$musteri_id]);
-
+    $stmt->execute([$musteri_id, $puan_oran]);
+    
     $conn->commit();
-
+    
     // Başarılı yanıt
     echo json_encode([
         'success' => true, 
         'message' => 'Müşteri başarıyla eklendi',
         'customer_id' => $musteri_id
     ]);
-
 } catch (PDOException $e) {
     // Veritabanı hatası
     if ($conn->inTransaction()) {

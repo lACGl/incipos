@@ -1,0 +1,732 @@
+<?php
+/**
+ * Prestashop'ta Olup WebPOS'ta Olmayan Ürünleri Tespit Eden Sayfa
+ * 
+ * Bu sayfa, Prestashop'taki ürünleri alır ve web_id'si olmayan WebPOS ürünlerini listeler.
+ */
+
+// Hata göstermeyi aktifleştir
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Zaman aşımı limitini arttır
+set_time_limit(300); // 5 dakika
+
+// Bellek limitini arttır
+ini_set('memory_limit', '512M');
+
+// Session kontrolü
+if (file_exists('../../session_manager.php')) {
+    require_once '../../session_manager.php';
+    // Session kontrolünü try-catch bloğunda yap
+    try {
+        if (function_exists('checkUserSession')) {
+            checkUserSession(); 
+        } else {
+            // checkUserSession fonksiyonu yoksa basit bir session kontrolü yap
+            secure_session_start();
+            if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+                header("Location: ../../index.php");
+                exit();
+            }
+        }
+    } catch (Exception $e) {
+        echo "Session hatası: " . $e->getMessage();
+    }
+} else {
+    // Session kontrolü dosyası yoksa bir oturum başlat
+    secure_session_start();
+}
+
+// Config dosyasını dahil et
+require_once __DIR__ . '/config.php';
+
+// Yardımcı fonksiyonları dahil et
+require_once __DIR__ . '/helpers.php';
+
+// Prestashop API sınıfını dahil et
+require_once __DIR__ . '/prestashopAPI.php';
+
+// Aksiyon kontrolü
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+$messages = [];
+
+// Sayfalama için değişkenler
+$currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$itemsPerPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 50;
+$totalItems = 0;
+$totalPages = 0;
+
+// Filtreleme için değişkenler
+$searchQuery = isset($_GET['search']) ? $_GET['search'] : '';
+$refreshCache = isset($_GET['refresh']) && $_GET['refresh'] == '1';
+
+// Önbellek dizini ve dosyaları
+$cacheDir = __DIR__ . '/cache';
+$psProductsCacheFile = $cacheDir . '/all_ps_products.json';
+
+// Önbellek klasörünü kontrol et
+if (!file_exists($cacheDir)) {
+    mkdir($cacheDir, 0755, true);
+}
+
+// Prestashop ürünlerini önbellekten al (eğer varsa ve güncel ise)
+function getPrestashopProducts($forceRefresh = false) {
+    global $cacheDir, $psProductsCacheFile, $messages;
+    
+    // Önbellek dosyası var mı ve güncel mi kontrol et
+    $useCache = !$forceRefresh && file_exists($psProductsCacheFile) && (time() - filemtime($psProductsCacheFile) < 86400); // 24 saat
+    
+    if ($useCache) {
+        // Önbellekten oku
+        $cachedData = file_get_contents($psProductsCacheFile);
+        $products = json_decode($cachedData, true);
+        
+        if ($products) {
+            $messages[] = ['type' => 'info', 'text' => 'Prestashop ürünleri önbellekten alındı. Son güncelleme: ' . date('Y-m-d H:i:s', filemtime($psProductsCacheFile))];
+            return $products;
+        }
+    }
+    
+    // Önbellekte yoksa veya yenilenecekse API'den al
+    $messages[] = ['type' => 'info', 'text' => 'Prestashop ürünleri API\'den alınıyor, lütfen bekleyin...'];
+    
+    // API URL'si
+    $url = rtrim(PS_SHOP_URL, '/') . '/api/products?display=full&output_format=JSON&limit=1000';
+    
+    // cURL başlat
+    $curl = curl_init();
+    
+    // cURL ayarları
+    curl_setopt($curl, CURLOPT_URL, $url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_setopt($curl, CURLOPT_USERPWD, PS_API_KEY . ':');
+    curl_setopt($curl, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($curl, CURLOPT_MAXREDIRS, 3);
+    curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($curl, CURLOPT_TIMEOUT, 30);
+    
+    // İsteği gönder
+    $response = curl_exec($curl);
+    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $error = curl_error($curl);
+    
+    // cURL oturumunu kapat
+    curl_close($curl);
+    
+    if ($httpCode == 200 && !$error) {
+        $products = json_decode($response, true);
+        
+        if ($products && isset($products['products'])) {
+            // Önbelleğe kaydet
+            file_put_contents($psProductsCacheFile, $response);
+            $messages[] = ['type' => 'success', 'text' => 'Prestashop ürünleri başarıyla alındı ve önbelleğe kaydedildi.'];
+            return $products;
+        } else {
+            $messages[] = ['type' => 'error', 'text' => 'API yanıtı geçerli değil: ' . json_last_error_msg()];
+        }
+    } else {
+        $messages[] = ['type' => 'error', 'text' => 'API isteği başarısız: ' . ($error ?: "HTTP Kodu: $httpCode")];
+    }
+    
+    return null;
+}
+
+// WebPOS'tan web_id'leri al
+function getWebPosProductIds() {
+    global $messages;
+    
+    try {
+        $db = getDbConnection();
+        $sql = "SELECT web_id FROM urun_stok WHERE web_id IS NOT NULL AND web_id != ''";
+        $stmt = $db->query($sql);
+        $webPosIds = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+        
+        $messages[] = ['type' => 'success', 'text' => count($webPosIds) . ' adet WebPOS ürünü web_id ile eşleştirilmiş.'];
+        
+        return $webPosIds;
+    } catch (Exception $e) {
+        $messages[] = ['type' => 'error', 'text' => 'WebPOS ürünleri alınırken hata: ' . $e->getMessage()];
+        return [];
+    }
+}
+
+// Prestashop'ta olup WebPOS'ta olmayan ürünleri bul
+function findMissingInWebPos($search = '') {
+    global $messages, $refreshCache;
+    
+    // Prestashop ürünlerini al
+    $psData = getPrestashopProducts($refreshCache);
+    
+    if (!$psData || !isset($psData['products']) || empty($psData['products'])) {
+        $messages[] = ['type' => 'error', 'text' => 'Prestashop ürünleri alınamadı veya hiç ürün bulunamadı.'];
+        return [];
+    }
+    
+    // WebPOS'ta kayıtlı web_id'leri al
+    $webPosIds = getWebPosProductIds();
+    
+    // WebPOS'ta olmayan ürünler
+    $missingInWebPos = [];
+    
+    foreach ($psData['products'] as $product) {
+        $id = $product['id'];
+        
+        // WebPOS'ta bu ID ile eşleşen ürün var mı?
+        if (!in_array($id, $webPosIds)) {
+            // Arama filtresi varsa kontrol et
+            if (!empty($search)) {
+                $matchFound = false;
+                
+                // ID'de ara
+                if (stripos($id, $search) !== false) {
+                    $matchFound = true;
+                }
+                
+                // İsimde ara
+                if (isset($product['name'])) {
+                    foreach ($product['name'] as $lang) {
+                        if (stripos($lang, $search) !== false) {
+                            $matchFound = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Referans veya barkodda ara
+                if (isset($product['reference']) && stripos($product['reference'], $search) !== false) {
+                    $matchFound = true;
+                }
+                
+                if (isset($product['ean13']) && stripos($product['ean13'], $search) !== false) {
+                    $matchFound = true;
+                }
+                
+                if (!$matchFound) {
+                    continue;
+                }
+            }
+            
+            // Türkçe ürün adını al (varsayılan dil - genellikle index 1 veya 0)
+            $name = isset($product['name'][1]) ? $product['name'][1] : (isset($product['name'][0]) ? $product['name'][0] : '?');
+            
+            // Reference ve EAN13
+            $reference = isset($product['reference']) ? $product['reference'] : '';
+            $ean13 = isset($product['ean13']) ? $product['ean13'] : '';
+            
+            // Active durumu 
+            $active = isset($product['active']) ? $product['active'] : '0';
+            
+            // Fiyat
+            $price = isset($product['price']) ? $product['price'] : '0.00';
+            
+            // Ürün bilgilerini ekle
+            $missingInWebPos[] = [
+                'id' => $id,
+                'name' => $name,
+                'reference' => $reference,
+                'ean13' => $ean13,
+                'price' => $price,
+                'active' => $active
+            ];
+        }
+    }
+    
+    // Sonuç mesajı
+    $messages[] = ['type' => 'success', 'text' => count($missingInWebPos) . ' adet Prestashop ürünü WebPOS\'ta bulunamadı.'];
+    
+    return $missingInWebPos;
+}
+
+// WebPOS'a ürün ekle
+function addProductToWebPos($prestashopId, $name, $reference, $ean13, $price) {
+    global $messages;
+    
+    try {
+        $db = getDbConnection();
+        
+        // Kullanılacak barkod - önce ean13, yoksa reference, o da yoksa prestashop ID
+        $barkod = !empty($ean13) ? $ean13 : (!empty($reference) ? $reference : 'PS' . str_pad($prestashopId, 10, '0', STR_PAD_LEFT));
+        
+        // Fiyatı KDV dahil olarak hesapla (varsayılan KDV %20)
+        $kdvOrani = 20; // %20 varsayılan KDV
+        $kdvliFiyat = $price * (1 + ($kdvOrani / 100));
+        
+        // Ürün ekle
+        $sql = "INSERT INTO urun_stok (ad, barkod, web_id, satis_fiyati, kdv_orani, durum, kayit_tarihi) 
+                VALUES (:ad, :barkod, :web_id, :satis_fiyati, :kdv_orani, 'aktif', NOW())";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            ':ad' => $name,
+            ':barkod' => $barkod,
+            ':web_id' => $prestashopId,
+            ':satis_fiyati' => $kdvliFiyat,
+            ':kdv_orani' => $kdvOrani
+        ]);
+        
+        $lastId = $db->lastInsertId();
+        
+        $messages[] = ['type' => 'success', 'text' => 'Ürün başarıyla WebPOS\'a eklendi. ID: ' . $lastId];
+        return true;
+        
+    } catch (Exception $e) {
+        $messages[] = ['type' => 'error', 'text' => 'Ürün eklenirken hata: ' . $e->getMessage()];
+        return false;
+    }
+}
+
+// Toplu ürün ekleme
+function addBulkProductsToWebPos($selectedProducts) {
+    global $messages;
+    
+    if (empty($selectedProducts)) {
+        $messages[] = ['type' => 'warning', 'text' => 'Hiçbir ürün seçilmedi.'];
+        return;
+    }
+    
+    $successCount = 0;
+    $errorCount = 0;
+    
+    foreach ($selectedProducts as $productId => $checked) {
+        if ($checked === '1') {
+            // Prestashop'tan ürün bilgilerini al
+            $productInfo = getProductInfoFromPrestashop($productId);
+            
+            if ($productInfo) {
+                $result = addProductToWebPos(
+                    $productId,
+                    $productInfo['name'],
+                    $productInfo['reference'],
+                    $productInfo['ean13'],
+                    $productInfo['price']
+                );
+                
+                if ($result) {
+                    $successCount++;
+                } else {
+                    $errorCount++;
+                }
+            } else {
+                $errorCount++;
+                $messages[] = ['type' => 'error', 'text' => 'Ürün bilgileri alınamadı: PS ID=' . $productId];
+            }
+        }
+    }
+    
+    if ($successCount > 0) {
+        $messages[] = ['type' => 'success', 'text' => $successCount . ' ürün başarıyla WebPOS\'a eklendi.'];
+    }
+    
+    if ($errorCount > 0) {
+        $messages[] = ['type' => 'warning', 'text' => $errorCount . ' ürün eklenemedi.'];
+    }
+}
+
+// Prestashop'tan ürün bilgileri al
+function getProductInfoFromPrestashop($productId) {
+    global $messages;
+    
+    // Prestashop API'yi başlat
+    $prestashopApi = new PrestashopAPI(PS_API_KEY, PS_SHOP_URL);
+    
+    // Ürün bilgilerini al
+    $productData = $prestashopApi->request('products', 'GET', $productId);
+    
+    if ($productData && isset($productData['product'])) {
+        $product = $productData['product'];
+        
+        // Türkçe ürün adını al
+        $name = isset($product['name'][1]) ? $product['name'][1] : (isset($product['name'][0]) ? $product['name'][0] : '?');
+        
+        return [
+            'name' => $name,
+            'reference' => isset($product['reference']) ? $product['reference'] : '',
+            'ean13' => isset($product['ean13']) ? $product['ean13'] : '',
+            'price' => isset($product['price']) ? $product['price'] : '0.00'
+        ];
+    }
+    
+    return null;
+}
+
+// Tek ürün ekleme işlemi
+if ($action == 'add_product' && isset($_POST['product_id'])) {
+    $productId = $_POST['product_id'];
+    
+    // Ürün bilgilerini al
+    $productInfo = getProductInfoFromPrestashop($productId);
+    
+    if ($productInfo) {
+        addProductToWebPos(
+            $productId,
+            $productInfo['name'],
+            $productInfo['reference'],
+            $productInfo['ean13'],
+            $productInfo['price']
+        );
+    } else {
+        $messages[] = ['type' => 'error', 'text' => 'Ürün bilgileri alınamadı: PS ID=' . $productId];
+    }
+    
+    // Sayfa yenileme için yönlendir
+    header("Location: prestashop_missing_in_webpos.php?action=find&page=$currentPage&per_page=$itemsPerPage&search=" . urlencode($searchQuery));
+    exit;
+}
+
+// Toplu ürün ekleme işlemi
+if ($action == 'add_bulk' && isset($_POST['selected']) && is_array($_POST['selected'])) {
+    addBulkProductsToWebPos($_POST['selected']);
+    
+    // Sayfa yenileme için yönlendir
+    header("Location: prestashop_missing_in_webpos.php?action=find&page=$currentPage&per_page=$itemsPerPage&search=" . urlencode($searchQuery));
+    exit;
+}
+
+// Ana işlemler
+$missingInWebPos = [];
+$totalItems = 0;
+$totalPages = 0;
+
+if ($action == 'find' || $action == 'refresh') {
+    // WebPOS'ta olmayan ürünleri bul
+    $allMissingProducts = findMissingInWebPos($searchQuery);
+    $totalItems = count($allMissingProducts);
+    $totalPages = ceil($totalItems / $itemsPerPage);
+    
+    // Sayfalama
+    $offset = ($currentPage - 1) * $itemsPerPage;
+    $missingInWebPos = array_slice($allMissingProducts, $offset, $itemsPerPage);
+}
+
+// Sayfa başlığı
+$pageTitle = "Prestashop'ta Olup WebPOS'ta Olmayan Ürünler";
+?>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $pageTitle; ?></title>
+    <link rel="stylesheet" href="prestashop.css">
+    <style>
+        .product-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .product-table th,
+        .product-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .product-table th {
+            background-color: #f5f5f5;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .product-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .product-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        .active-badge {
+            background-color: #4CAF50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .inactive-badge {
+            background-color: #F44336;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .pagination a, .pagination span {
+            color: black;
+            float: left;
+            padding: 8px 16px;
+            text-decoration: none;
+            transition: background-color .3s;
+            border: 1px solid #ddd;
+            margin: 0 4px;
+        }
+        .pagination a.active {
+            background-color: #4CAF50;
+            color: white;
+            border: 1px solid #4CAF50;
+        }
+        .pagination a:hover:not(.active) {background-color: #ddd;}
+        .filter-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .filter-form input[type="text"],
+        .filter-form input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .filter-form button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .filter-form button:hover {
+            background-color: #45a049;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 7px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 5px;
+            background-color: #607D8B;
+            color: white;
+        }
+        .bulk-actions {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .info-box {
+            background-color: #d9edf7;
+            border-left: 5px solid #31708f;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-color: #fff8e1;
+            border-left: 5px solid #ff9800;
+            margin: 15px 0;
+        }
+        .loading.visible {
+            display: flex;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn-add {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-add:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1><?php echo $pageTitle; ?></h1>
+    
+    <div class="container">
+        <div class="actions">
+            <a href="?action=find" class="btn">WebPOS'ta Olmayan Ürünleri Bul</a>
+            <a href="?action=refresh" class="btn" style="background-color: #607D8B;">Önbelleği Yenile</a>
+            <a href="index.php" class="btn btn-log">Ana Sayfaya Dön</a>
+        </div>
+        
+        <?php if (!empty($messages)): ?>
+            <div class="messages">
+                <?php foreach ($messages as $message): ?>
+                    <div class="message <?php echo $message['type']; ?>">
+                        <?php echo $message['text']; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if ($action == 'find' || $action == 'refresh'): ?>
+            <!-- Arama ve filtreleme -->
+            <form method="get" action="" class="filter-form">
+                <input type="hidden" name="action" value="find">
+                
+                <input type="text" name="search" placeholder="Ürün Adı, ID, Barkod ile arama..." value="<?php echo htmlspecialchars($searchQuery); ?>" style="min-width: 250px;">
+                
+                <label for="per_page">Sayfa başına:</label>
+                <input type="number" name="per_page" id="per_page" min="10" max="200" value="<?php echo $itemsPerPage; ?>" style="width: 60px;">
+                
+                <button type="submit">Filtrele</button>
+                <a href="?action=find" class="btn" style="margin-left: 10px;">Temizle</a>
+            </form>
+            
+            <!-- Özet bilgileri -->
+            <div class="status-summary">
+                <h3>Prestashop'ta Olup WebPOS'ta Olmayan Ürünler <span class="badge"><?php echo $totalItems; ?> Ürün</span></h3>
+                
+                <p>Bu sayfada Prestashop'ta bulunan ancak WebPOS'ta web_id ile eşleşmeyen ürünleri görebilir ve WebPOS'a ekleyebilirsiniz.</p>
+            </div>
+            
+            <?php if (!empty($missingInWebPos)): ?>
+                <!-- Toplu işlemler -->
+                <div class="bulk-actions">
+                    <form method="post" action="?action=add_bulk&page=<?php echo $currentPage; ?>&per_page=<?php echo $itemsPerPage; ?>&search=<?php echo urlencode($searchQuery); ?>" id="add-form">
+                        <h4>Toplu İşlemler</h4>
+                        <p>Seçili ürünleri WebPOS'a eklemek için aşağıdaki butonu kullanın.</p>
+                        <button type="submit" class="btn">Seçili Ürünleri WebPOS'a Ekle</button>
+                    </form>
+                </div>
+                
+                <!-- Ürün tablosu -->
+                <div style="overflow-x: auto;">
+                    <table class="product-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="select-all"></th>
+                                <th>PS ID</th>
+                                <th>Durum</th>
+                                <th>Ürün Adı</th>
+                                <th>Referans</th>
+                                <th>EAN13</th>
+                                <th>Fiyat</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($missingInWebPos as $product): ?>
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="selected[<?php echo $product['id']; ?>]" value="1" form="add-form" class="product-checkbox">
+                                    </td>
+                                    <td><?php echo $product['id']; ?></td>
+                                    <td>
+                                        <?php if ($product['active'] == '1'): ?>
+                                            <span class="active-badge">Aktif</span>
+                                        <?php else: ?>
+                                            <span class="inactive-badge">Pasif</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($product['name']); ?></td>
+                                    <td><?php echo htmlspecialchars($product['reference'] ?: '-'); ?></td>
+                                    <td><?php echo htmlspecialchars($product['ean13'] ?: '-'); ?></td>
+                                    <td><?php echo number_format((float)$product['price'], 2, ',', '.'); ?> TL</td>
+                                    <td>
+                                        <form method="post" action="?action=add_product&page=<?php echo $currentPage; ?>&per_page=<?php echo $itemsPerPage; ?>&search=<?php echo urlencode($searchQuery); ?>">
+                                            <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
+                                            <button type="submit" class="btn-add">WebPOS'a Ekle</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Sayfalama -->
+                <?php if ($totalPages > 1): ?>
+                    <div class="pagination">
+                        <?php if ($currentPage > 1): ?>
+                            <a href="?action=find&page=1&per_page=<?php echo $itemsPerPage; ?>&search=<?php echo urlencode($searchQuery); ?>">&laquo; İlk</a>
+                            <a href="?action=find&page=<?php echo $currentPage - 1; ?>&per_page=<?php echo $itemsPerPage; ?>&search=<?php echo urlencode($searchQuery); ?>">&lsaquo; Önceki</a>
+                        <?php endif; ?>
+                        
+                        <?php
+                        // Sayfa numaralarını göster
+                        $startPage = max(1, $currentPage - 2);
+                        $endPage = min($totalPages, $startPage + 4);
+                        
+                        for ($i = $startPage; $i <= $endPage; $i++) {
+                            if ($i == $currentPage) {
+                                echo '<a href="#" class="active">' . $i . '</a>';
+                            } else {
+                                echo '<a href="?action=find&page=' . $i . '&per_page=' . $itemsPerPage . '&search=' . urlencode($searchQuery) . '">' . $i . '</a>';
+                            }
+                        }
+                        ?>
+                        
+                        <?php if ($currentPage < $totalPages): ?>
+                            <a href="?action=find&page=<?php echo $currentPage + 1; ?>&per_page=<?php echo $itemsPerPage; ?>&search=<?php echo urlencode($searchQuery); ?>">Sonraki &rsaquo;</a>
+                            <a href="?action=find&page=<?php echo $totalPages; ?>&per_page=<?php echo $itemsPerPage; ?>&search=<?php echo urlencode($searchQuery); ?>">Son &raquo;</a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+                
+            <?php else: ?>
+                <div class="message info">
+                    <?php if ($action): ?>
+                        <p>Prestashop'ta olup WebPOS'ta olmayan ürün bulunamadı.</p>
+                    <?php else: ?>
+                        <p>Henüz hiç sonuç yok. Ürünleri görüntülemek için 'WebPOS'ta Olmayan Ürünleri Bul' butonuna tıklayın.</p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+            
+        <?php else: ?>
+            <div class="info-box">
+                <p>Bu sayfa, Prestashop'ta bulunan ancak WebPOS'ta web_id ile eşleşmeyen ürünleri listeler.</p>
+                <p>Başlamak için "WebPOS'ta Olmayan Ürünleri Bul" butonuna tıklayın.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <script>
+        // Tüm seç/kaldır işlevselliği
+        document.getElementById('select-all')?.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.product-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+        
+        // Sayfa yüklendiğinde yükleme animasyonunu göster
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingElement = document.querySelector('.loading');
+            
+            // Form gönderildiğinde yükleme ekranını göster
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function() {
+                    loadingElement?.classList.add('visible');
+                });
+            });
+        });
+    </script>
+    
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>İşlem yapılıyor, lütfen bekleyin...</p>
+    </div>
+</body>
+</html>

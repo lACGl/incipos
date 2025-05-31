@@ -1,0 +1,301 @@
+<?php
+require_once 'session_manager.php'; // Otomatik eklendi
+secure_session_start();
+require_once 'db_connection.php';
+require_once 'vendor/autoload.php'; // PhpSpreadsheet kütüphanesini dahil et
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+// Kullanıcı oturum kontrolü
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+    header("Location: index.php");
+    exit;
+}
+
+// Formdan gelen parametreleri al
+$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-30 days'));
+$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
+$magaza_id = isset($_GET['magaza_id']) && !empty($_GET['magaza_id']) ? intval($_GET['magaza_id']) : null;
+$odeme_turu = isset($_GET['odeme_turu']) ? $_GET['odeme_turu'] : null;
+$islem_turu = isset($_GET['islem_turu']) ? $_GET['islem_turu'] : null;
+$personel_id = isset($_GET['personel_id']) && !empty($_GET['personel_id']) ? intval($_GET['personel_id']) : null;
+$musteri_id = isset($_GET['musteri_id']) && !empty($_GET['musteri_id']) ? intval($_GET['musteri_id']) : null;
+$search_term = isset($_GET['search_term']) ? $_GET['search_term'] : null;
+$selected_invoices = isset($_GET['selected']) ? explode(',', $_GET['selected']) : null;
+
+// Sorgu başlangıcı
+$sql = "
+    SELECT 
+        sf.id,
+        sf.fatura_seri,
+        sf.fatura_no,
+        DATE_FORMAT(sf.fatura_tarihi, '%d.%m.%Y %H:%i') as tarih,
+        m.ad as magaza_adi,
+        p.ad as personel_adi,
+        CONCAT(mus.ad, ' ', mus.soyad) as musteri_adi,
+        sf.toplam_tutar,
+        sf.kdv_tutari,
+        sf.indirim_tutari,
+        sf.net_tutar,
+        sf.odeme_turu,
+        sf.islem_turu,
+        sf.aciklama
+    FROM 
+        satis_faturalari sf
+        LEFT JOIN magazalar m ON sf.magaza = m.id
+        LEFT JOIN personel p ON sf.personel = p.id
+        LEFT JOIN musteriler mus ON sf.musteri_id = mus.id
+    WHERE 
+        DATE(sf.fatura_tarihi) BETWEEN ? AND ?
+";
+
+$params = [$start_date, $end_date];
+
+// Ek filtreler
+if ($magaza_id) {
+    $sql .= " AND sf.magaza = ?";
+    $params[] = $magaza_id;
+}
+
+if ($odeme_turu) {
+    $sql .= " AND sf.odeme_turu = ?";
+    $params[] = $odeme_turu;
+}
+
+if ($islem_turu) {
+    $sql .= " AND sf.islem_turu = ?";
+    $params[] = $islem_turu;
+}
+
+if ($personel_id) {
+    $sql .= " AND sf.personel = ?";
+    $params[] = $personel_id;
+}
+
+if ($musteri_id) {
+    $sql .= " AND sf.musteri_id = ?";
+    $params[] = $musteri_id;
+}
+
+if ($search_term) {
+    $sql .= " AND (sf.fatura_no LIKE ? OR sf.fatura_seri LIKE ?)";
+    $params[] = "%$search_term%";
+    $params[] = "%$search_term%";
+}
+
+// Seçili faturalar varsa
+if ($selected_invoices && is_array($selected_invoices)) {
+    $placeholders = implode(',', array_fill(0, count($selected_invoices), '?'));
+    $sql .= " AND sf.id IN ($placeholders)";
+    foreach ($selected_invoices as $id) {
+        $params[] = $id;
+    }
+}
+
+$sql .= " ORDER BY sf.fatura_tarihi DESC, sf.id DESC";
+
+$stmt = $conn->prepare($sql);
+$stmt->execute($params);
+$sales_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Mağaza adını al (filtre için)
+$magaza_adi = "Tüm Mağazalar";
+if ($magaza_id) {
+    $magaza_query = "SELECT ad FROM magazalar WHERE id = ?";
+    $stmt = $conn->prepare($magaza_query);
+    $stmt->execute([$magaza_id]);
+    $magaza = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($magaza) {
+        $magaza_adi = $magaza['ad'];
+    }
+}
+
+// Personel adını al (filtre için)
+$personel_adi = "Tüm Personel";
+if ($personel_id) {
+    $personel_query = "SELECT ad FROM personel WHERE id = ?";
+    $stmt = $conn->prepare($personel_query);
+    $stmt->execute([$personel_id]);
+    $personel = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($personel) {
+        $personel_adi = $personel['ad'];
+    }
+}
+
+// Toplam satış tutarını hesapla
+$total_sales = 0;
+$total_returns = 0;
+foreach ($sales_data as $sale) {
+    if ($sale['islem_turu'] == 'satis') {
+        $total_sales += $sale['net_tutar'];
+    } else {
+        $total_returns += $sale['net_tutar'];
+    }
+}
+$net_total = $total_sales - $total_returns;
+
+// Ödeme türlerine göre çeviri
+$odeme_turu_text = [
+    'nakit' => 'Nakit',
+    'kredi_karti' => 'Kredi Kartı',
+    'havale' => 'Havale'
+];
+
+// İşlem türlerine göre çeviri
+$islem_turu_text = [
+    'satis' => 'Satış',
+    'iade' => 'İade'
+];
+
+// Yeni bir Excel çalışma kitabı oluştur
+$spreadsheet = new Spreadsheet();
+$sheet = $spreadsheet->getActiveSheet();
+$sheet->setTitle('Satış Faturaları');
+
+// Stil tanımlamaları
+$headerStyle = [
+    'font' => [
+        'bold' => true,
+        'color' => ['rgb' => 'FFFFFF'],
+    ],
+    'fill' => [
+        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+        'startColor' => ['rgb' => '4472C4']
+    ],
+    'alignment' => [
+        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+    ],
+];
+
+$titleStyle = [
+    'font' => [
+        'bold' => true,
+        'size' => 14,
+    ],
+    'alignment' => [
+        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+    ],
+];
+
+$centerStyle = [
+    'alignment' => [
+        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+    ],
+];
+
+$rightStyle = [
+    'alignment' => [
+        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+    ],
+];
+
+$borderStyle = [
+    'borders' => [
+        'allBorders' => [
+            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            'color' => ['rgb' => '000000'],
+        ],
+    ],
+];
+
+$totalStyle = [
+    'font' => [
+        'bold' => true,
+    ],
+    'fill' => [
+        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+        'startColor' => ['rgb' => 'E2EFDA']
+    ],
+];
+
+// Başlık ekle
+$sheet->setCellValue('A1', 'İnciPOS Satış Faturaları Raporu');
+$sheet->mergeCells('A1:K1');
+$sheet->getStyle('A1')->applyFromArray($titleStyle);
+
+// Rapor bilgilerini ekle
+$sheet->setCellValue('A2', 'Tarih Aralığı:');
+$sheet->setCellValue('B2', date('d.m.Y', strtotime($start_date)) . ' - ' . date('d.m.Y', strtotime($end_date)));
+$sheet->setCellValue('A3', 'Mağaza:');
+$sheet->setCellValue('B3', $magaza_adi);
+$sheet->setCellValue('A4', 'Personel:');
+$sheet->setCellValue('B4', $personel_adi);
+$sheet->setCellValue('A5', 'Toplam Satış:');
+$sheet->setCellValue('B5', number_format($total_sales, 2, ',', '.') . ' ₺');
+$sheet->setCellValue('A6', 'Toplam İade:');
+$sheet->setCellValue('B6', number_format($total_returns, 2, ',', '.') . ' ₺');
+$sheet->setCellValue('A7', 'Net Toplam:');
+$sheet->setCellValue('B7', number_format($net_total, 2, ',', '.') . ' ₺');
+
+// Kolon başlıklarını ayarla
+$sheet->setCellValue('A9', 'Fatura No');
+$sheet->setCellValue('B9', 'Tarih');
+$sheet->setCellValue('C9', 'Mağaza');
+$sheet->setCellValue('D9', 'Personel');
+$sheet->setCellValue('E9', 'Müşteri');
+$sheet->setCellValue('F9', 'Toplam');
+$sheet->setCellValue('G9', 'KDV');
+$sheet->setCellValue('H9', 'İndirim');
+$sheet->setCellValue('I9', 'Net Tutar');
+$sheet->setCellValue('J9', 'Ödeme Türü');
+$sheet->setCellValue('K9', 'İşlem Türü');
+
+// Başlık stilini uygula
+$sheet->getStyle('A9:K9')->applyFromArray($headerStyle);
+
+// Verileri doldur
+$row = 10;
+foreach ($sales_data as $data) {
+    $sheet->setCellValue('A' . $row, $data['fatura_seri'] . $data['fatura_no']);
+    $sheet->setCellValue('B' . $row, $data['tarih']);
+    $sheet->setCellValue('C' . $row, $data['magaza_adi']);
+    $sheet->setCellValue('D' . $row, $data['personel_adi']);
+    $sheet->setCellValue('E' . $row, $data['musteri_adi']);
+    $sheet->setCellValue('F' . $row, number_format($data['toplam_tutar'], 2, ',', '.') . ' ₺');
+    $sheet->setCellValue('G' . $row, number_format($data['kdv_tutari'], 2, ',', '.') . ' ₺');
+    $sheet->setCellValue('H' . $row, number_format($data['indirim_tutari'], 2, ',', '.') . ' ₺');
+    $sheet->setCellValue('I' . $row, number_format($data['net_tutar'], 2, ',', '.') . ' ₺');
+    $sheet->setCellValue('J' . $row, $odeme_turu_text[$data['odeme_turu']] ?? $data['odeme_turu']);
+    $sheet->setCellValue('K' . $row, $islem_turu_text[$data['islem_turu']] ?? $data['islem_turu']);
+    
+    $row++;
+}
+
+// Toplam satır ekle
+$lastRow = $row;
+$sheet->setCellValue('A' . $lastRow, 'TOPLAM');
+$sheet->mergeCells('A' . $lastRow . ':H' . $lastRow);
+$sheet->setCellValue('I' . $lastRow, number_format($net_total, 2, ',', '.') . ' ₺');
+$sheet->getStyle('A' . $lastRow . ':K' . $lastRow)->applyFromArray($totalStyle);
+
+// Sütun genişliklerini ayarla
+$sheet->getColumnDimension('A')->setWidth(15);
+$sheet->getColumnDimension('B')->setWidth(15);
+$sheet->getColumnDimension('C')->setWidth(20);
+$sheet->getColumnDimension('D')->setWidth(20);
+$sheet->getColumnDimension('E')->setWidth(25);
+$sheet->getColumnDimension('F')->setWidth(15);
+$sheet->getColumnDimension('G')->setWidth(15);
+$sheet->getColumnDimension('H')->setWidth(15);
+$sheet->getColumnDimension('I')->setWidth(15);
+$sheet->getColumnDimension('J')->setWidth(15);
+$sheet->getColumnDimension('K')->setWidth(15);
+
+// Stil ayarlamaları
+$sheet->getStyle('A10:A' . ($lastRow-1))->applyFromArray($centerStyle);
+$sheet->getStyle('B10:B' . ($lastRow-1))->applyFromArray($centerStyle);
+$sheet->getStyle('J10:K' . ($lastRow-1))->applyFromArray($centerStyle);
+$sheet->getStyle('F10:I' . ($lastRow))->applyFromArray($rightStyle);
+$sheet->getStyle('A9:K' . $lastRow)->applyFromArray($borderStyle);
+$sheet->getStyle('A' . $lastRow)->applyFromArray($centerStyle);
+
+// Excel dosyasını oluştur ve indir
+header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+header('Content-Disposition: attachment;filename="InciPOS_Satis_Faturalari_' . date('d-m-Y') . '.xlsx"');
+header('Cache-Control: max-age=0');
+
+$writer = new Xlsx($spreadsheet);
+$writer->save('php://output');
+exit;
+?>

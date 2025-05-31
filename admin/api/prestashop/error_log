@@ -1,0 +1,4 @@
+[08-May-2025 06:50:40 UTC] PHP Fatal error:  Uncaught Error: Call to undefined method PrestashopAPI::getAllProducts() in /home/incikir2/public_html/pos.incikirtasiye.com/admin/api/prestashop/barcode_comparison.php:75
+Stack trace:
+#0 {main}
+  thrown in /home/incikir2/public_html/pos.incikirtasiye.com/admin/api/prestashop/barcode_comparison.php on line 75

@@ -1,7 +1,7 @@
 <?php
 $host = 'localhost'; // Veritabanı sunucusu
 $dbname = 'incikir2_pos'; // Veritabanı adı
-$username = 'incikir2_posadminus'; // Veritabanı kullanıcı adı (değiştirin)
+$username = 'incikir2_posadmin'; // Veritabanı kullanıcı adı (değiştirin)
 $password = 'vD3YjbzpPYsc'; // Veritabanı şifresi
 
 try {

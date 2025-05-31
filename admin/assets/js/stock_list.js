@@ -6,11 +6,23 @@ window.toggleAllCheckboxes = toggleAllCheckboxes;
 window.toggleFilters = toggleFilters;
 window.updateItemsPerPage = updateItemsPerPage;
 window.toggleColumns = toggleColumns;
+window.sortTableByWebId = sortTableByWebId;
+window.sortTableByAlisFiyati = sortTableByAlisFiyati;
+window.sortTableBySatisFiyati = sortTableBySatisFiyati;
+window.sortTableByIndirimliFiyat = sortTableByIndirimliFiyat;
+window.sortTableByStok = sortTableByStok;
+window.filterByStockStatus = filterByStockStatus;
+window.resetAllFilters = resetAllFilters;
+window.updateStatisticCards = updateStatisticCards;
+window.filterByDepartment = filterByDepartment;
+window.filterByAnaGrup = filterByAnaGrup;
 
 window.selectedProducts = [];
 let currentStockOrder = 'DESC';
 let searchTimeout;
 let isRequestPending = false;
+let currentSortColumn = 'id';
+let currentSortOrder = 'DESC';
 
 const BASE_URL = '/';
 
@@ -72,10 +84,15 @@ function initializeEventListeners() {
 }
 
 // Stok sıralama fonksiyonu
-export 
-function sortTableByStock() {
-    // Sıralama yönünü değiştir
-    currentStockOrder = currentStockOrder === 'ASC' ? 'DESC' : 'ASC';
+export function sortTable(column) {
+    // Eğer aynı sütuna tekrar tıklanırsa sıralama yönünü değiştir
+    if (column === currentSortColumn) {
+        currentSortOrder = currentSortOrder === 'ASC' ? 'DESC' : 'ASC';
+    } else {
+        // Farklı bir sütuna tıklanırsa, varsayılan olarak DESC ile başla
+        currentSortColumn = column;
+        currentSortOrder = 'DESC';
+    }
 
     // Form verilerini al
     const formData = new FormData();
@@ -89,8 +106,8 @@ function sortTableByStock() {
     }
     
     // Sıralama parametrelerini ekle
-    formData.append('sort_column', 'stok_miktari');
-    formData.append('sort_order', currentStockOrder);
+    formData.append('sort_column', column);
+    formData.append('sort_order', currentSortOrder);
 
     // Loading göster
     const loadingToast = Swal.fire({
@@ -116,14 +133,13 @@ function sortTableByStock() {
                 tableContainer.innerHTML = data.table;
             }
             
-            // Sıralama ikonunu güncelle
-            const icon = document.querySelector('.stok-header .sort-icon');
-            if (icon) {
-                icon.textContent = currentStockOrder === 'ASC' ? '↑' : '↓';
-            }
+            // Tüm sıralama ikonlarını güncelle
+            updateAllSortIcons();
             
             // Event listener'ları yeniden ekle
             initializeEventListeners();
+            initializeProductRowEvents();
+            initializePaginationEvents();
             
             loadingToast.close();
         } else {
@@ -141,6 +157,41 @@ function sortTableByStock() {
             showConfirmButton: false
         });
     });
+}
+
+// Sıralama ikonlarını güncelleme fonksiyonu
+function updateAllSortIcons() {
+    // Önce tüm ikonları temizle
+    document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.textContent = '↕';
+    });
+    
+    // Aktif sütunun ikonunu güncelle
+    const activeColumnHeader = document.querySelector(`.${currentSortColumn}-header .sort-icon`);
+    if (activeColumnHeader) {
+        activeColumnHeader.textContent = currentSortOrder === 'ASC' ? '↑' : '↓';
+    }
+}
+
+// Özel sütunlar için sıralama fonksiyonları
+function sortTableByWebId() {
+    sortTable('web_id');
+}
+
+function sortTableByAlisFiyati() {
+    sortTable('alis_fiyati');
+}
+
+function sortTableBySatisFiyati() {
+    sortTable('satis_fiyati');
+}
+
+function sortTableByIndirimliFiyat() {
+    sortTable('indirimli_fiyat');
+}
+
+function sortTableByStok() {
+    sortTable('stok_miktari');
 }
 
 // Departmana göre filtreleme fonksiyonu
@@ -396,19 +447,30 @@ function reinitializeEventHandlers() {
 
 // Sayfa başına gösterilecek ürün sayısını güncelleme
 export function updateItemsPerPage(value) {
-    const formData = new FormData();
-    formData.append('items_per_page', value);
-
-    fetchData('update_session.php', {
+    showLoadingToast('Yükleniyor...');
+    
+    // Önce session güncellemesi yap
+    const sessionData = new FormData();
+    sessionData.append('items_per_page', value);
+    
+    fetch('update_session.php', {
         method: 'POST',
-        body: formData,
+        body: sessionData
     })
-        .then(data => {
-            if (data.success) {
-                updateTableAjax(1);
-            }
-        })
-        .catch(() => showErrorToast('Sayfa başına ürün sayısı güncellenirken bir hata oluştu'));
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Tabloyu güncelle - sayfa 1'e dön
+            updateTableAjax(1);
+        } else {
+            throw new Error(data.message || 'Session güncelleme hatası');
+        }
+    })
+    .catch(error => {
+        console.error('Ürün sayısı güncelleme hatası:', error);
+        showErrorToast('Sayfa başına ürün sayısı güncellenirken bir hata oluştu');
+        closeLoadingToast();
+    });
 }
 
 // Pagination için event listener'ları initialize et
@@ -441,7 +503,7 @@ function handleFormSubmit(e) {
 }
 
 // Stok güncelleme fonksiyonu
-export async function updateStock(id, amount, operation, location, magazaId = null) {
+export async function updateStock(id, amount, operation, location, magazaId = null, price = null, satis_fiyati = null) {
     try {
         const response = await fetch('api/update_stock.php', {
             method: 'POST',
@@ -453,7 +515,9 @@ export async function updateStock(id, amount, operation, location, magazaId = nu
                 amount: amount,
                 operation: operation,
                 location: location,
-                magaza_id: magazaId
+                magaza_id: magazaId,
+                price: price,          // Alış fiyatı parametresi
+                satis_fiyati: satis_fiyati  // Satış fiyatı parametresi
             })
         });
 
@@ -511,6 +575,206 @@ function loadProductHistory(productId, baseHtml) {
             }
         })
         .catch(() => showErrorToast('Geçmiş bilgileri yüklenirken bir hata oluştu'));
+}
+
+function updateStatisticCards() {
+    // Loading göster
+    showLoadingToast('İstatistikler güncelleniyor...');
+    
+    // API isteği
+    fetch('api/get_stock_statistics.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Toplam ürün
+                const totalProductsElement = document.getElementById('total-products-count');
+                if (totalProductsElement) {
+                    totalProductsElement.textContent = data.total_products;
+                }
+                
+                // Stoklu ürün
+                const inStockElement = document.getElementById('in-stock-count');
+                if (inStockElement) {
+                    inStockElement.textContent = data.in_stock_products;
+                }
+                
+                // Kritik stok
+                const criticalStockElement = document.getElementById('critical-stock-count');
+                if (criticalStockElement) {
+                    criticalStockElement.textContent = data.critical_stock;
+                }
+                
+                // Stoksuz ürün
+                const outOfStockElement = document.getElementById('out-of-stock-count');
+                if (outOfStockElement) {
+                    outOfStockElement.textContent = data.out_of_stock;
+                }
+                
+                closeLoadingToast();
+            } else {
+                throw new Error(data.message || 'İstatistikler yüklenemedi');
+            }
+        })
+        .catch(error => {
+            console.error('İstatistik yükleme hatası:', error);
+            closeLoadingToast();
+            showErrorToast('İstatistikler yüklenirken bir hata oluştu');
+        });
+}
+
+
+function filterByStockStatus(status) {
+    // Loading göster
+    showLoadingToast('Filtreleniyor...');
+    
+    // Form verilerini hazırla
+    const formData = new FormData(document.getElementById('itemsForm'));
+    
+    // Mevcut aktif filtreleri koru
+    // Stok durumu filtresini güncelle
+    formData.set('stock_status', status);
+    
+    // Sayfa 1'e dön
+    formData.set('page', 1);
+    
+    // API isteği
+    fetch('get_table_data.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Tabloyu güncelle
+            const tableContainer = document.getElementById('tableContainer');
+            if (tableContainer) {
+                tableContainer.innerHTML = data.table;
+            }
+            
+            // Sayfalama güncellemesi
+            if (data.pagination) {
+                const paginationContainer = document.querySelector('.pagination');
+                if (paginationContainer) {
+                    paginationContainer.innerHTML = data.pagination;
+                }
+            }
+            
+            // Toplam ürün sayısını güncelle
+            if (data.total_products) {
+                document.getElementById('total-products').textContent = data.total_products;
+            }
+            
+            // Event listener'ları yeniden bağla
+            initializeEventListeners();
+            initializeProductRowEvents();
+            initializePaginationEvents();
+            
+            // Seçili stok durumunu görsel olarak belirt
+            updateSelectedStockStatus(status);
+            
+            // Loading'i kapat
+            closeLoadingToast();
+            showSuccessToast('Filtreleme tamamlandı');
+        } else {
+            throw new Error(data.message || 'Filtreleme işlemi başarısız oldu');
+        }
+    })
+    .catch(error => {
+        console.error('Filtreleme hatası:', error);
+        closeLoadingToast();
+        showErrorToast(error.message);
+    });
+}
+
+// Stok durumu seçim kutusunu aktif değere göre güncelle
+function updateSelectedStockStatus(status) {
+    const stockStatusSelect = document.querySelector('select[name="stock_status"]');
+    if (stockStatusSelect) {
+        stockStatusSelect.value = status;
+    }
+}
+
+// Stok durumu değişimini dinleme fonksiyonu
+function initializeStockStatusFilter() {
+    const stockStatusSelect = document.querySelector('select[name="stock_status"]');
+    if (stockStatusSelect) {
+        // Dropdown değişimini dinle
+        stockStatusSelect.addEventListener('change', function() {
+            const selectedStatus = this.value;
+            filterByStockStatus(selectedStatus);
+        });
+    }
+}
+
+// Tüm filtreleri sıfırlama fonksiyonu
+function resetAllFilters() {
+    const formData = new FormData(document.getElementById('itemsForm'));
+    
+    // Tüm filtreleri temizle
+    formData.delete('stock_status');
+    formData.delete('last_movement_date');
+    formData.delete('departman_id');
+    formData.delete('ana_grup_id');
+    formData.delete('search_term');
+    
+    // Sayfa 1'e dön
+    formData.set('page', 1);
+    
+    // Form elementlerini güncelle
+    const stockStatusSelect = document.querySelector('select[name="stock_status"]');
+    if (stockStatusSelect) stockStatusSelect.value = '';
+    
+    const lastMovementDate = document.querySelector('input[name="last_movement_date"]');
+    if (lastMovementDate) lastMovementDate.value = '';
+    
+    const searchInput = document.querySelector('input[name="search_term"]');
+    if (searchInput) searchInput.value = '';
+    
+    // API isteği
+    showLoadingToast('Filtreler sıfırlanıyor...');
+    
+    fetch('get_table_data.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Tabloyu güncelle
+            const tableContainer = document.getElementById('tableContainer');
+            if (tableContainer) {
+                tableContainer.innerHTML = data.table;
+            }
+            
+            // Sayfalama güncellemesi
+            if (data.pagination) {
+                const paginationContainer = document.querySelector('.pagination');
+                if (paginationContainer) {
+                    paginationContainer.innerHTML = data.pagination;
+                }
+            }
+            
+            // Toplam ürün sayısını güncelle
+            if (data.total_products) {
+                document.getElementById('total-products').textContent = data.total_products;
+            }
+            
+            // Event listener'ları yeniden bağla
+            initializeEventListeners();
+            initializeProductRowEvents();
+            initializePaginationEvents();
+            
+            closeLoadingToast();
+            showSuccessToast('Filtreler sıfırlandı');
+        } else {
+            throw new Error(data.message || 'Filtre sıfırlama işlemi başarısız oldu');
+        }
+    })
+    .catch(error => {
+        console.error('Filtre sıfırlama hatası:', error);
+        closeLoadingToast();
+        showErrorToast(error.message);
+    });
 }
 
 // Popup kapatma fonksiyonu
@@ -871,6 +1135,9 @@ export async function updateTableAjax(page = 1, additionalData = null) {
             initializeEventListeners();
             initializeProductRowEvents();
             initializePaginationEvents();
+            
+            // İstatistik kartlarını güncelle
+            updateStatisticCards();
         } else {
             throw new Error(data.message || 'Veriler yüklenirken bir hata oluştu');
         }
@@ -1073,7 +1340,6 @@ function toggleColumns() {
 }
 
 
-// stock_list.js içindeki event listener kısmına eklenecek
 document.addEventListener('DOMContentLoaded', function() {
     // Stok durumu değişikliğini dinle
     const stockStatusSelect = document.querySelector('select[name="stock_status"]');
@@ -1109,14 +1375,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSearch();
 	initializeColumnSelection();
 	initializeProductEventListeners();
+	initializeStockStatusFilter();
+	updateStatisticCards();
 	
-	    // Filtre butonuna event listener ekle
+	// Filtre butonuna event listener ekle
     const toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
     if (toggleFiltersBtn) {
         toggleFiltersBtn.addEventListener('click', toggleFilters);
     }
+    
+        const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', resetAllFilters);
+    }
 });
-
-window.sortTableByStock = sortTableByStock;
-window.filterByDepartment = filterByDepartment;
-window.filterByAnaGrup = filterByAnaGrup;

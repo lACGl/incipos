@@ -13,8 +13,113 @@ const API_ENDPOINTS = {
     SAVE_INVOICE_PRODUCTS: BASE_URL + 'api/save_invoice_products.php'
 };
 
-// Ürün Ekleme Modalı
+function updateRowTotalForRow(row, index) {
+    if (!row || !window.selectedProducts || !window.selectedProducts[index]) {
+        console.warn('Row veya ürün bulunamadı:', index);
+        return;
+    }
+
+    const product = window.selectedProducts[index];
+    
+    // Input değerlerini al
+    const miktarInput = row.querySelector('.miktar');
+    const birimFiyatInput = row.querySelector('.birim-fiyat');
+    const iskonto1Input = row.querySelector('.iskonto1');
+    const iskonto2Input = row.querySelector('.iskonto2');
+    const iskonto3Input = row.querySelector('.iskonto3');
+    const kdvSelect = row.querySelector('.kdv-orani');
+
+    if (!miktarInput || !birimFiyatInput) {
+        console.warn('Gerekli input alanları bulunamadı');
+        return;
+    }
+
+    const miktar = parseFloat(miktarInput.value) || 1;
+    const birimFiyat = parseFloat(birimFiyatInput.value) || 0;
+    const iskonto1 = parseFloat(iskonto1Input?.value || 0);
+    const iskonto2 = parseFloat(iskonto2Input?.value || 0);
+    const iskonto3 = parseFloat(iskonto3Input?.value || 0);
+    const kdvOrani = parseFloat(kdvSelect?.value || 0);
+
+    // Miktar kontrolü
+    if (miktar < 1) {
+        miktarInput.value = 1;
+        return updateRowTotalForRow(row, index);
+    }
+
+    // İskonto kontrolleri
+    [iskonto1Input, iskonto2Input, iskonto3Input].forEach(input => {
+        if (input) {
+            const value = parseFloat(input.value);
+            if (value < 0 || value > 100) {
+                input.value = Math.min(100, Math.max(0, value));
+            }
+        }
+    });
+
+    // Hesaplamalar
+    let araToplam = miktar * birimFiyat;
+    
+    // İskontolar
+    const iskonto1Tutar = araToplam * (iskonto1 / 100);
+    araToplam -= iskonto1Tutar;
+    
+    const iskonto2Tutar = araToplam * (iskonto2 / 100);
+    araToplam -= iskonto2Tutar;
+    
+    const iskonto3Tutar = araToplam * (iskonto3 / 100);
+    araToplam -= iskonto3Tutar;
+
+    // KDV
+    const kdvTutar = araToplam * (kdvOrani / 100);
+    const toplamTutar = araToplam + kdvTutar;
+
+    // İskonto tutarlarını göster
+    const iskonto1TutarSpan = row.querySelector('.iskonto1-tutar');
+    const iskonto2TutarSpan = row.querySelector('.iskonto2-tutar');
+    const iskonto3TutarSpan = row.querySelector('.iskonto3-tutar');
+    const kdvTutarSpan = row.querySelector('.kdv-tutar');
+
+    if (iskonto1TutarSpan) iskonto1TutarSpan.textContent = `₺${iskonto1Tutar.toFixed(2)}`;
+    if (iskonto2TutarSpan) iskonto2TutarSpan.textContent = `₺${iskonto2Tutar.toFixed(2)}`;
+    if (iskonto3TutarSpan) iskonto3TutarSpan.textContent = `₺${iskonto3Tutar.toFixed(2)}`;
+    if (kdvTutarSpan) kdvTutarSpan.textContent = `₺${kdvTutar.toFixed(2)}`;
+
+    // Toplam tutarı göster
+    const toplamHucresi = row.querySelector('.toplam-tutar');
+    if (toplamHucresi) {
+        toplamHucresi.textContent = `₺${toplamTutar.toFixed(2)}`;
+    }
+
+    // selectedProducts array'ini güncelle
+    window.selectedProducts[index] = {
+        ...product,
+        miktar: miktar,
+        birim_fiyat: birimFiyat,
+        iskonto1: iskonto1,
+        iskonto2: iskonto2,
+        iskonto3: iskonto3,
+        kdv_orani: kdvOrani,
+        toplam: toplamTutar
+    };
+
+    console.log('Satır güncellendi:', index, window.selectedProducts[index]);
+}
+
+// 2. GELİŞTİRİLMİŞ LocalStorage KORUMA SİSTEMİ
+
+// Modal durumunu takip etmek için global değişken
+window.currentFaturaId = null;
+window.isModalOpen = false;
+
+// Orijinal addProducts fonksiyonunu güncelle
 window.addProducts = function(faturaId) {
+    // Global değişkenleri ayarla
+    window.currentFaturaId = faturaId;
+    window.isModalOpen = true;
+    
+    console.log('🚀 Modal açılıyor, fatura ID:', faturaId);
+    
     // Önce mevcut ürünleri yükle, sonra modalı aç
     loadExistingProducts(faturaId).then(() => {
         Swal.fire({
@@ -74,23 +179,25 @@ window.addProducts = function(faturaId) {
             denyButtonText: 'Faturayı Bitir',
             cancelButtonText: 'İptal',
             denyButtonColor: '#10B981',
+            allowOutsideClick: false, // ✅ Dışarı tıklayarak kapatmayı engelle
+            allowEscapeKey: false,     // ✅ ESC ile kapatmayı engelle
+            
             didOpen: async () => {
                 try {
-                    // Local storage'dan önceki verileri yükle
-                    const savedData = localStorage.getItem(`fatura_${faturaId}_products`);
-                    if (savedData) {
-                        window.selectedProducts = JSON.parse(savedData);
-                    }
-
+                    console.log('📂 Modal açıldı, ürünler yükleniyor...');
+                    
+                    // LocalStorage'dan önceki verileri yükle
+                    loadProductsFromLocalStorage(faturaId);
+            
                     // Ürün arama fonksiyonunu başlat
                     initializeProductSearch(faturaId);
-
+            
                     // Ürünleri tabloya yükle
                     updateProductTable();
-
+            
                     // Genel toplamı güncelle
                     updateInvoiceTotal();
-
+            
                     // Enter tuşu ile arama için event listener
                     document.getElementById('barkodSearch').addEventListener('keypress', function(e) {
                         if (e.key === 'Enter') {
@@ -102,62 +209,80 @@ window.addProducts = function(faturaId) {
                         }
                     });
 
-                    console.log('Modal açıldı, mevcut ürünler:', window.selectedProducts);
+                    // Otomatik kayıt sistemi başlat
+                    startAutoSave(faturaId);
+            
+                    console.log('✅ Modal başarıyla açıldı, mevcut ürünler:', window.selectedProducts?.length || 0);
                 } catch (error) {
-                    console.error('Modal açılırken hata:', error);
+                    console.error('❌ Modal açılırken hata:', error);
                     Swal.showValidationMessage(`Hata: ${error.message}`);
                 }
             },
+            
             willClose: () => {
-                // Modal kapanmadan önce verileri local storage'a kaydet
-                if (window.selectedProducts?.length) {
-                    localStorage.setItem(`fatura_${faturaId}_products`, JSON.stringify(window.selectedProducts));
+                console.log('🚪 Modal kapanıyor...');
+                window.isModalOpen = false;
+                
+                // ✅ Modal kapanmadan önce MUTLAKA verileri kaydet
+                if (window.selectedProducts?.length && window.currentFaturaId) {
+                    saveProductsToLocalStorage(window.currentFaturaId);
+                    console.log('💾 Modal kapanırken veriler korundu:', window.selectedProducts.length);
                 }
             },
+            
             preConfirm: async () => {
                 try {
                     if (!window.selectedProducts?.length) {
                         throw new Error('Lütfen en az bir ürün ekleyin');
                     }
-                    console.log('Kaydedilecek ürünler:', window.selectedProducts);
+                    console.log('💾 KAYDET: Ürünler kaydediliyor...', window.selectedProducts.length);
                     return await saveProducts(faturaId, false);
                 } catch (error) {
-                    console.error('Kaydetme hatası:', error);
+                    console.error('❌ Kaydetme hatası:', error);
                     Swal.showValidationMessage(`Hata: ${error.message}`);
                     return false;
                 }
             },
+            
             preDeny: async () => {
                 try {
                     if (!window.selectedProducts?.length) {
                         throw new Error('Lütfen en az bir ürün ekleyin');
                     }
-                    console.log('Fatura tamamlanıyor, ürünler:', window.selectedProducts);
+                    console.log('✅ FATURAY BİTİR: Fatura tamamlanıyor...', window.selectedProducts.length);
                     return await saveProducts(faturaId, true);
                 } catch (error) {
-                    console.error('Fatura tamamlama hatası:', error);
+                    console.error('❌ Fatura tamamlama hatası:', error);
                     Swal.showValidationMessage(`Hata: ${error.message}`);
                     return false;
                 }
             }
         }).then((result) => {
+            console.log('🔄 Modal sonucu:', result);
+            
+            if (result.isConfirmed) {
+                // KAYDET butonu basıldı
+                clearProductsFromLocalStorage(faturaId);
+                showSuccessMessage('Ürünler kaydedildi. Faturaya devam edebilirsiniz.');
+            } else if (result.isDenied) {
+                // FATURAY BİTİR butonu basıldı
+                clearProductsFromLocalStorage(faturaId);
+                showSuccessMessage('Fatura tamamlandı ve aktarım bekliyor!');
+            } else if (result.isDismissed) {
+                // İPTAL - Bu artık sadece programatik olarak çağrılabilir
+                if (window.selectedProducts?.length) {
+                    saveProductsToLocalStorage(faturaId);
+                    showInfoMessage(`${window.selectedProducts.length} ürün geçici olarak kaydedildi.`);
+                }
+            }
+            
+            // Modal kapandıktan sonra sayfayı yenile
             if (result.isConfirmed || result.isDenied) {
-                // Başarılı işlem sonrası local storage'ı temizle
-                localStorage.removeItem(`fatura_${faturaId}_products`);
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Başarılı!',
-                    text: result.isDenied ? 'Fatura tamamlandı' : 'Fatura kaydedildi',
-                    showConfirmButton: false,
-                    timer: 1500
-                }).then(() => {
-                    location.reload();
-                });
+                setTimeout(() => location.reload(), 1500);
             }
         });
     }).catch(error => {
-        console.error('Ürünler yüklenirken hata:', error);
+        console.error('❌ Ürünler yüklenirken hata:', error);
         Swal.fire({
             icon: 'error',
             title: 'Hata!',
@@ -165,6 +290,68 @@ window.addProducts = function(faturaId) {
         });
     });
 };
+
+// 4. OTOMATIK KAYIT SİSTEMİ
+function startAutoSave(faturaId) {
+    // Her 30 saniyede bir otomatik kaydet
+    const autoSaveInterval = setInterval(() => {
+        if (window.isModalOpen && window.selectedProducts?.length) {
+            saveProductsToLocalStorage(faturaId);
+            console.log('🔄 Otomatik kayıt yapıldı:', new Date().toLocaleTimeString());
+        } else {
+            clearInterval(autoSaveInterval);
+        }
+    }, 30000); // 30 saniye
+
+    // Modal kapandığında interval'ı temizle
+    window.autoSaveInterval = autoSaveInterval;
+}
+
+// 3. GELİŞTİRİLMİŞ ÜRÜN BULUNAMADI MODAL İŞLEYİCİSİ
+async function handleProductNotFound(searchTerm, faturaId) {
+    // ÖNEMLİ: Önce mevcut ürünleri localStorage'a kaydet
+    if (window.selectedProducts?.length) {
+        saveProductsToLocalStorage(faturaId);
+        console.log('💾 Ürün bulunamadı - Mevcut ürünler korundu:', window.selectedProducts.length);
+    }
+    
+    return new Promise((resolve) => {
+        Swal.fire({
+            title: 'Ürün Bulunamadı',
+            html: `
+                <div class="text-center mb-4">
+                    <div class="text-6xl mb-4">🔍</div>
+                    <p class="text-lg mb-2">"<strong>${searchTerm}</strong>" için sonuç bulunamadı</p>
+                    <p class="text-sm text-gray-600 mb-4">
+                        ${window.selectedProducts?.length || 0} ürün geçici olarak korunuyor
+                    </p>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: '✅ Yeni Ürün Ekle',
+            denyButtonText: '📦 Toplu İçe Aktar', 
+            cancelButtonText: '🔙 Geri Dön',
+            confirmButtonColor: '#3b82f6',
+            denyButtonColor: '#8b5cf6',
+            cancelButtonColor: '#6b7280',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // YENİ ÜRÜN EKLE
+                openNewProductModal(searchTerm, faturaId).then(() => resolve('new_product'));
+            } else if (result.isDenied) {
+                // TOPLU İÇE AKTAR
+                openBulkImportModal(faturaId).then(() => resolve('bulk_import'));
+            } else {
+                // GERİ DÖN - Ana modalı tekrar aç
+                resolve('back');
+            }
+        });
+    });
+}
 
 // Yeni ekle fonksiyonu - window objesine ekle
 window.handleAddProduct = function(button) {
@@ -188,10 +375,9 @@ window.addToInvoiceFromSearch = function(product) {
         window.selectedProducts = [];
     }
 
-    // Barkod'a göre kontrol et
+    // Barkod'a göre kontrol et (aynı ürün var mı?)
     const existingProduct = window.selectedProducts.find(p => p.barkod === product.barkod);
     if (existingProduct) {
-        // Ürün zaten ekliyse hata mesajı göster
         Swal.fire({
             icon: 'warning',
             title: 'Uyarı',
@@ -205,22 +391,27 @@ window.addToInvoiceFromSearch = function(product) {
     }
 
     // Yeni ürünü ekle
-    window.selectedProducts.push({
+    const newProduct = {
         id: product.id,
         urun_id: product.urun_id || product.id,
         kod: product.kod || '-',
         barkod: product.barkod,
         ad: product.ad,
         miktar: 1,
-        birim_fiyat: parseFloat(product.alis_fiyati || product.satis_fiyati),
+        birim_fiyat: parseFloat(product.alis_fiyati || product.satis_fiyati || 0),
         iskonto1: 0,
         iskonto2: 0,
         iskonto3: 0,
         kdv_orani: parseFloat(product.kdv_orani || 0),
-        toplam: parseFloat(product.alis_fiyati || product.satis_fiyati)
-    });
+        toplam: parseFloat(product.alis_fiyati || product.satis_fiyati || 0)
+    };
 
-    // Tabloyu güncelle
+    window.selectedProducts.push(newProduct);
+
+    console.log('Ürün eklendi:', newProduct);
+    console.log('Güncel ürün listesi:', window.selectedProducts);
+
+    // Tabloyu güncelle (otomatik kaydetme dahil)
     updateProductTable();
     
     // Arama kutusunu temizle ve odaklan
@@ -228,6 +419,12 @@ window.addToInvoiceFromSearch = function(product) {
     if (searchInput) {
         searchInput.value = '';
         searchInput.focus();
+    }
+
+    // Arama sonuçlarını temizle
+    const searchResults = document.getElementById('searchResults');
+    if (searchResults) {
+        searchResults.innerHTML = '';
     }
 };
 
@@ -662,13 +859,12 @@ function displaySearchResults(products) {
     
     // Arama sonuçlarından seçili ürünleri filtrele
     const filteredProducts = products.filter(product => 
-        !selectedBarkods.includes(product.barkod) // barkod'a göre kontrol
+        !selectedBarkods.includes(product.barkod)
     );
 
     const searchResults = document.getElementById('searchResults');
     if (!searchResults) return;
 
-    // Eğer filtreleme sonrası hiç ürün kalmadıysa
     if (filteredProducts.length === 0) {
         searchResults.innerHTML = '<div class="text-center py-4 text-gray-500">Uygun ürün bulunamadı</div>';
         return;
@@ -709,6 +905,7 @@ function displaySearchResults(products) {
 
     searchResults.innerHTML = html;
 }
+
 function fixDecimal(value) {
     if (typeof value === 'string') {
         return parseFloat(value.replace(',', '.'));
@@ -754,12 +951,117 @@ async function saveProducts(faturaId, isComplete) {
             throw new Error(data.message || 'Bir hata oluştu');
         }
 
+        // ✅ Başarılı kayıt sonrası localStorage'ı temizle
+        clearProductsFromLocalStorage(faturaId);
+
         return data;
     } catch (error) {
         Swal.showValidationMessage(error.message);
         return false;
     }
 }
+
+// 9. LocalStorage Yönetim Paneli (Debug için)
+function createLocalStorageManager() {
+    const allKeys = Object.keys(localStorage);
+    const faturaKeys = allKeys.filter(key => key.startsWith('fatura_') && key.endsWith('_temp_products'));
+    
+    if (faturaKeys.length === 0) {
+        return '<p class="text-gray-500">Geçici veri yok</p>';
+    }
+
+    let html = '<div class="space-y-2">';
+    faturaKeys.forEach(key => {
+        const data = JSON.parse(localStorage.getItem(key));
+        const faturaId = key.match(/fatura_(\d+)_temp_products/)[1];
+        const timeAgo = Math.round((Date.now() - data.timestamp) / 1000 / 60);
+        
+        html += `
+            <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <div>
+                    <strong>Fatura ${faturaId}</strong>
+                    <span class="text-sm text-gray-600">(${data.count} ürün, ${timeAgo} dk önce)</span>
+                </div>
+                <button onclick="clearProductsFromLocalStorage('${faturaId}')" 
+                        class="text-red-600 hover:text-red-800 text-sm">
+                    Sil
+                </button>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    return html;
+}
+
+// 10. LocalStorage durumunu gösteren fonksiyon
+function showLocalStorageStatus() {
+    Swal.fire({
+        title: 'Geçici Veriler',
+        html: createLocalStorageManager(),
+        width: '500px',
+        confirmButtonText: 'Kapat'
+    });
+}
+
+// 11. Test senaryoları
+function testLocalStorageProtection() {
+    console.log('🧪 LocalStorage Koruma Sistemi Testi');
+    
+    // Test 1: Ürün ekleme ve otomatik kayıt
+    window.selectedProducts = [
+        {
+            id: 1,
+            barkod: 'TEST123',
+            ad: 'Test Ürün',
+            miktar: 2,
+            birim_fiyat: 10.50,
+            toplam: 21.00
+        }
+    ];
+    
+    saveProductsToLocalStorage('999');
+    console.log('✅ Test 1: Otomatik kayıt');
+    
+    // Test 2: Veri yükleme
+    window.selectedProducts = [];
+    const loaded = loadProductsFromLocalStorage('999');
+    console.log('✅ Test 2: Veri yükleme:', loaded ? 'BAŞARILI' : 'BAŞARISIZ');
+    
+    // Test 3: Temizleme
+    clearProductsFromLocalStorage('999');
+    const loadedAfterClear = loadProductsFromLocalStorage('999');
+    console.log('✅ Test 3: Temizleme:', !loadedAfterClear ? 'BAŞARILI' : 'BAŞARISIZ');
+    
+    console.log('🎯 LocalStorage koruma sistemi test tamamlandı!');
+}
+
+// 12. Kullanıcı bildirimleri için helper
+function showProtectionNotification(action, count) {
+    const messages = {
+        'saved': `💾 ${count} ürün geçici olarak korunuyor`,
+        'loaded': `📂 ${count} ürün geri yüklendi`,
+        'cleared': `🗑️ Geçici veriler temizlendi`
+    };
+    
+    Swal.fire({
+        text: messages[action],
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        icon: 'info'
+    });
+}
+
+// 13. Modal kapanma olayını izle ve veri koru
+window.addEventListener('beforeunload', function(e) {
+    // Sayfa kapanmadan önce kontrolü
+    if (window.selectedProducts && window.selectedProducts.length > 0 && window.currentFaturaId) {
+        saveProductsToLocalStorage(window.currentFaturaId);
+        console.log('🔒 Sayfa kapanıyor, veriler korundu');
+    }
+});
 
 // Form submit işleyicisi
 document.getElementById('addProductForm')?.addEventListener('submit', function(e) {
@@ -805,39 +1107,59 @@ function addToInvoice(product) {
 // Ürün tablosunu güncelleme fonksiyonu
 function updateProductTable() {
     const tableBody = document.getElementById('productTableBody');
-    if (!tableBody) return;
+    if (!tableBody) {
+        console.error('Product table body bulunamadı');
+        return;
+    }
 
-    // Clear existing rows
+    console.log('Tablo güncelleniyor, ürün sayısı:', window.selectedProducts?.length || 0);
+
+    // Eğer ürün yoksa boş tablo göster
+    if (!window.selectedProducts || window.selectedProducts.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="11" class="px-4 py-8 text-center text-gray-500">
+                    Henüz ürün eklenmemiş. Yukarıdaki arama kutusunu kullanarak ürün ekleyebilirsiniz.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Ürünleri tabloya ekle VE otomatik kaydet
     tableBody.innerHTML = window.selectedProducts.map((product, index) => `
-        <tr>
+        <tr data-index="${index}">
             <td class="px-4 py-2">${product.kod || '-'}</td>
             <td class="px-4 py-2">${product.barkod || '-'}</td>
             <td class="px-4 py-2">${product.ad || '-'}</td>
             <td class="px-4 py-2">
                 <input type="number" 
-                       class="miktar border rounded px-2 py-1 w-20" 
+                       class="miktar border rounded px-2 py-1 w-20 text-center" 
                        value="${product.miktar || 1}" 
                        min="1" 
                        step="1" 
-                       onchange="updateRowTotal(this)">
+                       onchange="updateRowTotal(this); autoSaveCurrentProducts();"
+                       data-index="${index}">
             </td>
             <td class="px-4 py-2">
                 <input type="number" 
-                       class="birim-fiyat border rounded px-2 py-1 w-24" 
+                       class="birim-fiyat border rounded px-2 py-1 w-24 text-right" 
                        value="${product.birim_fiyat || 0}" 
                        min="0.01" 
                        step="0.01" 
-                       onchange="updateRowTotal(this)">
+                       onchange="updateRowTotal(this); autoSaveCurrentProducts();"
+                       data-index="${index}">
             </td>
             <td class="px-4 py-2">
                 <div class="flex flex-col">
                     <input type="number" 
-                           class="iskonto1 border rounded px-2 py-1 w-16" 
+                           class="iskonto1 border rounded px-2 py-1 w-16 text-right" 
                            value="${product.iskonto1 || 0}" 
                            min="0" 
                            max="100" 
                            step="1" 
-                           onchange="updateRowTotal(this)"
+                           onchange="updateRowTotal(this); autoSaveCurrentProducts();"
+                           data-index="${index}"
                            oninput="this.value = Math.floor(this.value)">
                     <div class="iskonto1-tutar text-xs text-green-600 mt-1">₺0.00</div>
                 </div>
@@ -845,12 +1167,13 @@ function updateProductTable() {
             <td class="px-4 py-2">
                 <div class="flex flex-col">
                     <input type="number" 
-                           class="iskonto2 border rounded px-2 py-1 w-16" 
+                           class="iskonto2 border rounded px-2 py-1 w-16 text-right" 
                            value="${product.iskonto2 || 0}" 
                            min="0" 
                            max="100" 
                            step="1" 
-                           onchange="updateRowTotal(this)"
+                           onchange="updateRowTotal(this); autoSaveCurrentProducts();"
+                           data-index="${index}"
                            oninput="this.value = Math.floor(this.value)">
                     <div class="iskonto2-tutar text-xs text-green-600 mt-1">₺0.00</div>
                 </div>
@@ -858,19 +1181,21 @@ function updateProductTable() {
             <td class="px-4 py-2">
                 <div class="flex flex-col">
                     <input type="number" 
-                           class="iskonto3 border rounded px-2 py-1 w-16" 
+                           class="iskonto3 border rounded px-2 py-1 w-16 text-right" 
                            value="${product.iskonto3 || 0}" 
                            min="0" 
                            max="100" 
                            step="1" 
-                           onchange="updateRowTotal(this)"
+                           onchange="updateRowTotal(this); autoSaveCurrentProducts();"
+                           data-index="${index}"
                            oninput="this.value = Math.floor(this.value)">
                     <div class="iskonto3-tutar text-xs text-green-600 mt-1">₺0.00</div>
                 </div>
             </td>
             <td class="px-4 py-2">
                 <div class="flex flex-col">
-                    <select class="kdv-orani border rounded px-2 py-1 w-16" onchange="updateRowTotal(this)">
+                    <select class="kdv-orani border rounded px-2 py-1 w-16 text-right" 
+                            onchange="updateRowTotal(this); autoSaveCurrentProducts();" data-index="${index}">
                         <option value="0" ${product.kdv_orani === 0 ? 'selected' : ''}>0</option>
                         <option value="10" ${product.kdv_orani === 10 ? 'selected' : ''}>10</option>
                         <option value="20" ${product.kdv_orani === 20 ? 'selected' : ''}>20</option>
@@ -878,9 +1203,9 @@ function updateProductTable() {
                     <div class="kdv-tutar text-xs text-green-600 mt-1">₺0.00</div>
                 </div>
             </td>
-            <td class="px-4 py-2 text-right toplam-tutar">₺${(product.miktar * product.birim_fiyat).toFixed(2)}</td>
+            <td class="px-4 py-2 text-right toplam-tutar">₺${(product.toplam || 0).toFixed(2)}</td>
             <td class="px-4 py-2">
-                <button onclick="removeProduct(this)" class="text-red-600 hover:text-red-800">
+                <button onclick="removeProductByIndex(${index}); autoSaveCurrentProducts();" class="text-red-600 hover:text-red-800">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -890,17 +1215,20 @@ function updateProductTable() {
         </tr>
     `).join('');
 
-    // Tablodan sonra toplam
-    const table = tableBody.closest('table');
-    const existingTfoot = table.querySelector('tfoot');
-    if (existingTfoot) {
-        existingTfoot.remove();
-    }
+    // Her satır için toplam hesapla
+    window.selectedProducts.forEach((product, index) => {
+        const row = tableBody.querySelector(`tr[data-index="${index}"]`);
+        if (row) {
+            updateRowTotalForRow(row, index);
+        }
+    });
 
-    // Toplamları güncelle
+    // Genel toplamı güncelle
     updateInvoiceTotal();
+    
+    // Otomatik kaydet
+    autoSaveCurrentProducts();
 }
-
 // Miktar güncelleme
 window.updateQuantity = function(index, value) {
     const quantity = parseInt(value) || 1;
@@ -921,11 +1249,53 @@ window.updatePrice = function(index, value) {
     updateProductTable();
 };
 
+window.removeProductByIndex = function(index) {
+    if (window.selectedProducts && window.selectedProducts[index]) {
+        window.selectedProducts.splice(index, 1);
+        updateProductTable();
+        updateInvoiceTotal();
+        
+        // Otomatik kaydet
+        autoSaveCurrentProducts();
+        
+        console.log('🗑️ Ürün silindi, kalan:', window.selectedProducts.length);
+    }
+};
+
+window.updateRowTotal = function(element) {
+    const index = parseInt(element.getAttribute('data-index'));
+    const row = element.closest('tr');
+    
+    updateRowTotalForRow(row, index);
+    updateInvoiceTotal();
+    
+    // Otomatik kaydet
+    autoSaveCurrentProducts();
+};
+
 // Ürün silme
 window.removeProduct = function(index) {
     window.selectedProducts.splice(index, 1);
     updateProductTable();
 };
+
+// 14. Klavye kısayolları
+document.addEventListener('keydown', function(e) {
+    // Ctrl+S: Otomatik kayıt
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        if (window.currentFaturaId && window.selectedProducts?.length) {
+            autoSaveCurrentProducts();
+            showProtectionNotification('saved', window.selectedProducts.length);
+        }
+    }
+    
+    // Ctrl+Shift+L: LocalStorage durumunu göster
+    if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+        e.preventDefault();
+        showLocalStorageStatus();
+    }
+});
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
@@ -948,15 +1318,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-
 async function loadExistingProducts(faturaId) {
     try {
-        const response = await fetch(`${API_ENDPOINTS.GET_INVOICE_PRODUCTS}?id=${faturaId}`);
+        console.log('Fatura ürünleri yükleniyor, fatura ID:', faturaId);
+        
+        // İlk önce localStorage'dan kontrol et
+        const hasLocalData = loadProductsFromLocalStorage(faturaId);
+        if (hasLocalData) {
+            console.log('✅ LocalStorage\'dan ürünler yüklendi:', window.selectedProducts.length);
+            return;
+        }
+        
+        // LocalStorage'da veri yoksa veritabanından yükle
+        const response = await fetch(`api/get_invoice_products.php?id=${faturaId}`);
+        
+        if (!response.ok) {
+            console.error('HTTP Error:', response.status, response.statusText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
         
-        if (result.success) {
+        if (result.success && result.products && result.products.length > 0) {
+            // Veritabanından gelen ürünleri window.selectedProducts'a yükle
             window.selectedProducts = result.products.map(product => ({
-                ...product,
+                id: product.urun_id || product.id,
+                urun_id: product.urun_id || product.id,
+                kod: product.kod || '-',
+                barkod: product.barkod,
+                ad: product.ad,
                 miktar: parseFloat(product.miktar) || 1,
                 birim_fiyat: parseFloat(product.birim_fiyat) || 0,
                 iskonto1: parseFloat(product.iskonto1) || 0,
@@ -966,11 +1356,17 @@ async function loadExistingProducts(faturaId) {
                 toplam: parseFloat(product.toplam_tutar) || 0
             }));
             
-            // Debug için
-            console.log('Yüklenen ürünler:', window.selectedProducts);
+            console.log('✅ Veritabanından yüklenen ürünler:', window.selectedProducts.length);
+            
+            // Veritabanından yüklenen ürünleri localStorage'a da kaydet
+            saveProductsToLocalStorage(faturaId);
+        } else {
+            window.selectedProducts = [];
+            console.log('ℹ️ Veritabanında ürün yok');
         }
     } catch (error) {
         console.error('Ürünler yüklenirken hata:', error);
+        window.selectedProducts = [];
     }
 }
 
@@ -1899,29 +2295,42 @@ async function searchProducts(term, faturaId) {
         const data = await response.json();
 
         if (!data.success || data.products.length === 0) {
-            // Ürün bulunamadığında
+            // ÖNEMLİ: Önce mevcut ürünleri localStorage'a kaydet
+            autoSaveCurrentProducts();
+            
+            // ÜRÜN BULUNAMADIĞINDA - GELİŞTİRİLMİŞ MODAL
             Swal.fire({
                 title: 'Ürün Bulunamadı',
-                text: 'Bu barkod veya isimle eşleşen ürün bulunamadı. Yeni ürün eklemek ister misiniz?',
+                html: `
+                    <div class="text-center mb-4">
+                        <div class="text-6xl mb-4">🔍</div>
+                        <p class="text-lg mb-2">"<strong>${term}</strong>" için sonuç bulunamadı</p>
+                        <p class="text-sm text-gray-600 mb-4">
+                            ${window.selectedProducts?.length || 0} ürün geçici olarak korunuyor
+                        </p>
+                    </div>
+                `,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Evet, Yeni Ürün Ekle',
-                cancelButtonText: 'Hayır, İptal',
+                showDenyButton: true,
+                confirmButtonText: '✅ Yeni Ürün Ekle',
+                denyButtonText: '📦 Toplu İçe Aktar', 
+                cancelButtonText: '❌ İptal',
+                confirmButtonColor: '#3b82f6',
+                denyButtonColor: '#8b5cf6',
+                cancelButtonColor: '#6b7280',
+                allowOutsideClick: false, // Dışa tıklayınca kapanmasın
+                allowEscapeKey: false     // ESC ile kapanmasın
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // stock_list_process.js'deki addProduct fonksiyonunu kullan
-                    import('./stock_list_process.js')
-                        .then(module => {
-                            module.addProduct({
-                                initialBarkod: term,
-                                onSave: (newProductData) => {
-                                    // Ürün başarıyla eklendiğinde, direkt faturaya ekle
-                                    if (newProductData && newProductData.success) {
-                                        addToInvoice(newProductData.data);
-                                    }
-                                }
-                            });
-                        });
+                    // YENİ ÜRÜN EKLE - Ana modalı GİZLE, geri dön
+                    openNewProductModal(term, faturaId);
+                } else if (result.isDenied) {
+                    // TOPLU İÇE AKTAR - Ana modalı GİZLE, geri dön
+                    openBulkImportModal(faturaId);
+                } else {
+                    // İPTAL - Ana modalı tekrar aç
+                    reopenMainModalWithLocalStorage(faturaId);
                 }
             });
             return;
@@ -1930,6 +2339,7 @@ async function searchProducts(term, faturaId) {
         // Eğer ürün bulunduysa, direkt olarak faturaya ekle
         if (data.products.length === 1) {
             addToInvoice(data.products[0]);
+            autoSaveCurrentProducts(); // Otomatik kaydet
         } else {
             // Birden fazla ürün bulunduysa liste göster
             displaySearchResults(data.products, faturaId);
@@ -1945,6 +2355,257 @@ async function searchProducts(term, faturaId) {
     }
 }
 
+// 1. LocalStorage'a otomatik kaydetme fonksiyonu
+function autoSaveCurrentProducts() {
+    // Modal içindeki faturaId'yi al
+    const faturaIdInput = document.querySelector('input[name="fatura_id"]');
+    if (faturaIdInput && faturaIdInput.value && window.selectedProducts) {
+        const faturaId = faturaIdInput.value;
+        saveProductsToLocalStorage(faturaId);
+        console.log('🔄 Otomatik kayıt yapıldı:', window.selectedProducts.length, 'ürün');
+    }
+}
+
+// 2. LocalStorage'a ürünleri kaydetme fonksiyonu
+function saveProductsToLocalStorage(faturaId) {
+    if (window.selectedProducts && window.selectedProducts.length > 0) {
+        const storageKey = `fatura_${faturaId}_temp_products`;
+        const dataToSave = {
+            products: window.selectedProducts,
+            timestamp: Date.now(),
+            count: window.selectedProducts.length
+        };
+        localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+        console.log('💾 LocalStorage\'a kaydedildi:', storageKey, dataToSave.count, 'ürün');
+    }
+}
+
+// 3. LocalStorage'dan ürünleri yükleme fonksiyonu
+function loadProductsFromLocalStorage(faturaId) {
+    const storageKey = `fatura_${faturaId}_temp_products`;
+    const savedData = localStorage.getItem(storageKey);
+    
+    if (savedData) {
+        try {
+            const parsedData = JSON.parse(savedData);
+            window.selectedProducts = parsedData.products || [];
+            console.log('📂 LocalStorage\'dan yüklendi:', parsedData.count, 'ürün');
+            return true;
+        } catch (error) {
+            console.error('LocalStorage verisi ayrıştırılamadı:', error);
+            window.selectedProducts = [];
+            return false;
+        }
+    }
+    
+    window.selectedProducts = [];
+    return false;
+}
+
+// 4. LocalStorage temizleme fonksiyonu
+function clearProductsFromLocalStorage(faturaId) {
+    const storageKey = `fatura_${faturaId}_temp_products`;
+    localStorage.removeItem(storageKey);
+    console.log('🗑️ LocalStorage temizlendi:', storageKey);
+}
+
+// 6. Yeni ürün modalı - Ana modalı geçici kapatır
+function openNewProductModal(initialBarkod, faturaId) {
+    // Ana modalı gizle (kapat değil)
+    const currentModal = document.querySelector('.swal2-container');
+    if (currentModal) {
+        currentModal.style.display = 'none';
+    }
+
+    // Yeni ürün ekleme modalını aç
+    if (typeof window.StockListProcessModule !== 'undefined' && window.StockListProcessModule.addProduct) {
+        window.StockListProcessModule.addProduct({
+            initialBarkod: initialBarkod,
+            onSave: (newProductData) => {
+                handleNewProductAdded(newProductData, initialBarkod, faturaId, currentModal);
+            }
+        });
+    } else {
+        console.error('StockListProcessModule bulunamadı');
+        // Fallback olarak ana modalı tekrar göster
+        showMainModalAgain(currentModal, faturaId);
+    }
+}
+
+// 7. Yeni ürün eklendikten sonra işlemleri yönet
+function handleNewProductAdded(newProductData, initialBarkod, faturaId, hiddenModal) {
+    if (newProductData && newProductData.success) {
+        // LocalStorage'dan mevcut ürünleri yükle
+        loadProductsFromLocalStorage(faturaId);
+        
+        // Yeni ürünü faturaya eklemek için formatla
+        const productForInvoice = {
+            id: newProductData.urun_id,
+            urun_id: newProductData.urun_id,
+            kod: newProductData.kod || initialBarkod,
+            barkod: initialBarkod,
+            ad: newProductData.ad || 'Yeni Ürün',
+            miktar: 1,
+            birim_fiyat: parseFloat(newProductData.alis_fiyati || 0),
+            iskonto1: 0,
+            iskonto2: 0,
+            iskonto3: 0,
+            kdv_orani: parseFloat(newProductData.kdv_orani || 0),
+            toplam: parseFloat(newProductData.alis_fiyati || 0)
+        };
+        
+        // Mevcut ürün listesini kontrol et
+        if (!window.selectedProducts) {
+            window.selectedProducts = [];
+        }
+        
+        // Aynı barkodlu ürün var mı kontrol et
+        const existingProduct = window.selectedProducts.find(p => p.barkod === productForInvoice.barkod);
+        if (!existingProduct) {
+            // Yeni ürünü listeye ekle
+            window.selectedProducts.push(productForInvoice);
+            
+            // Güncellenen listeyi localStorage'a kaydet
+            saveProductsToLocalStorage(faturaId);
+            
+            console.log('Yeni ürün faturaya eklendi:', productForInvoice);
+        } else {
+            console.log('Bu barkodlu ürün zaten listede mevcut');
+        }
+        
+        // Başarı mesajını göster
+        Swal.fire({
+            icon: 'success',
+            title: 'Başarılı!',
+            text: 'Ürün eklendi ve faturaya aktarıldı',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+        });
+    } else {
+        console.error('Ürün ekleme başarısız:', newProductData);
+    }
+    
+    // Ana modalı tekrar göster ve güncelle
+    showMainModalAgain(hiddenModal, faturaId);
+}
+
+// 8. Ana modalı geri yükle ve güncelle
+function showMainModalAgain(hiddenModal, faturaId) {
+    if (hiddenModal) {
+        // Modalı tekrar göster
+        hiddenModal.style.display = 'flex';
+        
+        // Güncel verileri localStorage'dan yükle
+        loadProductsFromLocalStorage(faturaId);
+        
+        // Tabloyu güncelle
+        updateProductTable();
+        updateInvoiceTotal();
+        
+        // Arama kutusunu temizle ve odaklan
+        const searchInput = hiddenModal.querySelector('#barkodSearch');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+        }
+        
+        // Arama sonuçlarını temizle
+        const searchResults = hiddenModal.querySelector('#searchResults');
+        if (searchResults) {
+            searchResults.innerHTML = '';
+        }
+        
+        console.log('Ana modal geri yüklendi, güncel ürün listesi:', window.selectedProducts);
+    }
+}
+
+// 9. LocalStorage ile ana modalı tekrar açma fonksiyonu
+function reopenMainModalWithLocalStorage(faturaId) {
+    // LocalStorage'dan ürünleri yükle
+    loadProductsFromLocalStorage(faturaId);
+    
+    // Ana modalı tekrar aç
+    window.addProducts(faturaId);
+}
+
+// 10. Bulk import modalı
+function openBulkImportModal(faturaId) {
+    // Ana modalı gizle
+    const currentModal = document.querySelector('.swal2-container');
+    if (currentModal) {
+        currentModal.style.display = 'none';
+    }
+
+    // Bulk import modalını aç
+    Swal.fire({
+        title: 'Toplu Ürün İçe Aktarma',
+        html: `
+            <div class="text-left">
+                <p class="mb-4">Excel dosyasından veya HTML formatında ürünleri toplu olarak içe aktarabilirsiniz.</p>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <input type="file" id="bulkImportFile" accept=".xlsx,.xls,.csv" class="hidden">
+                    <button onclick="document.getElementById('bulkImportFile').click()" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        📁 Dosya Seç
+                    </button>
+                    <p class="text-sm text-gray-500 mt-2">Excel (.xlsx, .xls) veya CSV dosyası seçin</p>
+                </div>
+                <p class="text-xs text-gray-500 mt-4">
+                    💾 ${window.selectedProducts?.length || 0} ürün geçici olarak korunuyor
+                </p>
+            </div>
+        `,
+        width: '500px',
+        showCancelButton: true,
+        confirmButtonText: 'İçe Aktar',
+        cancelButtonText: 'İptal',
+        didOpen: () => {
+            document.getElementById('bulkImportFile').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    console.log('Seçilen dosya:', file.name);
+                }
+            });
+        },
+        preConfirm: () => {
+            const fileInput = document.getElementById('bulkImportFile');
+            if (!fileInput.files.length) {
+                Swal.showValidationMessage('Lütfen bir dosya seçin');
+                return false;
+            }
+            
+            // Burada dosya işleme kodunu ekle
+            Swal.fire({
+                icon: 'info',
+                title: 'Geliştirme Aşamasında',
+                text: 'Toplu içe aktarma özelliği henüz geliştirilmekte',
+                timer: 3000
+            });
+            return true;
+        }
+    }).then((result) => {
+        // Modal kapandığında ana modalı tekrar göster
+        showMainModalAgain(currentModal, faturaId);
+    });
+}
+
+// 13. Modal kapatılırken veya başarılı işlem sonrası temizlik
+function clearLocalStorageAfterSuccess(faturaId) {
+    clearProductsFromLocalStorage(faturaId);
+    Swal.fire({
+        icon: 'success',
+        title: 'Başarılı!',
+        text: 'İşlem tamamlandı, geçici veriler temizlendi',
+        timer: 2000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false
+    });
+}
+
+console.log('🔒 LocalStorage koruma sistemi yüklendi!');
 
 async function loadInvoiceProducts(faturaId) {
     try {
@@ -3122,3 +3783,28 @@ function updateInvoiceTotal() {
 
     return genelToplam;
 }
+
+// 15. Sistem başlangıç mesajı
+console.log(`
+🔒 LocalStorage Koruma Sistemi Aktif!
+
+📋 Özellikler:
+- Otomatik veri koruma
+- Modal kapatma koruması  
+- Ürün bulunamadı koruması
+- Sayfa yenileme koruması
+
+⌨️ Kısayollar:
+- Ctrl+S: Manuel kayıt
+- Ctrl+Shift+L: Geçici veriler
+
+🧪 Test: testLocalStorageProtection()
+`);
+
+// 16. Global değişkenler
+window.autoSaveCurrentProducts = autoSaveCurrentProducts;
+window.saveProductsToLocalStorage = saveProductsToLocalStorage;
+window.loadProductsFromLocalStorage = loadProductsFromLocalStorage;
+window.clearProductsFromLocalStorage = clearProductsFromLocalStorage;
+window.showLocalStorageStatus = showLocalStorageStatus;
+window.testLocalStorageProtection = testLocalStorageProtection;

@@ -1,0 +1,23 @@
+# WebPOS Sistemi - Tüm botları engelle
+User-agent: *
+Disallow: /
+
+# Özellikle Google'ı engelle
+User-agent: Googlebot
+Disallow: /
+
+# Diğer arama motorları
+User-agent: Bingbot
+Disallow: /
+
+User-agent: Slurp
+Disallow: /
+
+User-agent: DuckDuckBot
+Disallow: /
+
+User-agent: Baiduspider
+Disallow: /
+
+User-agent: YandexBot
+Disallow: /

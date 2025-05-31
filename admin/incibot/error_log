@@ -1,0 +1,411 @@
+[29-Apr-2025 15:53:21 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:53:21 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:53:21 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:53:21 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 15:53:21 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 15:53:21 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 15:53:21 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:53:21 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:53:21 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 15:53:38 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:53:38 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:53:38 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:53:38 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 15:53:38 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 15:53:38 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 15:53:38 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:53:38 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:53:38 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 15:54:07 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:07 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:07 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:54:07 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 15:54:07 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 15:54:07 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 15:54:07 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:07 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:54:07 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 15:54:07 UTC] Kullanıcı mesajı: Bu ay en çok hangi müşteriler alışveriş yaptı?
+[29-Apr-2025 15:54:07 UTC] Kullanıcı sorgusu analiz ediliyor: bu ay en çok hangi müşteriler alışveriş yaptı?
+[29-Apr-2025 15:54:07 UTC] Veritabanı sorgusu gerektirecek anahtar kelime bulundu: müşteri
+[29-Apr-2025 15:54:07 UTC] Sorgu analiz ediliyor: bu ay en çok hangi müşteriler alışveriş yaptı?
+[29-Apr-2025 15:54:07 UTC] customer_info sorgusu tespit edildi. Period: this_month, Limit: 10
+[29-Apr-2025 15:54:07 UTC] Veritabanı sorgusu hazırlanıyor: customer_info, params: {"period":"this_month","limit":10}
+[29-Apr-2025 15:54:07 UTC] DBProxy executeQuery çağrıldı: customer_info, Parametreler: {"period":"this_month","limit":10}
+[29-Apr-2025 15:54:07 UTC] DBProxy: getCustomerInfo çağrıldı. Limit: 10, Period: this_month
+[29-Apr-2025 15:54:07 UTC] DBProxy: SQL Sorgusu: 
+            SELECT 
+                m.id,
+                CONCAT(m.ad, ' ', m.soyad) AS musteri_adi,
+                m.telefon,
+                COUNT(sf.id) AS toplam_islem,
+                SUM(sf.toplam_tutar) AS toplam_harcama
+            FROM 
+                musteriler m
+            LEFT JOIN 
+                satis_faturalari sf ON m.id = sf.musteri_id
+            WHERE 
+                m.durum = 'aktif' AND
+                sf.islem_turu = 'satis' AND YEAR(sf.fatura_tarihi) = 2025 AND MONTH(sf.fatura_tarihi) = 04
+            GROUP BY 
+                m.id
+            ORDER BY 
+                toplam_harcama DESC
+            LIMIT 10
+[29-Apr-2025 15:54:07 UTC] DBProxy: Toplam Müşteri Sorgusu: SELECT COUNT(*) AS toplam_musteri FROM musteriler WHERE durum = 'aktif'
+[29-Apr-2025 15:54:07 UTC] DBProxy: Toplam 1 müşteri ve toplam 972 aktif müşteri bulundu.
+[29-Apr-2025 15:54:07 UTC] DBProxy: Sorgu başarılı. Sonuç türü: array
+[29-Apr-2025 15:54:07 UTC] Veritabanı sorgusu çalıştırıldı, sonuç: Başarılı
+[29-Apr-2025 15:54:07 UTC] Veritabanı sorgusu başarılı, veri boyutu: 1
+[29-Apr-2025 15:54:07 UTC] Veritabanı yanıtı oluşturuldu: Bu ay en çok alışveriş yapan müşteriler:
+
+1. Ahmet Cemre Geçtinli - 3 işlem - 22.911,50 TL
+
+...
+[29-Apr-2025 15:54:11 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:11 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:11 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:54:11 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 15:54:11 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 15:54:11 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 15:54:11 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:11 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:54:11 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 15:54:11 UTC] Kullanıcı mesajı: Bu ayki en çok satılan 5 ürün nedir?
+[29-Apr-2025 15:54:11 UTC] Kullanıcı sorgusu analiz ediliyor: bu ayki en çok satılan 5 ürün nedir?
+[29-Apr-2025 15:54:11 UTC] Veritabanı sorgusu gerektirecek anahtar kelime bulundu: satılan
+[29-Apr-2025 15:54:11 UTC] Sorgu analiz ediliyor: bu ayki en çok satılan 5 ürün nedir?
+[29-Apr-2025 15:54:11 UTC] top_selling_products sorgusu tespit edildi. Period: this_month, Limit: 5
+[29-Apr-2025 15:54:11 UTC] Veritabanı sorgusu hazırlanıyor: top_selling_products, params: {"period":"this_month","limit":5,"category":null}
+[29-Apr-2025 15:54:11 UTC] DBProxy executeQuery çağrıldı: top_selling_products, Parametreler: {"period":"this_month","limit":5,"category":null}
+[29-Apr-2025 15:54:11 UTC] DBProxy: getTopSellingProducts çağrıldı. Limit: 5, Period: this_month
+[29-Apr-2025 15:54:11 UTC] DBProxy: SQL Sorgusu: 
+        SELECT 
+            us.id, 
+            us.ad AS urun_adi, 
+            SUM(sfd.miktar) AS toplam_satis,
+            SUM(sfd.toplam_tutar) AS toplam_tutar
+        FROM 
+            satis_fatura_detay sfd
+        JOIN 
+            satis_faturalari sf ON sfd.fatura_id = sf.id
+        JOIN 
+            urun_stok us ON sfd.urun_id = us.id
+        WHERE 
+            sf.islem_turu = 'satis' AND YEAR(sf.fatura_tarihi) = 2025 AND MONTH(sf.fatura_tarihi) = 04
+        GROUP BY 
+            sfd.urun_id
+        ORDER BY 
+            toplam_satis DESC
+        LIMIT 5
+[29-Apr-2025 15:54:11 UTC] DBProxy: Toplam 5 sonuç bulundu.
+[29-Apr-2025 15:54:11 UTC] DBProxy: Sorgu başarılı. Sonuç türü: array
+[29-Apr-2025 15:54:11 UTC] Veritabanı sorgusu çalıştırıldı, sonuç: Başarılı
+[29-Apr-2025 15:54:11 UTC] Veritabanı sorgusu başarılı, veri boyutu: 5
+[29-Apr-2025 15:54:11 UTC] Veritabanı yanıtı oluşturuldu: Bu ay en çok satan ürünler:
+
+1. MUNİS KALEMLİ HATIRA DEFTERİ KUTULU - 101 adet - 22.220,00 TL
+...
+[29-Apr-2025 15:54:15 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:15 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:15 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:54:15 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 15:54:15 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 15:54:15 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 15:54:15 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 15:54:15 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 15:54:15 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 17:34:07 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:34:07 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:34:07 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:34:07 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 17:34:07 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 17:34:07 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 17:34:07 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:34:07 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:34:07 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 17:39:36 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:39:36 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:39:36 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:39:36 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 17:39:36 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 17:39:36 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 17:39:36 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:39:36 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:39:36 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 17:39:47 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:39:47 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:39:47 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:39:47 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 17:39:47 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 17:39:47 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 17:39:47 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:39:47 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:39:47 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 17:40:27 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:27 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:27 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:40:27 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 17:40:27 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 17:40:27 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 17:40:27 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:27 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:40:27 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 17:40:28 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:28 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:28 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:40:28 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 17:40:28 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 17:40:28 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 17:40:28 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:28 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:40:28 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 17:40:41 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:41 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:41 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:40:41 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 17:40:41 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 17:40:41 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 17:40:41 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 17:40:41 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 17:40:41 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:22:43 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:22:43 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:22:43 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:22:43 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:22:43 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:22:43 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:22:43 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:22:43 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:22:43 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:35:50 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:35:50 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:35:50 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:35:50 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:35:50 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:35:50 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:35:50 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:35:50 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:35:50 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:35:52 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:35:52 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:35:52 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:35:52 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:35:52 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:35:52 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:35:52 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:35:52 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:35:52 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:36:13 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:13 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:13 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:36:13 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:36:13 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:36:13 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:36:13 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:13 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:36:13 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:36:18 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:36:18 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:36:18 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:36:18 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:36:18 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:36:18 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:36:18 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:36:18 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:36:18 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:36:18 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:36:18 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:38:19 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:38:19 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:38:19 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:38:19 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:38:19 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:38:19 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:38:19 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:38:19 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:38:19 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:40:16 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:16 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:16 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:40:16 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:40:16 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:40:16 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:40:16 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:16 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:40:16 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:40:56 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:56 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:56 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:40:56 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:40:56 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:40:56 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:40:56 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:56 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:40:56 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:40:58 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:58 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:58 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:40:58 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:40:58 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:40:58 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:40:58 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:40:58 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:40:58 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:41:19 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:41:19 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:41:19 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:41:19 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:41:19 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:41:19 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:41:19 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:41:19 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:41:19 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:41:23 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:41:23 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:41:23 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:41:23 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:41:23 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:41:23 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:41:23 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:41:23 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:41:23 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:44:32 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:44:32 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:44:32 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:44:32 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:44:32 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:44:32 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:44:32 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:44:32 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:44:32 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:44:33 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:44:33 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:44:33 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:44:33 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:44:33 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:44:33 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:44:33 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:44:33 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:44:33 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:45:14 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:45:14 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:45:14 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:45:14 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:45:14 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:45:14 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:45:14 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:45:14 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:45:14 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:46:47 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:46:47 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:46:47 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:46:47 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:46:47 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:46:47 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:46:47 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:46:47 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:46:47 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:47:23 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:23 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:23 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:47:23 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:47:23 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:47:23 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:47:23 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:23 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:47:23 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:47:40 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:40 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:40 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:47:40 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:47:40 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:47:40 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:47:40 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:40 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:47:40 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:47:48 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:48 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:48 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:47:48 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:47:48 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:47:48 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:47:48 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:47:48 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:47:48 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:48:03 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:48:03 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:48:03 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:48:03 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:48:03 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:48:03 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:48:03 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:48:03 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:48:03 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:48:18 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:48:18 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:48:18 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:48:18 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 19:48:18 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 19:48:18 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 19:48:18 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 19:48:18 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 19:48:18 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[29-Apr-2025 19:48:18 UTC] Kullanıcı mesajı: En çok satış yapan kasiyerimiz kim?
+[29-Apr-2025 19:48:18 UTC] Kullanıcı sorgusu analiz ediliyor: en çok satış yapan kasiyerimiz kim?
+[29-Apr-2025 19:48:18 UTC] Veritabanı sorgusu gerektirecek anahtar kelime bulundu: satış
+[29-Apr-2025 19:48:18 UTC] Sorgu analiz ediliyor: en çok satış yapan kasiyerimiz kim?
+[29-Apr-2025 19:48:18 UTC] top_salespeople sorgusu tespit edildi. Period: this_month, Limit: 5
+[29-Apr-2025 19:48:18 UTC] Veritabanı sorgusu hazırlanıyor: top_salespeople, params: {"period":"this_month","limit":5}
+[29-Apr-2025 19:48:18 UTC] DBProxy executeQuery çağrıldı: top_salespeople, Parametreler: {"period":"this_month","limit":5}
+[29-Apr-2025 19:48:18 UTC] DBProxy: getTopSalespeople çağrıldı. Limit: 5, Period: this_month
+[29-Apr-2025 19:48:18 UTC] DBProxy: SQL Sorgusu: 
+            SELECT 
+                p.id,
+                p.ad AS personel_adi,
+                COUNT(sf.id) AS satis_adedi,
+                SUM(sf.toplam_tutar) AS toplam_satis
+            FROM 
+                satis_faturalari sf
+            JOIN 
+                personel p ON sf.personel = p.id
+            WHERE 
+                sf.islem_turu = 'satis' AND YEAR(sf.fatura_tarihi) = 2025 AND MONTH(sf.fatura_tarihi) = 04
+            GROUP BY 
+                sf.personel
+            ORDER BY 
+                toplam_satis DESC
+            LIMIT 5
+[29-Apr-2025 19:48:18 UTC] DBProxy: Toplam 2 sonuç bulundu.
+[29-Apr-2025 19:48:18 UTC] DBProxy: Sorgu başarılı. Sonuç türü: array
+[29-Apr-2025 19:48:18 UTC] Veritabanı sorgusu çalıştırıldı, sonuç: Başarılı
+[29-Apr-2025 19:48:18 UTC] Veritabanı sorgusu başarılı, veri boyutu: 2
+[29-Apr-2025 19:48:18 UTC] Veritabanı yanıtı oluşturuldu: Bu ay en çok satış yapan personel:
+
+1. Ahmet - 4 işlem - 22.732,00 TL
+2. Tuğçe Saygı - 2 işl...
+[29-Apr-2025 20:28:30 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 20:28:30 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 20:28:30 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 20:28:30 UTC] API anahtarı veritabanından alındı: sk-an...
+[29-Apr-2025 20:28:30 UTC] API anahtarı veritabanından alındı.
+[29-Apr-2025 20:28:30 UTC] API anahtarı veritabanından alındı: İnci...
+[29-Apr-2025 20:28:30 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[29-Apr-2025 20:28:30 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[29-Apr-2025 20:28:30 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","fiyat_alarmlari","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}
+[06-May-2025 09:53:12 UTC] Veritabanı bağlantısı global değişkenden alındı.
+[06-May-2025 09:53:12 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[06-May-2025 09:53:12 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[06-May-2025 09:53:12 UTC] API anahtarı veritabanından alındı: sk-an...
+[06-May-2025 09:53:12 UTC] API anahtarı veritabanından alındı.
+[06-May-2025 09:53:12 UTC] API anahtarı veritabanından alındı: İnci...
+[06-May-2025 09:53:12 UTC] DBProxy: Veritabanı bağlantısı global değişkenden alındı.
+[06-May-2025 09:53:12 UTC] DBProxy: Veritabanı bağlantı tipi: PDO
+[06-May-2025 09:53:12 UTC] Veritabanı yapı kontrolü: {"success":true,"tables":["admin_user","alis_fatura_aktarim","alis_fatura_detay","alis_fatura_detay_aktarim","alis_fatura_log","alis_faturalari","alt_gruplar","ana_gruplar","birimler","departmanlar","depo_stok","depolar","fatura_erisim_token","fiyat_alarmlari","iletisim_log","incibot_log","indirim_detay","indirimler","kullanici_giris_log","magaza_stok","magazalar","musteri_borc_detaylar","musteri_borc_odemeler","musteri_borclar","musteri_puanlar","musteriler","personel","puan_ayarlari","puan_harcama","puan_kazanma","satis_fatura_detay","satis_faturalari","siparis_detay","siparis_log","siparisler","sistem_ayarlari","sms_dogrulama_log","sms_log","stok_hareketleri","tedarikciler","urun_fiyat_gecmisi","urun_onerileri","urun_stok"],"required_tables":["urun_stok","satis_faturalari","satis_fatura_detay","personel","musteriler","stok_hareketleri"],"missing_tables":[],"all_required_present":true}

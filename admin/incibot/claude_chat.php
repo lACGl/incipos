@@ -1,0 +1,892 @@
+<?php
+/**
+ * Claude AI Sohbet Arayüzü - Tam Ekran Modern Tasarım
+ * Bu dosya, Anthropic Claude API kullanarak gerçek yapay zeka sohbeti sağlar
+ */
+
+// Hata raporlama
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Oturum ve yetki kontrolü
+secure_session_start();
+include '../session_manager.php';
+
+// Claude API'yi dahil et
+require_once 'claude_api.php';
+require_once 'db_proxy.php';
+
+// API'yi başlat
+global $conn;
+$claude = new ClaudeAPI($conn);
+$db_proxy = new DBProxy($conn);
+
+// Veritabanı bağlantısını test et
+$db_test = $db_proxy->checkDatabaseStructure();
+error_log("Veritabanı yapı kontrolü: " . json_encode($db_test));
+
+// Sohbet geçmişini tut
+if (!isset($_SESSION['claude_chat_history'])) {
+    $_SESSION['claude_chat_history'] = [];
+}
+
+// Temizleme isteği geldi mi kontrol et
+if (isset($_POST['clear_history'])) {
+    $_SESSION['claude_chat_history'] = [];
+}
+
+// Veritabanı sorgusunu çalıştır ve sonucu Claude'a gönder
+function runDatabaseQuery($query_type, $params = []) {
+    global $db_proxy;
+    return $db_proxy->executeQuery($query_type, $params);
+}
+
+// Yeni mesaj geldi mi kontrol et
+$user_message = '';
+$bot_response = '';
+$error_message = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !empty($_POST['message'])) {
+    $user_message = $_POST['message'];
+    
+    // Claude'a gönderilecek geçmiş mesajları hazırla
+    $conversation = [];
+    foreach ($_SESSION['claude_chat_history'] as $msg) {
+        $conversation[] = [
+            'role' => $msg['sender'],
+            'content' => $msg['message']
+        ];
+    }
+    
+    // API'ye gönder
+    $result = $claude->sendMessage($user_message, $conversation);
+    
+    if ($result['success']) {
+        $bot_response = $result['response'];
+    } else {
+        $error_message = $result['error'];
+    }
+    
+    // Kullanıcı mesajını geçmişe ekle
+    $_SESSION['claude_chat_history'][] = [
+        'sender' => 'user',
+        'message' => $user_message,
+        'timestamp' => date('H:i')
+    ];
+    
+    // Bot yanıtını geçmişe ekle
+    if (!empty($bot_response)) {
+        $_SESSION['claude_chat_history'][] = [
+            'sender' => 'assistant',
+            'message' => $bot_response,
+            'timestamp' => date('H:i')
+        ];
+    } elseif (!empty($error_message)) {
+        $_SESSION['claude_chat_history'][] = [
+            'sender' => 'assistant',
+            'message' => "Üzgünüm, bir hata oluştu: $error_message",
+            'timestamp' => date('H:i')
+        ];
+    }
+}
+
+// Sohbet geçmişi boş ise karşılama mesajı ekle
+if (empty($_SESSION['claude_chat_history'])) {
+    $_SESSION['claude_chat_history'][] = [
+        'sender' => 'assistant',
+        'message' => "Merhaba! Ben İnciBot, İnci Kırtasiye'nin yapay zeka asistanıyım. Size nasıl yardımcı olabilirim? Satış verileri, stok durumu, ürünler ve daha fazlası hakkında sorular sorabilirsiniz.",
+        'timestamp' => date('H:i')
+    ];
+}
+
+// Sistem bilgilerini al
+$sirket_adi = "İnci Kırtasiye";
+try {
+    global $conn;
+    $isPDO = ($conn instanceof PDO);
+    
+    if ($isPDO) {
+        $stmt = $conn->prepare("SELECT deger FROM sistem_ayarlari WHERE anahtar = 'sirket_adi'");
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($result) {
+            $sirket_adi = $result['deger'];
+        }
+    } else {
+        $result = $conn->query("SELECT deger FROM sistem_ayarlari WHERE anahtar = 'sirket_adi'");
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $sirket_adi = $row['deger'];
+        }
+    }
+} catch (Exception $e) {
+    // Hata durumunda varsayılan değeri kullan
+    error_log("Şirket adı alınırken hata: " . $e->getMessage());
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İnciBOT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6f42c1;
+            --primary-light: #8a5cf7;
+            --primary-dark: #5a32a3;
+            --secondary-color: #007bff;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --gray-color: #6c757d;
+            --border-color: #e0e0e0;
+            --assistant-bg: #f1f0ff;
+            --user-bg: #e9f4fe;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: var(--dark-color);
+            line-height: 1.6;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            background-color: white;
+        }
+
+        /* Back Button */
+        .back-button {
+            position: absolute;
+            top: 15px;
+            left: 50px;
+            z-index: 100;
+            background-color: white;
+            color: var(--primary-color);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+            opacity:0.2;
+        }
+        
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            opacity:1;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
+            color: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .sidebar-brand {
+            padding: 24px 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-brand img {
+            width: 36px;
+            height: 36px;
+            margin-right: 12px;
+        }
+        
+        .sidebar-brand h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .sidebar-menu {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 24px 20px;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 28px;
+        }
+        
+        .sidebar-section h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 16px;
+            opacity: 0.8;
+            font-weight: 700;
+        }
+        
+        .example-questions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .example-question {
+            padding: 14px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+        
+        .example-question:hover {
+            background-color: rgba(255,255,255,0.2);
+            transform: translateX(3px);
+        }
+        
+        .example-question i {
+            margin-right: 8px;
+        }
+        
+        .sidebar-footer {
+            padding: 16px;
+            text-align: center;
+            font-size: 0.75rem;
+            opacity: 0.7;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Main Chat Area */
+        .chat-main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            position: relative;
+        }
+        
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            background-color: white;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            z-index: 10;
+        }
+        
+        .chat-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .chat-title i {
+            margin-right: 12px;
+            font-size: 1.3rem;
+        }
+        
+        .chat-actions button {
+            background-color: #f5f5f5;
+            border: none;
+            cursor: pointer;
+            color: var(--dark-color);
+            font-size: 0.85rem;
+            padding: 8px 14px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+        }
+        
+        .chat-actions button:hover {
+            background-color: #e9e9e9;
+            color: var(--primary-color);
+        }
+        
+        .chat-actions button i {
+            margin-right: 6px;
+        }
+
+        /* Messages Area */
+        .chat-messages {
+            flex-grow: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: #f9f9f9;
+        }
+        
+        .message {
+            display: flex;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user-message {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 12px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        
+        .user-message .message-avatar {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .bot-message .message-avatar {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .message-content {
+            padding: 16px;
+            border-radius: 18px;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+        }
+        
+        .user-message .message-content {
+            background-color: var(--user-bg);
+            border-top-right-radius: 4px;
+        }
+        
+        .bot-message .message-content {
+            background-color: var(--assistant-bg);
+            border-top-left-radius: 4px;
+        }
+        
+        .message-text {
+            line-height: 1.6;
+            font-size: 1rem;
+            white-space: pre-line;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            color: rgba(0,0,0,0.4);
+            margin-top: 8px;
+            text-align: right;
+        }
+
+        /* Input Area */
+        .chat-input-container {
+            padding: 20px 24px;
+            background-color: white;
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
+        }
+        
+        .chat-input-wrapper {
+            display: flex;
+            align-items: center;
+            background-color: #f5f5f5;
+            border-radius: 24px;
+            padding: 6px 8px 6px 20px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .chat-input-wrapper:focus-within {
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.08), 0 0 0 3px rgba(111, 66, 193, 0.15);
+            background-color: white;
+        }
+        
+        .chat-input {
+            flex-grow: 1;
+            border: none;
+            background: none;
+            padding: 12px 0;
+            font-size: 1rem;
+            max-height: 150px;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+        }
+        
+        .btn-send {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 8px;
+        }
+        
+        .btn-send:hover {
+            background-color: var(--primary-dark);
+            transform: scale(1.05);
+        }
+        
+        .btn-send:disabled {
+            background-color: var(--gray-color);
+            cursor: not-allowed;
+        }
+        
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .sidebar {
+                position: fixed;
+                left: -320px;
+                top: 0;
+                bottom: 0;
+                transition: all 0.3s ease;
+                z-index: 1000;
+            }
+            
+            .sidebar.active {
+                left: 0;
+            }
+            
+            .sidebar-toggle {
+                display: block;
+                position: absolute;
+                right: -46px;
+                top: 10px;
+                background-color: var(--primary-color);
+                color: white;
+                border: none;
+                border-radius: 0 8px 8px 0;
+                width: 46px;
+                height: 46px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .message {
+                max-width: 95%;
+            }
+            
+            .chat-header {
+                padding: 15px;
+            }
+            
+            .chat-title {
+                font-size: 1rem;
+            }
+            
+            .chat-messages {
+                padding: 16px 12px;
+            }
+            
+            .chat-input-container {
+                padding: 12px 16px;
+            }
+            
+            .chat-input {
+                font-size: 0.95rem;
+            }
+            
+            .btn-send {
+                width: 40px;
+                height: 40px;
+            }
+        }
+        
+        /* Sidebar ve toggle ayarlarını güncelleyin */
+.sidebar {
+    width: 320px;
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
+    color: white;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: left 0.3s ease; /* Geçiş efekti ekleyin */
+}
+
+/* Hamburger Menü Butonu */
+.hamburger-menu {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    color: var(--primary-color);
+    margin-right: 12px;
+    cursor: pointer;
+    padding: 5px;
+    display: inline-flex; /* Hizalama için */
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive Design kısmında */
+@media (max-width: 992px) {
+    .sidebar {
+        position: fixed;
+        left: -320px;
+        top: 0;
+        bottom: 0;
+        transition: all 0.3s ease;
+        z-index: 1000;
+        height: 100vh;
+    }
+    
+    .sidebar.active {
+        left: 0;
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    }
+    
+    .hamburger-menu {
+        display: inline-flex;
+    }
+}
+
+/* Sidebar kapatma animasyonu için */
+.sidebar-closed {
+    margin-left: -320px;
+    opacity: 0;
+}
+
+/* Masaüstünde sidebar gizleme ayarları */
+@media (min-width: 992px) {
+    .sidebar {
+        margin-left: 0;
+        opacity: 1;
+        transition: margin-left 0.3s ease, opacity 0.3s ease;
+    }
+    
+    .sidebar.sidebar-closed {
+        margin-left: -320px;
+        opacity: 0;
+    }
+    
+    /* Sidebar kapalıyken chat-main genişlet */
+    .sidebar.sidebar-closed + .chat-main {
+        width: 100%;
+    }
+}
+    </style>
+</head>
+<body>
+    <!-- Back Button / Geri Dönüş Butonu -->
+    <a href="https://pos.incikirtasiye.com/admin/admin_dashboard.php">
+        <button class="back-button" title="Anasayfaya Dön">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+    </a>
+    
+    <div class="chat-container">
+    <!-- Sidebar / Kenar Çubuğu -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <h1><?php echo htmlspecialchars($sirket_adi); ?> Asistan</h1>
+        </div>
+        
+        <div class="sidebar-menu">
+            <div class="sidebar-section">
+                <h3>Örnek Sorular</h3>
+                <div class="example-questions">
+                    <div class="example-question" data-query="Bu ayki en çok satılan 5 ürün nedir?">
+                        <i class="fas fa-chart-line"></i> Bu ayki en çok satılan 5 ürün nedir?
+                    </div>
+                    <div class="example-question" data-query="Stoğu azalan ürünleri listele">
+                        <i class="fas fa-boxes"></i> Stoğu azalan ürünleri listele
+                    </div>
+                    <div class="example-question" data-query="Bu haftanın cirosu ne kadar?">
+                        <i class="fas fa-money-bill-wave"></i> Bu haftanın cirosu ne kadar?
+                    </div>
+                    <div class="example-question" data-query="En çok satış yapan kasiyerimiz kim?">
+                        <i class="fas fa-user-tie"></i> En çok satış yapan kasiyerimiz kim?
+                    </div>
+                    <div class="example-question" data-query="Bugün yapılan toplam satış miktarı">
+                        <i class="fas fa-calendar-day"></i> Bugün yapılan toplam satış miktarı
+                    </div>
+                    <div class="example-question" data-query="Bu ay en çok hangi müşteriler alışveriş yaptı?">
+                        <i class="fas fa-users"></i> Bu ay en çok hangi müşteriler alışveriş yaptı?
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>İnciBot Hakkında</h3>
+                <p style="margin-bottom: 10px; font-size: 0.9rem; opacity: 0.9;">
+                    İnciBot, veritabanı analizleri yapabilen ve sorularınızı doğal dille cevaplayabilen bir yapay zeka asistanıdır.
+                </p>
+                <p style="font-size: 0.9rem; opacity: 0.9;">
+                    Claude AI teknolojisi ile güçlendirilmiştir.
+                </p>
+                
+                <!-- Veritabanı durumu -->
+                <?php if (isset($db_test)): ?>
+                <div style="margin-top: 15px; font-size: 0.8rem;">
+                    <p style="margin-bottom: 5px; opacity: 0.7;">Veritabanı Durumu:</p>
+                    <p class="<?php echo $db_test['success'] ? 'text-success' : 'text-danger'; ?>" style="color: <?php echo $db_test['success'] ? '#28a745' : '#dc3545'; ?>;">
+                        <?php if ($db_test['success']): ?>
+                            <?php if ($db_test['all_required_present']): ?>
+                                <i class="fas fa-check-circle"></i> Veritabanı bağlantısı aktif
+                            <?php else: ?>
+                                <i class="fas fa-exclamation-triangle"></i> Bazı tablolar eksik
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <i class="fas fa-times-circle"></i> Veritabanı hatası
+                        <?php endif; ?>
+                    </p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            &copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($sirket_adi); ?> | Claude AI Powered
+        </div>
+    </div>
+    
+    <!-- Main Chat Area / Ana Sohbet Alanı -->
+    <div class="chat-main">
+        <div class="chat-header">
+            <div class="chat-title">
+                <button id="hamburger-menu" class="hamburger-menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <i class="fas fa-robot"></i>
+                İnciBot ile Sohbet
+            </div>
+            <div class="chat-actions">
+                <button type="button" id="sidebar-button">
+                    <i class="fas fa-list"></i> Örnekler
+                </button>
+                <form method="post" action="" class="d-inline">
+                    <input type="hidden" name="clear_history" value="1">
+                    <button type="submit">
+                        <i class="fas fa-trash"></i> Sohbeti Temizle
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            <?php foreach ($_SESSION['claude_chat_history'] as $msg): ?>
+                <div class="message <?= $msg['sender'] === 'user' ? 'user-message' : 'bot-message' ?>">
+                    <div class="message-avatar">
+                        <?php if ($msg['sender'] === 'user'): ?>
+                            <i class="fas fa-user"></i>
+                        <?php else: ?>
+                            <i class="fas fa-robot"></i>
+                        <?php endif; ?>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-text"><?= nl2br(htmlspecialchars($msg['message'])) ?></div>
+                        <div class="message-time"><?= $msg['timestamp'] ?></div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        
+        <div class="chat-input-container">
+            <form method="post" action="" id="chat-form">
+                <div class="chat-input-wrapper">
+                    <textarea 
+                        class="chat-input" 
+                        name="message" 
+                        id="message-input" 
+                        placeholder="Mesajınızı yazın..." 
+                        rows="1"
+                        required
+                    ></textarea>
+                    <button type="submit" class="btn-send" id="send-button">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const chatForm = document.getElementById('chat-form');
+    const exampleQuestions = document.querySelectorAll('.example-question');
+    const sidebar = document.getElementById('sidebar');
+    const hamburgerMenu = document.getElementById('hamburger-menu');
+    const sidebarButton = document.getElementById('sidebar-button');
+    
+    // Sayfa yüklendiğinde sohbeti en alta kaydır
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // İlk yüklemede ekran boyutunu kontrol et ve sidebar durumunu ayarla
+    let isMobile = window.innerWidth < 992;
+    
+    // İlk yükleme durumuna göre ayarla
+    if (isMobile) {
+        sidebar.classList.remove('active');
+    } else {
+        sidebar.classList.add('active');
+    }
+    
+    // Sidebar toggle fonksiyonu - mobil ve masaüstü için farklı davranış
+    function toggleSidebar() {
+        // Mevcut ekran boyutunu al
+        isMobile = window.innerWidth < 992;
+        
+        if (isMobile) {
+            // Mobilde active class'ını toggle et
+            sidebar.classList.toggle('active');
+        } else {
+            // Masaüstünde sidebar-closed class'ını toggle et
+            sidebar.classList.toggle('sidebar-closed');
+        }
+    }
+    
+    // Hamburger menü butonu için event listener
+    if (hamburgerMenu) {
+        hamburgerMenu.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleSidebar();
+        });
+    }
+    
+    // Örnekler butonu için event listener
+    if (sidebarButton) {
+        sidebarButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleSidebar();
+        });
+    }
+    
+    // Örnek sorular için tıklama olayı
+    exampleQuestions.forEach(question => {
+        question.addEventListener('click', function() {
+            const query = this.getAttribute('data-query');
+            messageInput.value = query;
+            messageInput.focus();
+            autoResizeTextarea();
+            
+            // Mobil cihazlarda sidebar'ı gizle
+            if (isMobile) {
+                sidebar.classList.remove('active');
+            }
+        });
+    });
+    
+    // Textarea otomatik boyutlandırma
+    function autoResizeTextarea() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = (messageInput.scrollHeight < 150) ? messageInput.scrollHeight + 'px' : '150px';
+    }
+    
+    messageInput.addEventListener('input', autoResizeTextarea);
+    
+    // Enter tuşu ile gönderme (Shift+Enter = yeni satır)
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (messageInput.value.trim() !== '') {
+                sendButton.click();
+            }
+        }
+    });
+    
+    // Form gönderilirken loading durumu
+    chatForm.addEventListener('submit', function() {
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    });
+    
+    // İnput alanını odakla
+    messageInput.focus();
+    
+    // Ekran boyutu değiştiğinde kontrol et
+    window.addEventListener('resize', function() {
+        isMobile = window.innerWidth < 992;
+        
+        if (isMobile) {
+            // Mobil görünüme geçildiğinde, sidebar'ı gizle ve sidebar-closed sınıfını kaldır
+            sidebar.classList.remove('active');
+            sidebar.classList.remove('sidebar-closed');
+        } else {
+            // Masaüstü görünümüne geçildiğinde, sidebar-closed sınıfı yoksa active ekle
+            if (!sidebar.classList.contains('sidebar-closed')) {
+                sidebar.classList.add('active');
+            }
+        }
+    });
+});
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once '../db_connection.php';
 require_once '../helpers/transfer_helper.php';
 require_once '../helpers/indirim_handler.php';
@@ -54,7 +55,7 @@ try {
         throw new Exception('Geçersiz hedef tipi: ' . $hedef_tipi);
     }
 
-    // Fatura durumunu kontrol et
+    // Fatura durumunu kontrol et - YENİ KONTROLLER EKLENDİ
     $checkStmt = $conn->prepare("SELECT durum FROM alis_faturalari WHERE id = ?");
     $checkStmt->execute([$fatura_id]);
     $faturaData = $checkStmt->fetch(PDO::FETCH_ASSOC);
@@ -63,8 +64,22 @@ try {
         throw new Exception('Fatura bulunamadı');
     }
     
+    // Yeni durum kontrolleri
+    if ($faturaData['durum'] === 'bos') {
+        throw new Exception('Bu faturada henüz ürün bulunmuyor. Önce ürün ekleyin.');
+    }
+    
+    if ($faturaData['durum'] === 'urun_girildi') {
+        throw new Exception('Bu fatura henüz tamamlanmamış. Önce "Faturayı Bitir" ile tamamlayın.');
+    }
+    
     if ($faturaData['durum'] === 'aktarildi') {
         throw new Exception('Bu fatura zaten tamamen aktarılmış');
+    }
+    
+    // sadece 'aktarim_bekliyor' ve 'kismi_aktarildi' durumlarında aktarım yapılabilir
+    if (!in_array($faturaData['durum'], ['aktarim_bekliyor', 'kismi_aktarildi'])) {
+        throw new Exception('Bu fatura durumu aktarıma uygun değil: ' . $faturaData['durum']);
     }
 
     // Transaction başlat
@@ -337,8 +352,9 @@ try {
         throw new Exception("Hiçbir ürün transfer edilmedi. Lütfen ürün seçtiğinizden ve transfer miktarı girdiğinizden emin olun.");
     }
 
-    // Fatura miktarlarını hesapla
-    $invoiceQuantities = calculateInvoiceQuantities($fatura_id, $conn);
+    // *** YENİ DURUM HESAPLAMA MANTIGI ***
+    // Fatura miktarlarını hesapla ve durumu belirle
+    $invoiceQuantities = calculateInvoiceQuantitiesWithNewLogic($fatura_id, $conn);
     if (!$invoiceQuantities['success']) {
         throw new Exception("Fatura miktarları hesaplanamadı: " . $invoiceQuantities['message']);
     }
@@ -414,4 +430,56 @@ try {
         'success' => false,
         'message' => $e->getMessage()
     ]);
+}
+
+// *** YENİ FONKSİYON: Gelişmiş durum hesaplama ***
+function calculateInvoiceQuantitiesWithNewLogic($fatura_id, $conn) {
+    try {
+        // Faturadaki tüm ürünlerin toplam ve aktarılan miktarlarını hesapla
+        $stmt = $conn->prepare("
+            SELECT 
+                SUM(afd.miktar) as toplam_miktar,
+                COALESCE(SUM(COALESCE(aktarim.aktarilan_miktar, 0)), 0) as toplam_aktarilan
+            FROM alis_fatura_detay afd
+            LEFT JOIN (
+                SELECT 
+                    fatura_id,
+                    urun_id,
+                    SUM(miktar) as aktarilan_miktar
+                FROM alis_fatura_detay_aktarim 
+                WHERE fatura_id = ?
+                GROUP BY fatura_id, urun_id
+            ) as aktarim ON afd.fatura_id = aktarim.fatura_id AND afd.urun_id = aktarim.urun_id
+            WHERE afd.fatura_id = ?
+        ");
+        $stmt->execute([$fatura_id, $fatura_id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$result) {
+            return ['success' => false, 'message' => 'Fatura ürünleri bulunamadı'];
+        }
+        
+        $toplamMiktar = floatval($result['toplam_miktar']);
+        $toplamAktarilan = floatval($result['toplam_aktarilan']);
+        
+        // Durum belirleme mantığı
+        if ($toplamAktarilan == 0) {
+            $durum = 'aktarim_bekliyor';
+        } elseif ($toplamAktarilan >= $toplamMiktar) {
+            $durum = 'aktarildi'; // Tamamen aktarıldı
+        } else {
+            $durum = 'kismi_aktarildi'; // Kısmen aktarıldı
+        }
+        
+        return [
+            'success' => true,
+            'durum' => $durum,
+            'toplam_miktar' => $toplamMiktar,
+            'aktarilan_miktar' => $toplamAktarilan
+        ];
+        
+    } catch (Exception $e) {
+        error_log('Durum hesaplama hatası: ' . $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
 }

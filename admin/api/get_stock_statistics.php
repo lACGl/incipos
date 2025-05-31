@@ -1,0 +1,56 @@
+<?php
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
+require_once '../db_connection.php';
+
+// Yetki kontrolü
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim']);
+    exit;
+}
+
+try {
+    // Stok filtreleri için doğru hesaplama sorgularını kullan
+    $stok_hesaplama = "(COALESCE((SELECT SUM(ds.stok_miktari) FROM depo_stok ds WHERE ds.urun_id = us.id), 0) + 
+                      COALESCE((SELECT SUM(ms.stok_miktari) FROM magaza_stok ms WHERE ms.barkod = us.barkod), 0))";
+    
+    // Toplam ürün sayısı
+    $total_query = "SELECT COUNT(*) as total FROM urun_stok us WHERE us.durum = 'aktif'";
+    $total_products = $conn->query($total_query)->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Stoğu olan ürünler
+    $in_stock_query = "SELECT COUNT(*) as total FROM urun_stok us 
+                       WHERE us.durum = 'aktif' AND 
+                       $stok_hesaplama > 0";
+    $in_stock_products = $conn->query($in_stock_query)->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Kritik stoklu ürünler (0 < stok <= 10)
+    $critical_stock_query = "SELECT COUNT(*) as total FROM urun_stok us 
+                            WHERE us.durum = 'aktif' AND 
+                            $stok_hesaplama > 0 AND $stok_hesaplama <= 10";
+    $critical_stock = $conn->query($critical_stock_query)->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Stoksuz ürünler
+    $out_of_stock_query = "SELECT COUNT(*) as total FROM urun_stok us 
+                          WHERE us.durum = 'aktif' AND 
+                          $stok_hesaplama = 0";
+    $out_of_stock = $conn->query($out_of_stock_query)->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Yanıt
+    echo json_encode([
+        'success' => true,
+        'total_products' => number_format($total_products, 0, ',', '.'),
+        'in_stock_products' => number_format($in_stock_products, 0, ',', '.'),
+        'critical_stock' => number_format($critical_stock, 0, ',', '.'),
+        'out_of_stock' => number_format($out_of_stock, 0, ',', '.')
+    ]);
+    
+} catch (PDOException $e) {
+    error_log('İstatistik hatası: ' . $e->getMessage());
+    echo json_encode([
+        'success' => false,
+        'message' => 'İstatistikler hesaplanırken bir hata oluştu'
+    ]);
+}
+?>

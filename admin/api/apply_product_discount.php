@@ -1,6 +1,7 @@
 <?php
+require_once '../session_manager.php'; // Otomatik eklendi
 
-session_start();
+secure_session_start();
 require_once '../db_connection.php';
 require_once '../stock_functions.php';
 

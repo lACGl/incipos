@@ -1,0 +1,167 @@
+<?php
+/**
+ * Bu script, belirtilen dizindeki tüm PHP dosyalarında
+ * session_start() çağrılarını secure_session_start() ile değiştirir
+ * ve session_manager.php dosyasını dahil eder.
+ * 
+ * KULLANIM:
+ * 1. Bu dosyayı projenizin kök dizinine kaydedin
+ * 2. Tarayıcıdan veya komut satırından çalıştırın
+ * 3. İşlem tamamlandığında rapor görüntülenecektir
+ * 
+ * GÜVENLİK UYARISI:
+ * - Bu script güçlü bir araçtır, kullanmadan önce dosyalarınızı yedekleyin!
+ * - İşlem bittikten sonra bu script'i silin veya erişilemez yapın.
+ */
+
+// Konfigürasyon
+$startPath = __DIR__; // Başlangıç dizini - bu script'in bulunduğu dizin
+$excludeDirs = [
+    '.git', 
+    'vendor', 
+    'node_modules',
+    'uploads',
+    'cache',
+    'log'
+]; // Dışarıda bırakılacak dizinler
+$backupFiles = true; // İşlem öncesi dosyaları yedekle
+$dryRun = false; // Test modu - dosyalar değiştirilmez, sadece rapor gösterilir
+
+// İstatistikler
+$stats = [
+    'scanned' => 0,
+    'modified' => 0,
+    'errors' => 0,
+    'skipped' => 0,
+    'filesWithSession' => []
+];
+
+// İşlem başlangıcı
+echo "<h1>PHP Session Updater Tool</h1>";
+echo "<pre>Başlangıç dizini: {$startPath}\n";
+echo "İşlem başlatılıyor...\n\n";
+
+// Ana işlem fonksiyonu
+function processDirectory($dir, &$stats) {
+    global $excludeDirs, $backupFiles, $dryRun;
+    
+    $files = scandir($dir);
+    
+    foreach ($files as $file) {
+        if ($file === '.' || $file === '..') {
+            continue;
+        }
+        
+        $path = $dir . '/' . $file;
+        
+        // Dizin mi?
+        if (is_dir($path)) {
+            // Dışarıda bırakılacak dizinleri atla
+            if (in_array($file, $excludeDirs)) {
+                echo "Dizin atlandı: {$path}\n";
+                $stats['skipped']++;
+                continue;
+            }
+            
+            // Alt dizini işle
+            processDirectory($path, $stats);
+            continue;
+        }
+        
+        // Sadece PHP dosyalarını işle
+        if (pathinfo($path, PATHINFO_EXTENSION) !== 'php') {
+            continue;
+        }
+        
+        $stats['scanned']++;
+        
+        // Dosya içeriğini oku
+        $content = file_get_contents($path);
+        if ($content === false) {
+            echo "HATA: {$path} dosyası okunamadı\n";
+            $stats['errors']++;
+            continue;
+        }
+        
+        // session_start() kontrolü
+        if (preg_match('/\bsession_start\s*\(\s*\)/', $content)) {
+            $stats['filesWithSession'][] = $path;
+            
+            // session_manager.php dahil edilmiş mi?
+            $hasInclude = preg_match('/(require|include)(_once)?\s*\(?\s*[\'"].*session_manager\.php/', $content);
+            
+            // Dosyayı yedekle
+            if ($backupFiles && !$dryRun) {
+                $backupPath = $path . '.bak_' . date('Ymd_His');
+                if (!copy($path, $backupPath)) {
+                    echo "UYARI: {$path} dosyası yedeklenemedi\n";
+                }
+            }
+            
+            // session_start() -> secure_session_start() değişimi
+            $modifiedContent = preg_replace('/\bsession_start\s*\(\s*\)/', 'secure_session_start()', $content);
+            
+            // session_manager.php dahil et (eğer yoksa)
+            if (!$hasInclude) {
+                // Dosyanın başında <?php var mı kontrol et
+                if (strpos($modifiedContent, '<?php') === 0) {
+                    // <?php'den sonra require ekle
+                    $modifiedContent = preg_replace(
+                        '/^<\?php/',
+                        "<?php\nrequire_once 'session_manager.php'; // Otomatik eklendi",
+                        $modifiedContent,
+                        1
+                    );
+                } else {
+                    // Dosyanın başına ekle
+                    $modifiedContent = "<?php\nrequire_once 'session_manager.php'; // Otomatik eklendi\n?>\n" . $modifiedContent;
+                }
+            }
+            
+            if (!$dryRun) {
+                // Değişiklikleri dosyaya yaz
+                if (file_put_contents($path, $modifiedContent)) {
+                    echo "Güncellendi: {$path}\n";
+                    $stats['modified']++;
+                } else {
+                    echo "HATA: {$path} dosyası güncellenemedi\n";
+                    $stats['errors']++;
+                }
+            } else {
+                echo "Test modu - değiştirilecek: {$path}\n";
+                $stats['modified']++;
+            }
+        }
+    }
+}
+
+// İşlemi başlat
+try {
+    processDirectory($startPath, $stats);
+} catch (Exception $e) {
+    echo "HATA: İşlem sırasında hata oluştu: " . $e->getMessage() . "\n";
+}
+
+// İstatistikleri göster
+echo "\n----- İŞLEM RAPORU -----\n";
+echo "Taranan dosya sayısı: {$stats['scanned']}\n";
+echo "session_start() içeren dosya sayısı: " . count($stats['filesWithSession']) . "\n";
+echo "Güncellenen dosya sayısı: {$stats['modified']}\n";
+echo "Atlanan dizin sayısı: {$stats['skipped']}\n";
+echo "Hata sayısı: {$stats['errors']}\n";
+
+if ($dryRun) {
+    echo "\nBu bir test çalıştırmasıydı. Gerçek değişiklikler yapılmadı.\n";
+    echo "Gerçek değişiklikleri uygulamak için \$dryRun = false; olarak ayarlayın.\n";
+}
+
+// session_start() içeren dosyaların listesi
+if (count($stats['filesWithSession']) > 0) {
+    echo "\n----- session_start() İÇEREN DOSYALAR -----\n";
+    foreach ($stats['filesWithSession'] as $file) {
+        echo $file . "\n";
+    }
+}
+
+echo "\nİşlem tamamlandı.\n";
+echo "</pre>";

@@ -336,7 +336,21 @@ export function deleteSelected() {
         return;
     }
 
-    performApiRequest('classes/delete_multiple_products.php', { ids }, `${ids.length} ürün başarıyla silindi`);
+    // Silme işlemi öncesi onay al
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: `${ids.length} ürünü silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Evet, sil!',
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            performApiRequest('classes/delete_multiple_products.php', { ids }, `${ids.length} ürün başarıyla silindi`);
+        }
+    });
 }
 
 // Seçili Ürünleri Aktife Al

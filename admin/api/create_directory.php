@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once '../db_connection.php';
 
 // Yetki kontrolü
@@ -36,13 +37,17 @@ if (empty($folder_name)) {
 }
 
 // Root dizinini belirle
-$root_path = dirname(dirname(__DIR__));
+$root_path = dirname(dirname(__DIR__)); // incipos dizinine çıkmak için
 
 // Ana dizini belirle
 if ($parent_path === 'img') {
     $target_dir = $root_path . '/files/img/' . $folder_name;
 } elseif ($parent_path === 'pdf') {
     $target_dir = $root_path . '/files/pdf/' . $folder_name;
+} elseif ($parent_path === 'files') {
+    $target_dir = $root_path . '/files/' . $folder_name;
+} elseif (strpos($parent_path, 'files/') === 0) {
+    $target_dir = $root_path . '/' . $parent_path . '/' . $folder_name;
 } else {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Geçersiz ana dizin']);

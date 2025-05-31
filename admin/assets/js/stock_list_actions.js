@@ -417,6 +417,16 @@ window.addStock = async function(id, event) {
     document.getElementById('updatePopup') && (document.getElementById('updatePopup').style.display = 'none');
 
     try {
+        // Önce ürün detaylarını API'den al
+        const productResponse = await fetch(`api/get_product_details.php?id=${id}`);
+        const productData = await productResponse.json();
+        
+        if (!productData.success) {
+            throw new Error('Ürün bilgileri alınamadı');
+        }
+        
+        const product = productData.product;
+
         // Mağazaları ve depoları al
         const [magazalarResponse, depolarResponse] = await Promise.all([
             fetch('api/get_magazalar.php'),
@@ -430,53 +440,39 @@ window.addStock = async function(id, event) {
             throw new Error('Lokasyon bilgileri alınamadı');
         }
 
-        // Tüm lokasyonları birleştir
-        const lokasyonlar = [
-            // Önce depoları ekle
-            ...depolarData.depolar.map(depo => ({
-                id: `depo_${depo.id}`,
-                ad: `${depo.ad} (Depo)`
-            })),
-            // Sonra mağazaları ekle
-            ...magazalarData.magazalar.map(magaza => ({
-                id: `magaza_${magaza.id}`,
-                ad: magaza.ad
-            }))
-        ];
-
         const result = await Swal.fire({
             title: 'Stok Güncelle',
-html: `
-    <div class="grid grid-cols-1 gap-4">
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700">Lokasyon</label>
-            <select id="stockLocation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                <option value="">Lokasyon Seçin</option>
-                <optgroup label="Depolar" class="font-bold">
-                    ${depolarData.depolar.map(depo => 
-                        `<option value="depo_${depo.id}">${depo.ad}</option>`
-                    ).join('')}
-                </optgroup>
-                <optgroup label="Mağazalar" class="font-bold">
-                    ${magazalarData.magazalar.map(magaza => 
-                        `<option value="magaza_${magaza.id}">${magaza.ad}</option>`
-                    ).join('')}
-                </optgroup>
-            </select>
-        </div>
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700">Miktar</label>
-            <input type="number" id="stockAmount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" min="0.01" step="0.01" required>
-        </div>
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700">İşlem</label>
-            <select id="stockOperation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                <option value="add">Ekle (+)</option>
-                <option value="remove">Çıkar (-)</option>
-            </select>
-        </div>
-    </div>
-`,
+            html: `
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Lokasyon</label>
+                        <select id="stockLocation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="">Lokasyon Seçin</option>
+                            <optgroup label="Depolar" class="font-bold">
+                                ${depolarData.depolar.map(depo => 
+                                    `<option value="depo_${depo.id}">${depo.ad}</option>`
+                                ).join('')}
+                            </optgroup>
+                            <optgroup label="Mağazalar" class="font-bold">
+                                ${magazalarData.magazalar.map(magaza => 
+                                    `<option value="magaza_${magaza.id}">${magaza.ad}</option>`
+                                ).join('')}
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Miktar</label>
+                        <input type="number" id="stockAmount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">İşlem</label>
+                        <select id="stockOperation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="add">Ekle (+)</option>
+                            <option value="remove">Çıkar (-)</option>
+                        </select>
+                    </div>
+                </div>
+            `,
             showCancelButton: true,
             confirmButtonText: 'Güncelle',
             cancelButtonText: 'İptal',
@@ -503,12 +499,15 @@ html: `
 
         if (result.isConfirmed) {
             const [locationType, locationId] = result.value.location.split('_');
+            // ÖNEMLİ: Burada ürünün veritabanından alınan fiyatlarını kullan
             updateStock(
                 id,
                 result.value.amount,
                 result.value.operation,
                 locationType,
-                locationType === 'depo' ? null : locationId
+                locationType === 'magaza' ? locationId : null,
+                product.alis_fiyati, // Ürünün veritabanındaki alış fiyatı
+                product.satis_fiyati  // Ürünün veritabanındaki satış fiyatı
             );
         }
 

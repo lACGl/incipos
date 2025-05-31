@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="200" height="200">
+  <!-- Robot Kafa -->
+  <rect x="128" y="64" width="256" height="256" rx="32" fill="#6f42c1" />
+  
+  <!-- Ekran/Yüz -->
+  <rect x="160" y="96" width="192" height="128" rx="16" fill="#f8f9fa" />
+  
+  <!-- Gözler -->
+  <circle cx="208" cy="144" r="24" fill="#007bff" />
+  <circle cx="304" cy="144" r="24" fill="#007bff" />
+  
+  <!-- Parlama Efekti -->
+  <circle cx="200" cy="136" r="8" fill="white" />
+  <circle cx="296" cy="136" r="8" fill="white" />
+  
+  <!-- Ağız -->
+  <rect x="192" y="184" width="128" height="16" rx="8" fill="#007bff" />
+  
+  <!-- Antenler -->
+  <rect x="176" y="32" width="16" height="32" fill="#6f42c1" />
+  <circle cx="184" cy="24" r="12" fill="#ffc107" />
+  
+  <rect x="320" y="32" width="16" height="32" fill="#6f42c1" />
+  <circle cx="328" cy="24" r="12" fill="#ffc107" />
+  
+  <!-- Kulaklar/Işıklar -->
+  <rect x="96" y="128" width="32" height="64" rx="8" fill="#6f42c1" />
+  <rect x="384" y="128" width="32" height="64" rx="8" fill="#6f42c1" />
+  
+  <circle cx="112" cy="144" r="8" fill="#28a745" />
+  <circle cx="112" cy="176" r="8" fill="#dc3545" />
+  
+  <circle cx="400" cy="144" r="8" fill="#28a745" />
+  <circle cx="400" cy="176" r="8" fill="#dc3545" />
+  
+  <!-- Boyun -->
+  <rect x="224" y="320" width="64" height="32" fill="#6c757d" />
+  
+  <!-- Gövde -->
+  <rect x="160" y="352" width="192" height="96" rx="16" fill="#6f42c1" />
+  
+  <!-- Göğüs Işıkları -->
+  <circle cx="208" cy="384" r="16" fill="#17a2b8" />
+  <circle cx="256" cy="384" r="16" fill="#ffc107" />
+  <circle cx="304" cy="384" r="16" fill="#28a745" />
+  
+  <!-- Düğmeler -->
+  <rect x="192" y="416" width="128" height="16" rx="8" fill="#f8f9fa" />
+</svg>

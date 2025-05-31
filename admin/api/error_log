@@ -1,0 +1,404 @@
+[29-May-2025 23:15:56 UTC] Requesting product history for ID: 3182
+[29-May-2025 23:15:56 UTC] Stock movements found: 1
+[29-May-2025 23:22:24 UTC] Requesting product history for ID: 3182
+[29-May-2025 23:22:24 UTC] Stock movements found: 1
+[30-May-2025 12:17:16 UTC] Gelen veri: Array
+(
+    [input] => Array
+        (
+            [fatura_tipi] => satis
+            [fatura_seri] => f
+            [fatura_no] => 2
+            [fatura_tarihi] => 2025-05-30
+            [irsaliye_no] => 
+            [irsaliye_tarihi] => 
+            [siparis_no] => 
+            [siparis_tarihi] => 
+            [tedarikci] => 1
+            [aciklama] => 
+        )
+
+    [post] => Array
+        (
+        )
+
+    [fatura_seri] => f
+    [fatura_no] => 2
+    [tedarikci] => 1
+    [fatura_tarihi] => 2025-05-30
+)
+
+[30-May-2025 12:17:25 UTC] Gelen Raw Veri: {"fatura_id":2,"products":[{"id":8638,"urun_id":8638,"kod":"KÇ14","barkod":"8696511180892","ad":"KALEM ÇANTASI İKI BÖLMELI LÜKS DESENLI","miktar":1,"birim_fiyat":0.01,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":10,"toplam":0.01}],"is_complete":false}
+[30-May-2025 12:41:12 UTC] Gelen veri: Array
+(
+    [input] => Array
+        (
+            [fatura_tipi] => satis
+            [fatura_seri] => f
+            [fatura_no] => 3
+            [fatura_tarihi] => 2025-05-30
+            [irsaliye_no] => 
+            [irsaliye_tarihi] => 
+            [siparis_no] => 
+            [siparis_tarihi] => 
+            [tedarikci] => 1
+            [aciklama] => 
+        )
+
+    [post] => Array
+        (
+        )
+
+    [fatura_seri] => f
+    [fatura_no] => 3
+    [tedarikci] => 1
+    [fatura_tarihi] => 2025-05-30
+)
+
+[30-May-2025 12:41:30 UTC] Gelen Raw Veri: {"fatura_id":3,"products":[{"id":8638,"urun_id":8638,"kod":"KÇ14","barkod":"8696511180892","ad":"KALEM ÇANTASI İKI BÖLMELI LÜKS DESENLI","miktar":3,"birim_fiyat":5,"iskonto1":10,"iskonto2":5,"iskonto3":7,"kdv_orani":10,"toplam":13.119974999999998}],"is_complete":false}
+[30-May-2025 13:06:09 UTC] Gelen veri: Array
+(
+    [input] => Array
+        (
+            [fatura_tipi] => satis
+            [fatura_seri] => f
+            [fatura_no] => 4
+            [fatura_tarihi] => 2025-05-30
+            [irsaliye_no] => 
+            [irsaliye_tarihi] => 
+            [siparis_no] => 
+            [siparis_tarihi] => 
+            [tedarikci] => 1
+            [aciklama] => 
+        )
+
+    [post] => Array
+        (
+        )
+
+    [fatura_seri] => f
+    [fatura_no] => 4
+    [tedarikci] => 1
+    [fatura_tarihi] => 2025-05-30
+)
+
+[30-May-2025 13:16:30 UTC] POST data: Array
+(
+    [kod] => kod
+    [barkod] => saddassd
+    [ad] => asddsasd
+    [web_id] => 
+    [alis_fiyati] => 1
+    [satis_fiyati] => 2
+    [stok_miktari] => 0
+    [kdv_orani] => 0
+    [departman] => 
+    [birim] => 
+    [ana_grup] => 
+    [alt_grup] => 
+    [yil] => 2025
+    [durum] => aktif
+)
+
+[30-May-2025 13:16:58 UTC] POST data: Array
+(
+    [kod] => kod
+    [barkod] => saddassd
+    [ad] => asddsasd
+    [web_id] => 
+    [alis_fiyati] => 1
+    [satis_fiyati] => 2
+    [stok_miktari] => 0
+    [kdv_orani] => 0
+    [departman] => 
+    [birim] => 
+    [ana_grup] => 
+    [alt_grup] => 
+    [yil] => 2025
+    [durum] => aktif
+)
+
+[30-May-2025 13:16:58 UTC] Ürün ekleme hatası: Bu barkod veya kod zaten kullanımda
+[30-May-2025 15:07:58 UTC] POST data: Array
+(
+    [kod] => gfff
+    [barkod] => fgfggf
+    [ad] => fgfgf
+    [web_id] => 
+    [alis_fiyati] => 1
+    [satis_fiyati] => 1
+    [stok_miktari] => 0
+    [kdv_orani] => 0
+    [departman] => 
+    [birim] => 
+    [ana_grup] => 
+    [alt_grup] => 
+    [yil] => 2025
+    [durum] => aktif
+)
+
+[30-May-2025 15:08:32 UTC] Gelen Raw Veri: {"fatura_id":4,"products":[{"id":599,"urun_id":599,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":5,"birim_fiyat":5,"iskonto1":5,"iskonto2":5,"iskonto3":5,"kdv_orani":20,"toplam":25.721249999999998},{"id":487,"urun_id":487,"kod":"ED14702","barkod":"4004764914487","ad":" ASETAT KALEMİ-SILGILI KIRMIZI (E-147S) ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":3,"iskonto3":3,"kdv_orani":20,"toplam":9.8568684},{"id":"15837","urun_id":"15837","kod":"fgfggf","barkod":"fgfggf","ad":"Yeni Ürün","miktar":1,"birim_fiyat":0,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":0,"toplam":0}],"is_complete":false}
+[30-May-2025 15:08:32 UTC] Mevcut ürünler silindi, fatura ID: 4
+[30-May-2025 15:08:32 UTC] Ürün eklendi - ID: 599, Miktar: 5, Fiyat: 5, Toplam: 21.434375
+[30-May-2025 15:08:32 UTC] Ürün eklendi - ID: 487, Miktar: 3, Fiyat: 3, Toplam: 8.214057
+[30-May-2025 15:08:32 UTC] Ürün eklendi - ID: 15837, Miktar: 1, Fiyat: 0, Toplam: 0
+[30-May-2025 15:08:32 UTC] Fatura güncellendi - Durum: urun_girildi, Toplam: 29.648432, KDV: 5.9296864, Net: 35.5781184
+[30-May-2025 15:30:27 UTC] Gelen veri: Array
+(
+    [input] => Array
+        (
+            [fatura_tipi] => satis
+            [fatura_seri] => f
+            [fatura_no] => 5
+            [fatura_tarihi] => 2025-05-30
+            [irsaliye_no] => 
+            [irsaliye_tarihi] => 
+            [siparis_no] => 
+            [siparis_tarihi] => 
+            [tedarikci] => 1
+            [aciklama] => 
+        )
+
+    [post] => Array
+        (
+        )
+
+    [fatura_seri] => f
+    [fatura_no] => 5
+    [tedarikci] => 1
+    [fatura_tarihi] => 2025-05-30
+)
+
+[30-May-2025 15:37:51 UTC] Gelen Raw Veri: {"fatura_id":5,"products":[{"id":599,"urun_id":599,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":2,"iskonto3":1,"kdv_orani":20,"toplam":10.1638152}],"is_complete":false}
+[30-May-2025 15:37:51 UTC] Mevcut ürünler silindi, fatura ID: 5
+[30-May-2025 15:37:51 UTC] Ürün eklendi - ID: 599, Miktar: 3, Fiyat: 3, Toplam: 8.469846
+[30-May-2025 15:37:51 UTC] Fatura güncellendi - Durum: urun_girildi, Toplam: 8.469846, KDV: 1.6939692, Net: 10.1638152
+[30-May-2025 15:40:06 UTC] Gelen Ham Veri: {"fatura_id":5,"hedef_tipi":"magaza","hedef_id":"2","products":[{"id":9,"urun_id":599,"fatura_id":5,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":2,"iskonto3":1,"kdv_orani":20,"toplam_tutar":8.47,"aktarilan_miktar":0,"kalan_miktar":3,"selected":true,"transfer_miktar":1,"satis_fiyati":5.4,"kar_orani":80}]}
+[30-May-2025 15:40:06 UTC] Transfer hatası: Bu fatura henüz tamamlanmamış. Önce "Faturayı Bitir" ile tamamlayın.
+#0 {main}
+[30-May-2025 18:21:36 UTC] POST data: Array
+(
+    [kod] => ad
+    [barkod] => test123
+    [ad] => ad
+    [web_id] => 
+    [alis_fiyati] => 1
+    [satis_fiyati] => 2
+    [stok_miktari] => 0
+    [kdv_orani] => 0
+    [departman] => 
+    [birim] => 
+    [ana_grup] => 
+    [alt_grup] => 
+    [yil] => 2025
+    [durum] => aktif
+)
+
+[30-May-2025 20:40:57 UTC] POST data: Array
+(
+    [kod] => fghhf
+    [barkod] => ghjfgfg
+    [ad] => dfgdfg
+    [web_id] => 1
+    [alis_fiyati] => 1
+    [satis_fiyati] => 2
+    [stok_miktari] => 0
+    [kdv_orani] => 10
+    [departman] => 
+    [birim] => 
+    [ana_grup] => 
+    [alt_grup] => 
+    [yil] => 2025
+    [durum] => aktif
+)
+
+[30-May-2025 20:41:12 UTC] Gelen Raw Veri: {"fatura_id":5,"products":[{"id":599,"urun_id":599,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":2,"iskonto3":1,"kdv_orani":20,"toplam":10.1638152},{"id":3181,"urun_id":3181,"kod":"4342022001000","barkod":"8681241097961","ad":"ADEL 50*70 FON KARTONU","miktar":1,"birim_fiyat":0.01,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":20,"toplam":0.012},{"id":"15839","urun_id":"15839","kod":"ghjfgfg","barkod":"ghjfgfg","ad":"Yeni Ürün","miktar":1,"birim_fiyat":0,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":0,"toplam":0}],"is_complete":false}
+[30-May-2025 20:41:12 UTC] Mevcut ürünler silindi, fatura ID: 5
+[30-May-2025 20:41:12 UTC] Ürün eklendi - ID: 599, Miktar: 3, Fiyat: 3, Toplam: 8.469846
+[30-May-2025 20:41:12 UTC] Ürün eklendi - ID: 3181, Miktar: 1, Fiyat: 0.01, Toplam: 0.01
+[30-May-2025 20:41:12 UTC] Ürün eklendi - ID: 15839, Miktar: 1, Fiyat: 0, Toplam: 0
+[30-May-2025 20:41:12 UTC] Fatura güncellendi - Durum: urun_girildi, Toplam: 8.479846, KDV: 1.6959692, Net: 10.1758152
+[30-May-2025 20:41:30 UTC] Gelen Raw Veri: {"fatura_id":4,"products":[{"id":599,"urun_id":599,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":5,"birim_fiyat":5,"iskonto1":5,"iskonto2":5,"iskonto3":5,"kdv_orani":20,"toplam":25.721249999999998},{"id":487,"urun_id":487,"kod":"ED14702","barkod":"4004764914487","ad":" ASETAT KALEMİ-SILGILI KIRMIZI (E-147S) ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":3,"iskonto3":3,"kdv_orani":20,"toplam":9.8568684},{"id":15837,"urun_id":15837,"kod":"gfff","barkod":"fgfggf","ad":"fgfgf","miktar":1,"birim_fiyat":0,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":0,"toplam":0}],"is_complete":true}
+[30-May-2025 20:41:30 UTC] Mevcut ürünler silindi, fatura ID: 4
+[30-May-2025 20:41:30 UTC] Ürün eklendi - ID: 599, Miktar: 5, Fiyat: 5, Toplam: 21.434375
+[30-May-2025 20:41:30 UTC] Ürün eklendi - ID: 487, Miktar: 3, Fiyat: 3, Toplam: 8.214057
+[30-May-2025 20:41:30 UTC] Ürün eklendi - ID: 15837, Miktar: 1, Fiyat: 0, Toplam: 0
+[30-May-2025 20:41:30 UTC] Fatura güncellendi - Durum: aktarim_bekliyor, Toplam: 29.648432, KDV: 5.9296864, Net: 35.5781184
+[30-May-2025 20:41:51 UTC] Gelen Raw Veri: {"fatura_id":4,"products":[{"id":599,"urun_id":599,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":5,"birim_fiyat":5,"iskonto1":5,"iskonto2":5,"iskonto3":5,"kdv_orani":20,"toplam":25.721249999999998},{"id":487,"urun_id":487,"kod":"ED14702","barkod":"4004764914487","ad":" ASETAT KALEMİ-SILGILI KIRMIZI (E-147S) ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":3,"iskonto3":3,"kdv_orani":20,"toplam":9.8568684},{"id":15837,"urun_id":15837,"kod":"gfff","barkod":"fgfggf","ad":"fgfgf","miktar":1,"birim_fiyat":0,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":0,"toplam":0},{"id":8352,"urun_id":8352,"kod":"KC 763","barkod":"8695587117634","ad":"KALEM ÇANTASI ÇİFT FERMUARLI","miktar":1,"birim_fiyat":0.01,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":10,"toplam":0.011}],"is_complete":true}
+[30-May-2025 20:41:51 UTC] Mevcut ürünler silindi, fatura ID: 4
+[30-May-2025 20:41:51 UTC] Ürün eklendi - ID: 599, Miktar: 5, Fiyat: 5, Toplam: 21.434375
+[30-May-2025 20:41:51 UTC] Ürün eklendi - ID: 487, Miktar: 3, Fiyat: 3, Toplam: 8.214057
+[30-May-2025 20:41:51 UTC] Ürün eklendi - ID: 15837, Miktar: 1, Fiyat: 0, Toplam: 0
+[30-May-2025 20:41:51 UTC] Ürün eklendi - ID: 8352, Miktar: 1, Fiyat: 0.01, Toplam: 0.01
+[30-May-2025 20:41:51 UTC] Fatura güncellendi - Durum: aktarim_bekliyor, Toplam: 29.658432, KDV: 5.9306864, Net: 35.5891184
+[30-May-2025 20:43:16 UTC] Gelen veri: Array
+(
+    [input] => Array
+        (
+            [fatura_tipi] => satis
+            [fatura_seri] => f
+            [fatura_no] => 6
+            [fatura_tarihi] => 2025-05-24
+            [irsaliye_no] => 
+            [irsaliye_tarihi] => 
+            [siparis_no] => 
+            [siparis_tarihi] => 
+            [tedarikci] => 1
+            [aciklama] => 
+        )
+
+    [post] => Array
+        (
+        )
+
+    [fatura_seri] => f
+    [fatura_no] => 6
+    [tedarikci] => 1
+    [fatura_tarihi] => 2025-05-24
+)
+
+[30-May-2025 20:44:16 UTC] Gelen Ham Veri: {"fatura_id":4,"hedef_tipi":"magaza","hedef_id":"2","products":[{"id":16,"urun_id":599,"fatura_id":4,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":5,"birim_fiyat":5,"iskonto1":5,"iskonto2":5,"iskonto3":5,"kdv_orani":20,"toplam_tutar":21.43,"aktarilan_miktar":0,"kalan_miktar":5,"selected":true,"transfer_miktar":3,"satis_fiyati":7,"kar_orani":40},{"id":17,"urun_id":487,"fatura_id":4,"kod":"ED14702","barkod":"4004764914487","ad":" ASETAT KALEMİ-SILGILI KIRMIZI (E-147S) ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":3,"iskonto3":3,"kdv_orani":20,"toplam_tutar":8.21,"aktarilan_miktar":0,"kalan_miktar":3,"selected":false,"transfer_miktar":3,"satis_fiyati":4.199999999999999,"kar_orani":40},{"id":18,"urun_id":15837,"fatura_id":4,"kod":"gfff","barkod":"fgfggf","ad":"fgfgf","miktar":1,"birim_fiyat":0,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":0,"toplam_tutar":0,"aktarilan_miktar":0,"kalan_miktar":1,"selected":false,"transfer_miktar":1,"satis_fiyati":0,"kar_orani":40},{"id":19,"urun_id":8352,"fatura_id":4,"kod":"KC 763","barkod":"8695587117634","ad":"KALEM ÇANTASI ÇİFT FERMUARLI","miktar":1,"birim_fiyat":0.01,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":10,"toplam_tutar":0.01,"aktarilan_miktar":0,"kalan_miktar":1,"selected":false,"transfer_miktar":1,"satis_fiyati":0.013999999999999999,"kar_orani":40}]}
+[30-May-2025 20:44:16 UTC] Transfer işlemi başladı. Fatura ID: 4, Hedef Tipi: magaza, Hedef ID: 2
+[30-May-2025 20:44:16 UTC] Gelen ürünler: Array
+(
+    [0] => Array
+        (
+            [id] => 16
+            [urun_id] => 599
+            [fatura_id] => 4
+            [kod] => 4005401466512
+            [barkod] => 4005401466512
+            [ad] => FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ
+            [miktar] => 5
+            [birim_fiyat] => 5
+            [iskonto1] => 5
+            [iskonto2] => 5
+            [iskonto3] => 5
+            [kdv_orani] => 20
+            [toplam_tutar] => 21.43
+            [aktarilan_miktar] => 0
+            [kalan_miktar] => 5
+            [selected] => 1
+            [transfer_miktar] => 3
+            [satis_fiyati] => 7
+            [kar_orani] => 40
+        )
+
+    [1] => Array
+        (
+            [id] => 17
+            [urun_id] => 487
+            [fatura_id] => 4
+            [kod] => ED14702
+            [barkod] => 4004764914487
+            [ad] =>  ASETAT KALEMİ-SILGILI KIRMIZI (E-147S) 
+            [miktar] => 3
+            [birim_fiyat] => 3
+            [iskonto1] => 3
+            [iskonto2] => 3
+            [iskonto3] => 3
+            [kdv_orani] => 20
+            [toplam_tutar] => 8.21
+            [aktarilan_miktar] => 0
+            [kalan_miktar] => 3
+            [selected] => 
+            [transfer_miktar] => 3
+            [satis_fiyati] => 4.2
+            [kar_orani] => 40
+        )
+
+    [2] => Array
+        (
+            [id] => 18
+            [urun_id] => 15837
+            [fatura_id] => 4
+            [kod] => gfff
+            [barkod] => fgfggf
+            [ad] => fgfgf
+            [miktar] => 1
+            [birim_fiyat] => 0
+            [iskonto1] => 0
+            [iskonto2] => 0
+            [iskonto3] => 0
+            [kdv_orani] => 0
+            [toplam_tutar] => 0
+            [aktarilan_miktar] => 0
+            [kalan_miktar] => 1
+            [selected] => 
+            [transfer_miktar] => 1
+            [satis_fiyati] => 0
+            [kar_orani] => 40
+        )
+
+    [3] => Array
+        (
+            [id] => 19
+            [urun_id] => 8352
+            [fatura_id] => 4
+            [kod] => KC 763
+            [barkod] => 8695587117634
+            [ad] => KALEM ÇANTASI ÇİFT FERMUARLI
+            [miktar] => 1
+            [birim_fiyat] => 0.01
+            [iskonto1] => 0
+            [iskonto2] => 0
+            [iskonto3] => 0
+            [kdv_orani] => 10
+            [toplam_tutar] => 0.01
+            [aktarilan_miktar] => 0
+            [kalan_miktar] => 1
+            [selected] => 
+            [transfer_miktar] => 1
+            [satis_fiyati] => 0.014
+            [kar_orani] => 40
+        )
+
+)
+
+[30-May-2025 20:44:16 UTC] Seçilen ürün sayısı: 1
+[30-May-2025 20:44:16 UTC] İşlenen ürün: Array
+(
+    [id] => 16
+    [urun_id] => 599
+    [fatura_id] => 4
+    [kod] => 4005401466512
+    [barkod] => 4005401466512
+    [ad] => FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ
+    [miktar] => 5
+    [birim_fiyat] => 5
+    [iskonto1] => 5
+    [iskonto2] => 5
+    [iskonto3] => 5
+    [kdv_orani] => 20
+    [toplam_tutar] => 21.43
+    [aktarilan_miktar] => 0
+    [kalan_miktar] => 5
+    [selected] => 1
+    [transfer_miktar] => 3
+    [satis_fiyati] => 7
+    [kar_orani] => 40
+)
+
+[30-May-2025 20:44:16 UTC] Ürün bilgileri sorgulanıyor. Ürün ID: 599, Fatura ID: 4
+[30-May-2025 20:44:16 UTC] Ürün işleniyor: ID: 599, Barkod: 4005401466512, Ad: FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ, Transfer Miktar: 3
+[30-May-2025 20:44:16 UTC] Ürün fiyatı güncellendi. Ürün ID: 599, Eski: 721.50, Yeni: 7
+[30-May-2025 20:44:16 UTC] İndirim uygulandı. Ürün ID: 599, Eski Fiyat: 7.00, İndirimli Fiyat: 6.65
+[30-May-2025 20:44:16 UTC] Ürün fiyatı güncellendi. Ürün ID: 599, Normal: 7, İndirimli: 6.65
+[30-May-2025 20:44:16 UTC] Mağaza stoğu güncellendi. Etkilenen satır: 1
+[30-May-2025 20:44:16 UTC] Mağazaya giriş hareketi kaydedildi. Ürün ID: 599, Miktar: 3
+[30-May-2025 20:44:16 UTC] Aktarım kaydı eklendi. Fatura ID: 4, Ürün ID: 599, Miktar: 3
+[30-May-2025 20:44:16 UTC] updateTotalStock() çağrıldı. Ürün ID: 599
+[30-May-2025 20:44:16 UTC] Ürün stok güncellendi. Ürün ID: 599, Mağaza Stok: 59, Depo Stok: 0, Toplam: 59
+[30-May-2025 20:44:16 UTC] Fatura durumu güncellendi: kismi_aktarildi
+[30-May-2025 20:44:16 UTC] Aktarım kaydı eklendi.
+[30-May-2025 20:44:16 UTC] Transfer işlemi başarıyla tamamlandı. Aktarılan Toplam Miktar: 3
+[30-May-2025 21:04:42 UTC] Gelen Raw Veri: {"fatura_id":5,"products":[{"id":599,"urun_id":599,"kod":"4005401466512","barkod":"4005401466512","ad":"FABER CASTEL VİSİON 1466 ROLLER KALEM MAVİ","miktar":3,"birim_fiyat":3,"iskonto1":3,"iskonto2":2,"iskonto3":1,"kdv_orani":20,"toplam":10.1638152},{"id":3181,"urun_id":3181,"kod":"4342022001000","barkod":"8681241097961","ad":"ADEL 50*70 FON KARTONU","miktar":1,"birim_fiyat":0.01,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":20,"toplam":0.012},{"id":15839,"urun_id":15839,"kod":"fghhf","barkod":"ghjfgfg","ad":"dfgdfg","miktar":1,"birim_fiyat":0,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdv_orani":0,"toplam":0}],"is_complete":true}
+[30-May-2025 21:04:42 UTC] Mevcut ürünler silindi, fatura ID: 5
+[30-May-2025 21:04:42 UTC] Ürün eklendi - ID: 599, Miktar: 3, Fiyat: 3, Toplam: 8.469846
+[30-May-2025 21:04:42 UTC] Ürün eklendi - ID: 3181, Miktar: 1, Fiyat: 0.01, Toplam: 0.01
+[30-May-2025 21:04:42 UTC] Ürün eklendi - ID: 15839, Miktar: 1, Fiyat: 0, Toplam: 0
+[30-May-2025 21:04:42 UTC] Fatura güncellendi - Durum: aktarim_bekliyor, Toplam: 8.479846, KDV: 1.6959692, Net: 10.1758152
+[30-May-2025 21:05:34 UTC] Gelen Raw Veri: {"fatura_id":3,"products":[{"id":8638,"urun_id":8638,"kod":"KÇ14","barkod":"8696511180892","ad":"KALEM ÇANTASI İKI BÖLMELI LÜKS DESENLI","miktar":3,"birim_fiyat":5,"iskonto1":10,"iskonto2":5,"iskonto3":7,"kdv_orani":10,"toplam":13.119974999999998}],"is_complete":false}
+[30-May-2025 21:05:34 UTC] Mevcut ürünler silindi, fatura ID: 3
+[30-May-2025 21:05:34 UTC] Ürün eklendi - ID: 8638, Miktar: 3, Fiyat: 5, Toplam: 11.92725
+[30-May-2025 21:05:35 UTC] Fatura güncellendi - Durum: urun_girildi, Toplam: 11.92725, KDV: 1.192725, Net: 13.119975

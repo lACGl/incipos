@@ -1,0 +1,131 @@
+<?php
+session_start();
+require_once '../db_connection.php';
+
+// Yetki kontrolü
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim']);
+    exit;
+}
+
+// Parametreleri kontrol et
+if (!isset($_GET['path']) || empty($_GET['path'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Geçersiz klasör yolu']);
+    exit;
+}
+
+$folder_path = $_GET['path'];
+$root_path = "C:/xampp/htdocs/incipos";
+
+// Ana dizini belirle
+if (strpos($folder_path, 'img/') === 0) {
+    $full_path = $root_path . '/files/' . $folder_path;
+} elseif (strpos($folder_path, 'pdf/') === 0) {
+    $full_path = $root_path . '/files/' . $folder_path;
+} elseif ($folder_path === 'img') {
+    $full_path = $root_path . '/files/img';
+} elseif ($folder_path === 'pdf') {
+    $full_path = $root_path . '/files/pdf';
+} elseif ($folder_path === 'files') {
+    $full_path = $root_path . '/files';
+} elseif (strpos($folder_path, 'files/') === 0) {
+    $full_path = $root_path . '/' . $folder_path;
+} else {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Geçersiz klasör yolu']);
+    exit;
+}
+
+// Güvenlik kontrolü - path traversal saldırılarına karşı koruma
+$canonicalPath = realpath($full_path);
+$rootPath = realpath($root_path);
+
+if ($canonicalPath === false || strpos($canonicalPath, $rootPath) !== 0) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Geçersiz klasör yolu']);
+    exit;
+}
+
+// Klasör yoksa veya klasör değilse
+if (!file_exists($full_path) || !is_dir($full_path)) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Klasör bulunamadı: ' . $full_path]);
+    exit;
+}
+
+// Klasör içeriğini analiz et
+$total_files = 0;
+$total_folders = 0;
+$total_size = 0;
+$file_types = [];
+
+// Dosya tiplerini saymak için
+$image_count = 0;
+$pdf_count = 0;
+$other_count = 0;
+
+// Klasör içeriğini döngüyle işle
+$items = scandir($full_path);
+foreach ($items as $item) {
+    if ($item == '.' || $item == '..' || $item == '.htaccess') {
+        continue;
+    }
+    
+    $item_path = $full_path . '/' . $item;
+    
+    if (is_dir($item_path)) {
+        $total_folders++;
+    } else {
+        $total_files++;
+        $total_size += filesize($item_path);
+        
+        // Dosya tipini belirle
+        $extension = strtolower(pathinfo($item, PATHINFO_EXTENSION));
+        
+        if (isset($file_types[$extension])) {
+            $file_types[$extension]++;
+        } else {
+            $file_types[$extension] = 1;
+        }
+        
+        // Özel tip sayaçları
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+            $image_count++;
+        } elseif ($extension === 'pdf') {
+            $pdf_count++;
+        } else {
+            $other_count++;
+        }
+    }
+}
+
+// Klasör bilgilerini formatla
+function formatSize($size) {
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $i = 0;
+    while ($size >= 1024 && $i < count($units) - 1) {
+        $size /= 1024;
+        $i++;
+    }
+    return round($size, 2) . ' ' . $units[$i];
+}
+
+// Sonuçları döndür
+header('Content-Type: application/json');
+echo json_encode([
+    'success' => true,
+    'path' => $folder_path,
+    'full_path' => $full_path,
+    'total_files' => $total_files,
+    'total_folders' => $total_folders,
+    'total_size' => $total_size,
+    'formatted_size' => formatSize($total_size),
+    'file_types' => $file_types,
+    'image_count' => $image_count,
+    'pdf_count' => $pdf_count,
+    'other_count' => $other_count,
+    'last_modified' => date('Y-m-d H:i:s', filemtime($full_path))
+]);
+?>

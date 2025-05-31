@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once 'session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once __DIR__ . '/../db_connection.php'; 
 require_once 'ProductManager.php';
 

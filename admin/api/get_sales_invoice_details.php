@@ -1,0 +1,83 @@
+<?php
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
+require_once '../db_connection.php';
+
+// Yetki kontrolü
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim']);
+    exit;
+}
+
+// ID parametresini kontrol et
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Geçersiz fatura ID']);
+    exit;
+}
+
+$invoice_id = (int)$_GET['id'];
+
+try {
+    // Fatura bilgilerini al
+    $invoice_query = "
+        SELECT 
+            sf.*,
+            m.ad as magaza_adi,
+            p.ad as personel_adi,
+            mus.ad as musteri_adi,
+            mus.soyad as musteri_soyad
+        FROM 
+            satis_faturalari sf
+            LEFT JOIN magazalar m ON sf.magaza = m.id
+            LEFT JOIN personel p ON sf.personel = p.id
+            LEFT JOIN musteriler mus ON sf.musteri_id = mus.id
+        WHERE 
+            sf.id = ?
+    ";
+    
+    $stmt = $conn->prepare($invoice_query);
+    $stmt->execute([$invoice_id]);
+    $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$invoice) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Fatura bulunamadı']);
+        exit;
+    }
+    
+    // Fatura detaylarını al
+    $details_query = "
+        SELECT 
+            sfd.*,
+            us.ad as urun_adi,
+            us.barkod
+        FROM 
+            satis_fatura_detay sfd
+            LEFT JOIN urun_stok us ON sfd.urun_id = us.id
+        WHERE 
+            sfd.fatura_id = ?
+    ";
+    
+    $stmt = $conn->prepare($details_query);
+    $stmt->execute([$invoice_id]);
+    $details = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Başarılı yanıt döndür
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'invoice' => $invoice,
+        'details' => $details
+    ]);
+    
+} catch (PDOException $e) {
+    // Hata durumunda
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'message' => 'Veritabanı hatası: ' . $e->getMessage()
+    ]);
+}
+?>

@@ -1,0 +1,102 @@
+[2025-05-08 08:29:29] [INFO] WebPOS - Prestashop Barkod Eşleştirme başlatıldı (Tüm Ürünler)
+[2025-05-08 08:29:29] [INFO] Veritabanı bağlantısı başarılı
+[2025-05-08 08:29:29] [INFO] Prestashop'tan tüm ürünler alınıyor...
+[2025-05-08 08:29:29] [INFO] Tahmini maksimum ürün ID'si: 6500
+[2025-05-08 08:29:29] [INFO] Toplam 13 grup halinde ürünler alınacak
+[2025-05-08 08:29:29] [INFO] Ürün ID aralığı 1-500 işleniyor...
+[2025-05-08 08:29:29] [INFO] Batch 0: 393 ürün bulundu
+[2025-05-08 08:29:29] [INFO] Batch 0: 393 barkodlu ürün bulundu
+[2025-05-08 08:29:30] [INFO] Ürün ID aralığı 501-1000 işleniyor...
+[2025-05-08 08:29:30] [INFO] Batch 1: 372 ürün bulundu
+[2025-05-08 08:29:30] [INFO] Batch 1: 372 barkodlu ürün bulundu
+[2025-05-08 08:29:30] [INFO] Ürün ID aralığı 1001-1500 işleniyor...
+[2025-05-08 08:29:31] [INFO] Batch 2: 379 ürün bulundu
+[2025-05-08 08:29:31] [INFO] Batch 2: 379 barkodlu ürün bulundu
+[2025-05-08 08:29:31] [INFO] Ürün ID aralığı 1501-2000 işleniyor...
+[2025-05-08 08:29:32] [INFO] Batch 3: 401 ürün bulundu
+[2025-05-08 08:29:32] [INFO] Batch 3: 401 barkodlu ürün bulundu
+[2025-05-08 08:29:32] [INFO] Ürün ID aralığı 2001-2500 işleniyor...
+[2025-05-08 08:29:33] [INFO] Batch 4: 374 ürün bulundu
+[2025-05-08 08:29:33] [INFO] Batch 4: 374 barkodlu ürün bulundu
+[2025-05-08 08:29:33] [INFO] Ürün ID aralığı 2501-3000 işleniyor...
+[2025-05-08 08:29:34] [INFO] Batch 5: 385 ürün bulundu
+[2025-05-08 08:29:34] [INFO] Batch 5: 385 barkodlu ürün bulundu
+[2025-05-08 08:29:34] [INFO] Ürün ID aralığı 3001-3500 işleniyor...
+[2025-05-08 08:29:34] [INFO] Batch 6: 395 ürün bulundu
+[2025-05-08 08:29:34] [INFO] Batch 6: 395 barkodlu ürün bulundu
+[2025-05-08 08:29:35] [INFO] Ürün ID aralığı 3501-4000 işleniyor...
+[2025-05-08 08:29:35] [INFO] Batch 7: 434 ürün bulundu
+[2025-05-08 08:29:35] [INFO] Batch 7: 434 barkodlu ürün bulundu
+[2025-05-08 08:29:36] [INFO] Ürün ID aralığı 4001-4500 işleniyor...
+[2025-05-08 08:29:36] [INFO] Batch 8: 360 ürün bulundu
+[2025-05-08 08:29:36] [INFO] Batch 8: 360 barkodlu ürün bulundu
+[2025-05-08 08:29:36] [INFO] Ürün ID aralığı 4501-5000 işleniyor...
+[2025-05-08 08:29:37] [INFO] Batch 9: 483 ürün bulundu
+[2025-05-08 08:29:37] [INFO] Batch 9: 483 barkodlu ürün bulundu
+[2025-05-08 08:29:37] [INFO] Ürün ID aralığı 5001-5500 işleniyor...
+[2025-05-08 08:29:38] [INFO] Batch 10: 487 ürün bulundu
+[2025-05-08 08:29:38] [INFO] Batch 10: 487 barkodlu ürün bulundu
+[2025-05-08 08:29:38] [INFO] Ürün ID aralığı 5501-6000 işleniyor...
+[2025-05-08 08:29:38] [INFO] Batch 11: 447 ürün bulundu
+[2025-05-08 08:29:38] [INFO] Batch 11: 447 barkodlu ürün bulundu
+[2025-05-08 08:29:39] [INFO] Ürün ID aralığı 6001-6500 işleniyor...
+[2025-05-08 08:29:39] [INFO] Batch 12: 362 ürün bulundu
+[2025-05-08 08:29:39] [INFO] Batch 12: 351 barkodlu ürün bulundu
+[2025-05-08 08:29:40] [INFO] Toplam 5272 Prestashop ürünü işlendi
+[2025-05-08 08:29:40] [INFO] Benzersiz barkod sayısı: 5143
+[2025-05-08 08:29:40] [INFO] Örnek barkod: 8681241087719 -> ID: 23, Ad: "Adel Stick Yapıştırıcı 8 Gr."
+[2025-05-08 08:29:40] [INFO] Örnek barkod: 8697236441619 -> ID: 26, Ad: "Gıpta Mica A4 Tel Dikişli Plastik Kapak 40 Yap. Çizgili Defter"
+[2025-05-08 08:29:40] [INFO] Örnek barkod: 8697236101544 -> ID: 27, Ad: "Mica Ofset  A4 Pp 40 Yap. Kareli Defter"
+[2025-05-08 08:29:40] [INFO] Örnek barkod: 8697236966815 -> ID: 30, Ad: "Mica Dik Temel Çizgili Yazı Defteri Büyük Boy"
+[2025-05-08 08:29:40] [INFO] Örnek barkod: 6933256618573 -> ID: 31, Ad: "Econ Versatil Kalem Pastel Renkler"
+[2025-05-08 08:29:40] [INFO] WebPOS'tan ürünleri alınıyor...
+[2025-05-08 08:29:40] [INFO] WebPOS'tan toplam 15835 ürün alındı
+[2025-05-08 08:29:40] [INFO] Eşleştirme ve güncelleme başlatılıyor...
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=12, Ad="ROLLER GLIDE PRO 0,5  SİYAH", Barkod=070330335134, Eski Web ID=Boş, Yeni Web ID=124, PS Ad="Bic Roller Glide Pro 0,5 Uç Siyah"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=322, Ad="CANSON 200 GR 35*50 RESİM KAĞIDI", Barkod=3148951215122, Eski Web ID=Boş, Yeni Web ID=686, PS Ad="CANSON 200 GR 35*50 RESİM KAĞIDI"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=688, Ad="FABER-CASTELL FREE INK NEEDLE 0.5 MM MAVI", Barkod=4005403486013, Eski Web ID=5229, Yeni Web ID=3629, PS Ad="Faber-Castell Free Ink Needle 0.5 Mm Mavi Roller Kalem"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=692, Ad="FABER-CASTELL VİSİON 5415  KIRMIZI (1475)", Barkod=4005405415219, Eski Web ID=Boş, Yeni Web ID=230, PS Ad="Faber-Castell 5415 Vision Roller Kalem"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=1996, Ad="FABER-CASTELL 2022 KIRMIZI TÜKENMEZ KALEM", Barkod=7754111546218, Eski Web ID=Boş, Yeni Web ID=255, PS Ad="Faber-Castell 2022 Tükenmez Kalem"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=2509, Ad="LETS TEK RENK  OYUN HAMURU BEYAZ 150 GR.", Barkod=8680679803045, Eski Web ID=Boş, Yeni Web ID=166, PS Ad="Lets Tek Renk Oyun Hamuru 150 Gr."
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=2639, Ad="BOŞ", Barkod=8680869448056, Eski Web ID=Boş, Yeni Web ID=3309, PS Ad="Serve Premium Kurşun Kalem Neon Renkler"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=3092, Ad="FABER-CASTELL VİSİON 5417 SİYAH ROLLER KALEM", Barkod=8681241076904, Eski Web ID=Boş, Yeni Web ID=233, PS Ad="Faber-Castell 5417 Vision Roller Kalem"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=3163, Ad="FABER-CASTELL BAŞLIK KALEMİ KIRMIZI CANDYROLL ", Barkod=8681241091389, Eski Web ID=Boş, Yeni Web ID=237, PS Ad="Faber-Castell Candyroll Kırmızı Başlık Kalemi"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=6084, Ad="FABER-CASTELL 1440 SİYAH TÜKENMEZ KALEM", Barkod=8690826144952, Eski Web ID=Boş, Yeni Web ID=244, PS Ad="Faber-Castell 1440 0.8 Mm Tükenmez Kalem"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=6312, Ad="ARK KOLİ BANT MAKİNESİ", Barkod=8690857008506, Eski Web ID=Boş, Yeni Web ID=6381, PS Ad="Ark Koli Bandı Kesme Makinesi"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=8043, Ad="TEMAT 7000 NO:24/6 ZIMBA SİYAH", Barkod=8694340040103, Eski Web ID=Boş, Yeni Web ID=2500, PS Ad="Temat 7000 No:24/6 Zımba Makinesi Siyah"
+[2025-05-08 08:29:40] [SUCCESS] Ürün güncellendi: WebPOS ID=11060, Ad="KİKA 70*100 KRAFT KAĞIT 100'LÜ", Barkod=8698740310521, Eski Web ID=Boş, Yeni Web ID=733, PS Ad="Kika Kraft Kağıdı 70X100 Cm"
+[2025-05-08 08:29:40] [INFO] 
+Eşleşme bulunamayan ürün örnekleri:
+[2025-05-08 08:29:40] [INFO] 1. ID: 1, Barkod: 000000000066, Ad: KALIN MUKAVVA 70X100  16'LIK
+[2025-05-08 08:29:40] [INFO] 2. ID: 2, Barkod: 000010, Ad: EMİNİŞ 10MM NATURAL-RENKLİ AHŞAP BONCUK 1KG 2300-2400 ADET
+[2025-05-08 08:29:40] [INFO] 3. ID: 3, Barkod: 000014, Ad: EMİNİŞ 14 MM NATURAL-RENKLİ AHŞAP BONCUK 1KG 1050-110 ADET
+[2025-05-08 08:29:40] [INFO] 4. ID: 4, Barkod: 000130410328, Ad: MUYA KOLİ BANT MAKİNESİ
+[2025-05-08 08:29:40] [INFO] 5. ID: 5, Barkod: 021809*0980348, Ad: MUNİS KALEMLİ HATIRA DEFTERİ KUTULU
+[2025-05-08 08:29:40] [INFO] 6. ID: 7, Barkod: 070330330979, Ad: BİC MARKING HIGHLIGHTER GRIP 12'Lİ KUTU MAVİ
+[2025-05-08 08:29:40] [INFO] 7. ID: 10, Barkod: 070330331006, Ad: BİC MARKING HIGHLIGHTER GRIP 12'Lİ KUTU  PEMBE
+[2025-05-08 08:29:40] [INFO] 8. ID: 13, Barkod: 070330335141, Ad: ROLLER GLIDE PRO 0,5  KIRMIZI
+[2025-05-08 08:29:40] [INFO] 9. ID: 14, Barkod: 070330335165, Ad: BİC TRIUMPH ROLLER SİYAH 0,7MM SİYAH
+[2025-05-08 08:29:40] [INFO] 10. ID: 15, Barkod: 070330345393, Ad: MARKING COLOR METALİK RENKLER GÜMÜŞ
+[2025-05-08 08:29:40] [INFO] 11. ID: 16, Barkod: 070330345409, Ad: MARKING COLOR METALİK RENKLER ALTIN
+[2025-05-08 08:29:40] [INFO] 12. ID: 17, Barkod: 070330352261, Ad: MARKING COLOR METALİK RENKLER PİNK TOPAZ/PEMBE TOPAZ
+[2025-05-08 08:29:40] [INFO] 13. ID: 18, Barkod: 070330352278, Ad: MARKING COLOR METALİK RENKLER AMETHYST
+[2025-05-08 08:29:40] [INFO] 14. ID: 19, Barkod: 070330352285, Ad: MARKING COLOR METALİK RENKLER ALTIN SAFİR
+[2025-05-08 08:29:40] [INFO] 15. ID: 20, Barkod: 070330352346, Ad: MARKING COLOR METALİK RENKLER YEŞİM TAŞI
+[2025-05-08 08:29:40] [INFO] 16. ID: 21, Barkod: 070330352360, Ad: MARKING COLOR METALİK RENKLER BRONZ
+[2025-05-08 08:29:40] [INFO] 17. ID: 22, Barkod: 070330421875, Ad: VELOCITY PRO VERSATİL KALEM 0.5 MM
+[2025-05-08 08:29:40] [INFO] 18. ID: 23, Barkod: 070330421882, Ad: VELOCITY PRO VERSATİL KALEM 0.7 MM
+[2025-05-08 08:29:40] [INFO] 19. ID: 24, Barkod: 070330512122, Ad: TIPP-EX MINI POCKET MOUSE ŞERİT DÜZELTİCİ
+[2025-05-08 08:29:40] [INFO] 20. ID: 25, Barkod: 070330513952, Ad: TIPP-EX MICRO TAPE TWIST ŞERİT DÜZ. 10'LU KUTU KARIŞIK
+[2025-05-08 08:29:40] [SUCCESS] =======================================================================
+[2025-05-08 08:29:40] [SUCCESS] İşlem tamamlandı.
+[2025-05-08 08:29:40] [SUCCESS] Toplam Prestashop ürünü: 5272
+[2025-05-08 08:29:40] [SUCCESS] Benzersiz barkod sayısı: 5143
+[2025-05-08 08:29:40] [SUCCESS] Toplam WebPOS ürünü: 15835
+[2025-05-08 08:29:40] [SUCCESS] Güncellenen ürün sayısı: 13
+[2025-05-08 08:29:40] [SUCCESS] Zaten güncel olan ürün sayısı: 3831
+[2025-05-08 08:29:40] [SUCCESS] Eşleşme bulunamayan ürün sayısı: 11991
+[2025-05-08 08:29:40] [SUCCESS] Hatalı ürün sayısı: 0
+[2025-05-08 08:29:40] [SUCCESS] Toplam çalışma süresi: 11.31 saniye
+[2025-05-08 08:29:40] [SUCCESS] =======================================================================
+[2025-05-08 08:29:40] [INFO] Özet kaydedildi: /home/incikir2/public_html/pos.incikirtasiye.com/admin/api/prestashop/logs/barcode_match_summary.json
+[2025-05-08 08:29:40] [INFO] Barkod eşleştirme ve web_id güncelleme tamamlandı

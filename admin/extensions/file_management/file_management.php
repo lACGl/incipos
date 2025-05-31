@@ -1,11 +1,12 @@
 <?php
+require_once 'session_manager.php'; // Otomatik eklendi
 // İlk olarak, SESSION'ı başlatalım
-session_start();
+secure_session_start();
 
 // ÜRÜN RESMİ YÜKLEME İŞLEMİ
 if (isset($_POST['submit_image']) && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['images']['name'][0])) {
     // Ana dizin (root) yolunu al
-    $root_path = dirname(__DIR__);
+$root_path = dirname(dirname(dirname(__DIR__))); // incipos dizinine çıkmak için
     $upload_dir = $root_path . '/files/img/';
     
     // Veritabanı bağlantısını yükle
@@ -48,11 +49,12 @@ if (isset($_POST['submit_image']) && $_SERVER['REQUEST_METHOD'] === 'POST' && !e
                 $search_stmt->execute([$barkod, $barkod]);
                 $found_product = $search_stmt->fetch(PDO::FETCH_ASSOC);
                 
-                if (!$found_product) {
-                    $_SESSION['error_message'] = "Hata: Barkodu ($barkod) olan bir ürün bulunamadı. Lütfen önce ürünü oluşturun.";
-                    $error_count++;
-                    continue;
-                }
+				$target_file = $full_target_dir . $barkod . '.jpg';
+				if (file_exists($target_file)) {
+					$_SESSION['error_message'] = "Hata: Bu ürüne ($barkod) ait zaten bir resim mevcut. Önce mevcut resmi silmelisiniz.";
+					$error_count++;
+					continue;
+				}
                 
                 // Ürünün zaten bir resmi var mı kontrol et
                 if (!empty($found_product['resim_yolu'])) {
@@ -122,16 +124,16 @@ if (isset($_POST['submit_image']) && $_SERVER['REQUEST_METHOD'] === 'POST' && !e
                         $target_file = $full_target_dir . $new_filename;
                         
                         // JPG olarak kaydet
-                        if (imagejpeg($image, $target_file, $quality)) {
-                            imagedestroy($image);
-                            $uploaded_count++;
-                            
-                            // Resim yolunu veritabanında güncelle
-                            $relative_path = 'files/img/' . $target_dir . '/' . $new_filename;
-                            
-                            $update_query = "UPDATE urun_stok SET resim_yolu = ? WHERE id = ?";
-                            $update_stmt = $conn->prepare($update_query);
-                            $update_stmt->execute([$relative_path, $found_product['id']]);
+						if (imagejpeg($image, $target_file, $quality)) {
+							imagedestroy($image);
+							$uploaded_count++;
+							
+							// Resim yolunu veritabanında güncelle
+							$relative_path = 'files/img/' . $target_dir . '/' . $new_filename;
+							
+							$update_query = "UPDATE urun_stok SET resim_yolu = ? WHERE id = ?";
+							$update_stmt = $conn->prepare($update_query);
+							$update_stmt->execute([$relative_path, $found_product['id']]);
                             
                             if ($uploaded_count == 1) {
                                 $_SESSION['success_message'] = "Resim başarıyla yüklendi ve ürün ($barkod) ile ilişkilendirildi.";
@@ -178,7 +180,7 @@ if (isset($_POST['submit_image']) && $_SERVER['REQUEST_METHOD'] === 'POST' && !e
 // PDF YÜKLEME İŞLEMİ
 if (isset($_POST['submit_pdf'])) {
     // Ana dizin (root) yolunu al
-    $root_path = dirname(__DIR__);
+$root_path = dirname(dirname(dirname(__DIR__))); // incipos dizinine çıkmak için
     $pdf_dir = $root_path . '/files/pdf/';
     
     $pdf_category = isset($_POST['pdf_category']) ? $_POST['pdf_category'] : 'invoice';
@@ -224,14 +226,11 @@ if (isset($_POST['submit_pdf'])) {
     exit;
 }
 
-// Bundan sonraki kodlar - Normal sayfa işleme 
-// --------------------------------------------
-
 // Sayfa yüklenme süresini hesapla
 $start_time = microtime(true);
 
 // Ana dizin (root) yolunu al
-$root_path = dirname(__DIR__);
+$root_path = dirname(dirname(dirname(__DIR__))); // incipos dizinine çıkmak için
 $upload_dir = $root_path . '/files/img/';
 $pdf_dir = $root_path . '/files/pdf/';
 $temp_dir = $root_path . '/files/temp/';
@@ -278,6 +277,8 @@ function listFilesAndFolders($dir, $relativePath = '') {
         if ($item != '.' && $item != '..' && $item != '.htaccess') {
             $path = $dir . '/' . $item;
             $relPath = $relativePath . '/' . $item;
+            // Başındaki / işaretini kaldır
+            $relPath = ltrim($relPath, '/');
             
             if (is_dir($path)) {
                 $result[] = [
@@ -334,7 +335,11 @@ function formatSize($size) {
 $current_path = isset($_GET['path']) ? $_GET['path'] : '';
 $current_dir = '';
 
-if ($current_path === 'img' || empty($current_path)) {
+if (empty($current_path)) {
+    // Eğer path parametresi yoksa veya boşsa, 'files' klasörünü aç
+    $current_dir = $root_path . '/files';
+    $current_path = 'files';
+} elseif ($current_path === 'img') {
     $current_dir = $upload_dir;
     $current_path = 'img';
 } elseif ($current_path === 'pdf') {
@@ -345,9 +350,16 @@ if ($current_path === 'img' || empty($current_path)) {
 } elseif (strpos($current_path, 'pdf/') === 0) {
     $subpath = substr($current_path, 4);
     $current_dir = $pdf_dir . $subpath;
+} elseif ($current_path === 'files') {
+    $current_dir = $root_path . '/files';
+} elseif (strpos($current_path, 'files/') === 0) {
+    // 'files/' ile başlayan path için doğru dizini oluştur
+    $subpath = substr($current_path, 6); // 'files/' kısmını çıkar
+    $current_dir = $root_path . '/files/' . $subpath;
 } else {
-    $current_dir = $upload_dir;
-    $current_path = 'img';
+    // Eğer path parametresi geçersizse, 'files' klasörünü aç
+    $current_dir = $root_path . '/files';
+    $current_path = 'files';
 }
 
 // Eğer klasör yoksa oluştur
@@ -662,7 +674,7 @@ $execution_time = round($end_time - $start_time, 3);
                 <nav class="breadcrumb" aria-label="breadcrumb">
                     <ol class="flex flex-wrap">
                         <li class="breadcrumb-item">
-                            <a href="?path=img">Ana Dizin</a>
+                            <a href="?path=files">Ana Dizin</a>
                         </li>
                         
                         <?php foreach ($breadcrumb_parts as $index => $part): ?>

@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once '../db_connection.php';
 // Yetki kontrolü
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
@@ -40,7 +41,7 @@ try {
         $stmt = $conn->prepare("
             UPDATE musteri_puanlar
             SET puan_bakiye = puan_bakiye + :puan,
-                son_guncelleme = NOW()
+                son_alisveris_tarihi = NOW()
             WHERE musteri_id = :musteri_id
         ");
         $stmt->bindParam(':puan', $points, PDO::PARAM_STR);
@@ -49,7 +50,7 @@ try {
     } else {
         // Yeni puan kaydı oluştur
         $stmt = $conn->prepare("
-            INSERT INTO musteri_puanlar (musteri_id, puan_bakiye, puan_oran, son_guncelleme)
+            INSERT INTO musteri_puanlar (musteri_id, puan_bakiye, puan_oran, son_alisveris_tarihi)
             VALUES (:musteri_id, :puan, 1.00, NOW())
         ");
         $stmt->bindParam(':musteri_id', $customerId, PDO::PARAM_INT);

@@ -1,8 +1,6 @@
 <?php
-// create_sale.php
-// Satış işlemlerini kaydeden API - Eksik alanlar düzeltildi
-
-session_start();
+require_once '../session_manager.php'; // Otomatik eklendi
+secure_session_start();
 require_once '../db_connection.php';
 require_once __DIR__ . '/../stock_functions.php';
 

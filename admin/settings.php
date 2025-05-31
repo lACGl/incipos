@@ -35,12 +35,14 @@ if (isset($_POST['add_store'])) {
     $store_name = $_POST['store_name'];
     $store_address = $_POST['store_address'];
     $store_phone = $_POST['store_phone'];
+    $store_mobile = $_POST['store_mobile']; // Yeni eklenen cep telefonu
     
     try {
-        $stmt = $conn->prepare("INSERT INTO magazalar (ad, adres, telefon) VALUES (:ad, :adres, :telefon)");
+        $stmt = $conn->prepare("INSERT INTO magazalar (ad, adres, telefon, cep_telefon) VALUES (:ad, :adres, :telefon, :cep_telefon)");
         $stmt->bindParam(':ad', $store_name);
         $stmt->bindParam(':adres', $store_address);
         $stmt->bindParam(':telefon', $store_phone);
+        $stmt->bindParam(':cep_telefon', $store_mobile); // Yeni eklenen cep telefonu
         $stmt->execute();
         
         $success_message = "Mağaza başarıyla eklendi.";
@@ -54,12 +56,14 @@ if (isset($_POST['update_store'])) {
     $store_name = $_POST['store_name'];
     $store_address = $_POST['store_address'];
     $store_phone = $_POST['store_phone'];
+    $store_mobile = $_POST['store_mobile']; // Yeni eklenen cep telefonu
     
     try {
-        $stmt = $conn->prepare("UPDATE magazalar SET ad = :ad, adres = :adres, telefon = :telefon WHERE id = :id");
+        $stmt = $conn->prepare("UPDATE magazalar SET ad = :ad, adres = :adres, telefon = :telefon, cep_telefon = :cep_telefon WHERE id = :id");
         $stmt->bindParam(':ad', $store_name);
         $stmt->bindParam(':adres', $store_address);
         $stmt->bindParam(':telefon', $store_phone);
+        $stmt->bindParam(':cep_telefon', $store_mobile); // Yeni eklenen cep telefonu
         $stmt->bindParam(':id', $store_id);
         $stmt->execute();
         
@@ -457,58 +461,64 @@ $execution_time = round($end_time - $start_time, 3);
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    ID
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Mağaza Adı
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Adres
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Telefon
-                                </th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    İşlemler
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php foreach ($stores as $store): ?>
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php echo $store['id']; ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        <?php echo htmlspecialchars($store['ad']); ?>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500">
-                                        <?php echo htmlspecialchars($store['adres']); ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php echo htmlspecialchars($store['telefon']); ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onclick="editStore(<?php echo $store['id']; ?>)" class="text-blue-600 hover:text-blue-900 mr-3">
-                                            Düzenle
-                                        </button>
-                                        <button onclick="deleteStore(<?php echo $store['id']; ?>)" class="text-red-600 hover:text-red-900">
-                                            Sil
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                            
-                            <?php if (empty($stores)): ?>
-                                <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                                        Henüz mağaza eklenmemiş.
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
+    <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            ID
+        </th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Mağaza Adı
+        </th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Adres
+        </th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Telefon
+        </th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Cep Telefonu
+        </th>
+        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            İşlemler
+        </th>
+    </tr>
+</thead>
+<tbody class="bg-white divide-y divide-gray-200">
+    <?php foreach ($stores as $store): ?>
+        <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <?php echo $store['id']; ?>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <?php echo htmlspecialchars($store['ad']); ?>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                <?php echo htmlspecialchars($store['adres']); ?>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <?php echo htmlspecialchars($store['telefon']); ?>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <?php echo htmlspecialchars($store['cep_telefon']); ?>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button onclick="editStore(<?php echo $store['id']; ?>)" class="text-blue-600 hover:text-blue-900 mr-3">
+                    Düzenle
+                </button>
+                <button onclick="deleteStore(<?php echo $store['id']; ?>)" class="text-red-600 hover:text-red-900">
+                    Sil
+                </button>
+            </td>
+        </tr>
+    <?php endforeach; ?>
+    
+    <?php if (empty($stores)): ?>
+        <tr>
+            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                Henüz mağaza eklenmemiş.
+            </td>
+        </tr>
+    <?php endif; ?>
+</tbody>
                     </table>
                 </div>
             </div>
@@ -793,89 +803,107 @@ $execution_time = round($end_time - $start_time, 3);
     </div>
 
     <!-- Mağaza Ekleme Modalı -->
-    <div id="addStoreModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Yeni Mağaza Ekle</h3>
-                <button type="button" onclick="closeModal('addStoreModal')" class="text-gray-400 hover:text-gray-500">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+<div id="addStoreModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Yeni Mağaza Ekle</h3>
+            <button type="button" onclick="closeModal('addStoreModal')" class="text-gray-400 hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form action="" method="POST">
+            <div class="mb-4">
+                <label for="store_name" class="block text-sm font-medium text-gray-700 mb-1">
+                    Mağaza Adı
+                </label>
+                <input type="text" name="store_name" id="store_name" required 
+                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="store_address" class="block text-sm font-medium text-gray-700 mb-1">
+                    Adres
+                </label>
+                <textarea name="store_address" id="store_address" rows="3" 
+                          class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="store_phone" class="block text-sm font-medium text-gray-700 mb-1">
+                    Telefon
+                </label>
+                <input type="text" name="store_phone" id="store_phone" 
+                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="store_mobile" class="block text-sm font-medium text-gray-700 mb-1">
+                    Cep Telefonu
+                </label>
+                <input type="text" name="store_mobile" id="store_mobile" 
+                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <p class="text-xs text-gray-500 mt-1">SMS doğrulama için kullanılacak numara</p>
+            </div>
+            <div class="mt-6">
+                <button type="submit" name="add_store" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Mağaza Ekle
                 </button>
             </div>
-            <form action="" method="POST">
-                <div class="mb-4">
-                    <label for="store_name" class="block text-sm font-medium text-gray-700 mb-1">
-                        Mağaza Adı
-                    </label>
-                    <input type="text" name="store_name" id="store_name" required 
-                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div class="mb-4">
-                    <label for="store_address" class="block text-sm font-medium text-gray-700 mb-1">
-                        Adres
-                    </label>
-                    <textarea name="store_address" id="store_address" rows="3" 
-                              class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-                <div class="mb-4">
-                    <label for="store_phone" class="block text-sm font-medium text-gray-700 mb-1">
-                        Telefon
-                    </label>
-                    <input type="text" name="store_phone" id="store_phone" 
-                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div class="mt-6">
-                    <button type="submit" name="add_store" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Mağaza Ekle
-                    </button>
-                </div>
-            </form>
-        </div>
+        </form>
     </div>
+</div>
 
     <!-- Mağaza Düzenleme Modalı -->
-    <div id="editStoreModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Mağaza Düzenle</h3>
-                <button type="button" onclick="closeModal('editStoreModal')" class="text-gray-400 hover:text-gray-500">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+<div id="editStoreModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Mağaza Düzenle</h3>
+            <button type="button" onclick="closeModal('editStoreModal')" class="text-gray-400 hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form action="" method="POST">
+            <input type="hidden" name="store_id" id="edit_store_id">
+            <div class="mb-4">
+                <label for="edit_store_name" class="block text-sm font-medium text-gray-700 mb-1">
+                    Mağaza Adı
+                </label>
+                <input type="text" name="store_name" id="edit_store_name" required 
+                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="edit_store_address" class="block text-sm font-medium text-gray-700 mb-1">
+                    Adres
+                </label>
+                <textarea name="store_address" id="edit_store_address" rows="3" 
+                          class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="edit_store_phone" class="block text-sm font-medium text-gray-700 mb-1">
+                    Telefon
+                </label>
+                <input type="text" name="store_phone" id="edit_store_phone" 
+                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="edit_store_mobile" class="block text-sm font-medium text-gray-700 mb-1">
+                    Cep Telefonu
+                </label>
+                <input type="text" name="store_mobile" id="edit_store_mobile" 
+                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <p class="text-xs text-gray-500 mt-1">SMS doğrulama için kullanılacak numara</p>
+            </div>
+            <div class="mt-6">
+                <button type="submit" name="update_store" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Değişiklikleri Kaydet
                 </button>
             </div>
-            <form action="" method="POST">
-                <input type="hidden" name="store_id" id="edit_store_id">
-                <div class="mb-4">
-                    <label for="edit_store_name" class="block text-sm font-medium text-gray-700 mb-1">
-                        Mağaza Adı
-                    </label>
-                    <input type="text" name="store_name" id="edit_store_name" required 
-                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div class="mb-4">
-                    <label for="edit_store_address" class="block text-sm font-medium text-gray-700 mb-1">
-                        Adres
-                    </label>
-                    <textarea name="store_address" id="edit_store_address" rows="3" 
-                              class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-                <div class="mb-4">
-                    <label for="edit_store_phone" class="block text-sm font-medium text-gray-700 mb-1">
-                        Telefon
-                    </label>
-                    <input type="text" name="store_phone" id="edit_store_phone" 
-                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div class="mt-6">
-                    <button type="submit" name="update_store" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Değişiklikleri Kaydet
-                    </button>
-                </div>
-            </form>
-        </div>
+        </form>
     </div>
+</div>
+
+
 <!-- Depo Ekleme Modalı -->
 <div id="addWarehouseModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">

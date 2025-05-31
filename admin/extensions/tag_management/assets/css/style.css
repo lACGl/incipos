@@ -1,0 +1,527 @@
+/**
+ * Barkod Yöneticisi CSS
+ */
+
+/* Genel Stiller */
+.content-header {
+    padding: 15px 0.5rem;
+}
+
+.content {
+    padding: 0 0.5rem;
+}
+
+.card {
+    margin-bottom: 20px;
+    box-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
+    border-radius: 0.25rem;
+}
+
+.card-header {
+    background-color: rgba(0,0,0,.03);
+    border-bottom: 1px solid rgba(0,0,0,.125);
+    padding: 0.75rem 1.25rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.card-footer {
+    padding: 0.75rem 1.25rem;
+    background-color: rgba(0,0,0,.03);
+    border-top: 1px solid rgba(0,0,0,.125);
+}
+
+.table {
+    width: 100%;
+    margin-bottom: 1rem;
+    color: #212529;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-top: 1px solid #dee2e6;
+}
+
+.table-bordered {
+    border: 1px solid #dee2e6;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #dee2e6;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.05);
+}
+
+.btn {
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    margin-right: 5px;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-success {
+    color: #fff;
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-info {
+    color: #fff;
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.btn-warning {
+    color: #212529;
+    background-color: #ffc107;
+    border-color: #ffc107;
+}
+
+.btn-danger {
+    color: #fff;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-default {
+    color: #212529;
+    background-color: #f8f9fa;
+    border-color: #ddd;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+
+.alert {
+    position: relative;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.4em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+}
+
+.badge-danger {
+    color: #fff;
+    background-color: #dc3545;
+}
+
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    list-style: none;
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+}
+
+.breadcrumb-item + .breadcrumb-item {
+    padding-left: 0.5rem;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    display: inline-block;
+    padding-right: 0.5rem;
+    color: #6c757d;
+    content: "/";
+}
+
+.form-control {
+    display: block;
+    width: 100%;
+    height: calc(2.25rem + 2px);
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus {
+    color: #495057;
+    background-color: #fff;
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+/* Barkod Tablosu */
+#barcode-table img {
+    max-height: 40px;
+}
+
+/* Barkod Preview */
+.barcode-preview {
+    text-align: center;
+    margin: 15px 0;
+}
+
+.barcode-preview img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Etiket Önizleme */
+.label-preview {
+    width: 100mm;
+    height: 38mm;
+    border: 1px solid #ddd;
+    margin: 0 auto;
+    background: white;
+    padding: 2mm;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    position: relative;
+}
+
+.label-content {
+    width: 96mm;
+    height: 34mm;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.product-name {
+    font-size: 12pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 2mm;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.barcode-area {
+    text-align: center;
+    margin-bottom: 2mm;
+}
+
+.barcode-image {
+    max-width: 90%;
+    height: auto;
+}
+
+.barcode-number {
+    font-size: 9pt;
+    margin-top: 1mm;
+}
+
+.price-area {
+    font-size: 14pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 2mm;
+}
+
+.bottom-info {
+    font-size: 8pt;
+    text-align: center;
+    color: #666;
+}
+
+/* Etiket Şablonları */
+.template-2 .label-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.template-2 .product-name {
+    width: 100%;
+}
+
+.template-2 .barcode-area {
+    width: 60%;
+    text-align: left;
+    padding-left: 5mm;
+}
+
+.template-2 .price-area {
+    width: 40%;
+    text-align: right;
+    padding-right: 5mm;
+}
+
+.template-2 .bottom-info {
+    width: 100%;
+}
+
+/* DataTables Özelleştirme */
+.dataTables_wrapper .dataTables_length, 
+.dataTables_wrapper .dataTables_filter {
+    margin-bottom: 15px;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 0.5em 1em;
+    margin-left: 2px;
+    border: 1px solid #ddd;
+    background-color: #f8f9fa;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background-color: #007bff;
+    color: white !important;
+}
+
+/* Yazıcı Ayarları Paneli */
+.printer-settings-panel {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    margin-bottom: 20px;
+}
+
+.printer-type-selector {
+    margin-bottom: 15px;
+}
+
+.printer-options {
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.printer-test-button {
+    margin-top: 10px;
+}
+
+.printer-status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.printer-status-indicator.online {
+    background-color: #28a745;
+}
+
+.printer-status-indicator.offline {
+    background-color: #dc3545;
+}
+
+.zpl-preview {
+    font-family: monospace;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    padding: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre;
+    font-size: 0.85rem;
+}
+
+/* Mobil Uyumluluk */
+@media (max-width: 768px) {
+    .content-header {
+        padding: 10px 0.25rem;
+    }
+    
+    .content {
+        padding: 0 0.25rem;
+    }
+    
+    .card-header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .btn-group > .btn {
+        margin-bottom: 5px;
+        margin-right: 0;
+    }
+    
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .barcode-preview img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* Barkod tablosu mobil görünümü */
+    #barcode-table {
+        width: 100%;
+    }
+    
+    #barcode-table th:nth-child(1), /* Ürün Kodu */
+    #barcode-table td:nth-child(1),
+    #barcode-table th:nth-child(5), /* Fiyat */
+    #barcode-table td:nth-child(5) {
+        display: none;
+    }
+    
+    /* Etiketlerde mobil görünüm */
+    .label-preview {
+        width: 95% !important;
+        margin: 0 auto;
+        box-sizing: border-box;
+    }
+}
+
+/* Tablet Uyumluluk */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .content-header {
+        padding: 12px 0.5rem;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+    }
+    
+    .btn-group > .btn {
+        margin-bottom: 5px;
+    }
+}
+
+/* Barkod Tarayıcı için Özel Mobil Tasarım */
+@media (max-width: 480px) {
+    .print-controls {
+        position: fixed;
+        bottom: 0;
+        top: auto;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-around;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-top: 1px solid #ddd;
+        border-radius: 0;
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        z-index: 1000;
+    }
+    
+    .print-controls .print-btn {
+        flex: 1;
+        margin: 0 5px;
+        text-align: center;
+    }
+    
+    body {
+        padding-bottom: 60px; /* Sabit alt menü için boşluk */
+    }
+    
+    /* Etiket görünümü */
+    .label {
+        width: 100% !important;
+        box-sizing: border-box;
+        margin: 10px 0;
+    }
+}
+
+/* Mobil yazdırma optimizasyonu */
+@media print {
+    @page {
+        margin: 0;
+        size: auto;
+    }
+    
+    html, body {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .content-header, .breadcrumb, .btn, .card-header, .card-footer, 
+    .print-controls, .summary, .alert, .modal {
+        display: none !important;
+    }
+    
+    .label {
+        page-break-after: always;
+        page-break-inside: avoid;
+        margin: 0;
+        box-shadow: none;
+        border: none;
+    }
+}

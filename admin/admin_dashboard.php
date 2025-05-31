@@ -191,6 +191,28 @@ include 'header.php';
                 Dosya Yönetimine Git <i class="fas fa-chevron-right"></i>
             </div>
         </div>
+        
+        <div class="menu-card api-card" onclick="window.location.href='extensions/price_management/'" style="cursor: pointer;">
+            <div class="menu-icon extension-icon">
+                <i class="fa-solid fa-plus-minus"></i>
+            </div>
+            <h3 class="menu-title">Fiyat Yönetimi</h3>
+            <p class="menu-description">Tek bir sayfa üzerinden tüm ürünlerin fiyatlarını yönetin.</p>
+            <div class="menu-link">
+                Dosya Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
+        
+        <div class="menu-card api-card" onclick="window.location.href=''" style="cursor: pointer;">
+            <div class="menu-icon extension-icon">
+            <i class="fa-solid fa-print"></i>
+            </div>
+            <h3 class="menu-title">Etiket Yönetimi</h3>
+            <p class="menu-description">Tek bir sayfa üzerinden tüm ürünlerin fiyatlarını yönetin.</p>
+            <div class="menu-link">
+                Dosya Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
     </div>
     <!-- Entegrasyonlar Bölümü -->
     <div class="section-header mt-8">
@@ -211,7 +233,7 @@ include 'header.php';
             </div>
         </div>
         
-		<div class="menu-card api-card" onclick="window.location.href='api/birfatura/dashboard.php'" style="cursor: pointer;">
+		<div class="menu-card api-card" onclick="window.location.href='https://pos.incikirtasiye.com/api/birfatura/dashboard.php'" style="cursor: pointer;">
 			<div class="menu-icon api-icon">
 				<i class="fas fa-file-invoice-dollar"></i>
 			</div>
@@ -231,6 +253,17 @@ include 'header.php';
             <p class="menu-description">SMS gönderimlerinizi yönetin ve mesaj geçmişinizi görüntüleyin.</p>
             <div class="menu-link">
                 NETGsm Yönetimine Git <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
+        
+        <div class="menu-card api-card"  onclick="window.location.href='incibot/claude_chat.php/'" style="cursor: pointer;">
+            <div class="menu-icon api-icon">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h3 class="menu-title">İnciBOT</h3>
+            <p class="menu-description">Tüm raporları İnciBottan alın..</p>
+            <div class="menu-link">
+                İnciBOT Yönetimine Git <i class="fas fa-chevron-right"></i>
             </div>
         </div>
 		
